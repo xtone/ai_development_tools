@@ -1,12 +1,13 @@
 # Biome Format Hook
 
-TypeScriptファイルの編集時に自動的にBiomeフォーマッターを実行するClaude Code hookです。
+JavaScriptおよびTypeScriptファイルの編集時に自動的にBiomeフォーマッターを実行するClaude Code hookです。
 
 ## 機能
 
-- TypeScript/TSXファイル（`.ts`, `.tsx`）の編集時に自動的にBiomeフォーマットを実行
-- `biome.json`設定ファイルがあるプロジェクトのみで動作
-- 複数のプロジェクトディレクトリに対応
+- JavaScript/TypeScriptファイル（`.js`, `.jsx`, `.ts`, `.tsx`）の編集時に自動的にBiomeフォーマットを実行
+- 編集されたファイルのディレクトリから上位ディレクトリへ遡って`biome.json`を自動検索
+- どのカレントディレクトリから実行されても正しく動作
+- `biome.json`設定ファイルがある場合のみフォーマットを実行
 
 ## セットアップ
 
@@ -43,43 +44,38 @@ Claude Codeの設定で以下のhookを追加してください：
 }
 ```
 
-### 3. スクリプトの設定
+### 3. スクリプトの設定（オプション）
 
-`biome_format.sh` 内の設定を環境に合わせて調整してください：
+必要に応じて、`biome_format.sh` 内の対象ファイル拡張子を変更できます：
 
 ```bash
-# 対象プロジェクトディレクトリのリスト
-PROJECT_DIRS=(
-    "."  # ルートディレクトリ
-    # 必要に応じて他のプロジェクトディレクトリを追加
-)
-
 # 対象ファイル拡張子のリスト
-TARGET_EXTENSIONS=("ts" "tsx")
+TARGET_EXTENSIONS=("ts" "tsx" "js" "jsx")
 ```
 
-モノリポ構造で、claude codeのプロジェクトディレクトリ以下にTypeScriptのディレクトリが複数ある場合は、それぞれのディレクトリをリストとして設定してください。
-例えば、`frontend`というディレクトリにNext.jsのプロジェクトがあるようなモノリポ構造の場合、`PROJECT_DIRS`は以下のように設定してください。
-
-```bash
-# 対象プロジェクトディレクトリのリスト
-PROJECT_DIRS=(
-    "frontend"
-)
-```
+デフォルトでは、JavaScript/TypeScriptの一般的な拡張子（`.js`, `.jsx`, `.ts`, `.tsx`）が対象です。
+プロジェクトディレクトリの設定は不要です。スクリプトが自動的に編集されたファイルから最も近い`biome.json`を探します。
 
 ## 前提条件
 
-- プロジェクトルートに `biome.json` 設定ファイルが存在すること (optional)
 - `npx @biomejs/biome` コマンドが実行可能であること
+- フォーマット対象のファイルまたはその上位ディレクトリに `biome.json` 設定ファイルが存在すること
 
 ## 動作
 
-1. Claude CodeでTypeScript/TSXファイルを編集（Edit, Write, MultiEditツール使用時）
+1. Claude CodeでJavaScript/TypeScriptファイルを編集（Edit, Write, MultiEditツール使用時）
 2. スクリプトが自動的に実行される
-3. 対象ファイルがTypeScript/TSXファイルかチェック
-4. プロジェクトディレクトリ内に `biome.json` が存在するかチェック
-5. 条件を満たす場合、`npx @biomejs/biome format --write` を実行
+3. 対象ファイルがJavaScript/TypeScriptファイルかチェック
+4. ファイルパスを絶対パスに変換
+5. 編集されたファイルのディレクトリから上位ディレクトリへ遡って `biome.json` を検索
+6. `biome.json` が見つかった場合、`npx @biomejs/biome format --config-path --write` を実行
+
+### biome.json検索の仕組み
+
+スクリプトは編集されたファイルのディレクトリから開始し、ルートディレクトリ（`/`）に到達するまで親ディレクトリを遡って`biome.json`を探します。
+最初に見つかった`biome.json`を使用してフォーマットを実行します。
+
+これにより、モノリポ構造でも各プロジェクトの`biome.json`を正しく認識できます。
 
 ## 注意事項
 
