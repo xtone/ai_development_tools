@@ -56,12 +56,13 @@ file_dir=$(dirname "$file_path")
 config_dir=$(find_biome_config "$file_dir")
 
 if [ -z "$config_dir" ]; then
-    echo "biome.json not found in any parent directory of: $file_path"
-    exit 0
+    echo "biome.json not found, using default configuration"
+    echo "Formatting $file_path with Biome (default config)"
+    # デフォルト設定でbiome formatを実行
+    npx @biomejs/biome format --write "$file_path"
+else
+    echo "Found biome.json in: $config_dir"
+    echo "Formatting $file_path with Biome"
+    # biome.jsonがあるディレクトリに移動してから実行
+    (cd "$config_dir" && npx @biomejs/biome format --write "$file_path")
 fi
-
-echo "Found biome.json in: $config_dir"
-echo "Formatting $file_path with Biome"
-
-# biome formatを実行（--config-pathで明示的に設定ファイルの場所を指定）
-npx @biomejs/biome format --config-path="$config_dir" --write "$file_path"
