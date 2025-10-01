@@ -13,14 +13,15 @@ JavaScriptおよびTypeScriptファイルの編集時に自動的にBiomeフォ�
 
 ### 1. スクリプトの配置
 
-このディレクトリの `biome_format.sh` を任意の場所にコピーします。
-今回はプロジェクトディレクトリ直下の`.claude/hooks/biome_format.sh`に保存する前提で説明します。
-
-コピー後、実行権限を付与してください。
+このディレクトリの `biome_format.sh` を `~/bin/` ディレクトリにコピーします。
 
 ```bash
-$ chmod a+x .claude/hooks/biome_format.sh
+$ mkdir -p ~/bin
+$ cp biome_format.sh ~/bin/
+$ chmod +x ~/bin/biome_format.sh
 ```
+
+**注意**: Claude Code hookは相対パスで指定するとカレントディレクトリが不定であるため正しく実行できないケースがあります。必ず絶対パス（`~/bin/biome_format.sh`）を使用してください。
 
 ### 2. Claude Code hookの設定
 
@@ -35,7 +36,7 @@ Claude Codeの設定で以下のhookを追加してください：
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/biome_format.sh"
+            "command": "~/bin/biome_format.sh"
           }
         ]
       }
