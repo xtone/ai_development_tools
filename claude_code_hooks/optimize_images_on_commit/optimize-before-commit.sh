@@ -13,11 +13,18 @@ readonly COLOR_BLUE='\033[0;34m'
 readonly COLOR_RESET='\033[0m'
 
 # 設定
-readonly OPTIMIZE_SCRIPT="$HOME/.claude/hooks/optimize-images.sh"
+readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly OPTIMIZE_SCRIPT="${SCRIPT_DIR}/optimize-images.sh"
 readonly LOG_FILE="$HOME/.claude/logs/commit-optimization.log"
 
 # ログディレクトリ作成
 mkdir -p "$(dirname "$LOG_FILE")"
+
+# 最適化スクリプトの存在確認
+if [ ! -f "$OPTIMIZE_SCRIPT" ]; then
+    echo "Error: optimize-images.sh not found at $OPTIMIZE_SCRIPT" >&2
+    exit 0
+fi
 
 # 標準入力からJSONデータを読み取り
 input_data=$(cat)
@@ -44,7 +51,7 @@ if [[ "$COMMAND" == *"git commit"* ]]; then
 
         # 最適化実行
         OPTIMIZED_COUNT=0
-        echo "$IMAGES" | while read -r image; do
+        while IFS= read -r image; do
             if [ -f "$image" ]; then
                 echo -e "${COLOR_BLUE}  Processing: $image${COLOR_RESET}"
 
@@ -55,9 +62,9 @@ if [[ "$COMMAND" == *"git commit"* ]]; then
                     git add "$image"
                 fi
             fi
-        done
+        done <<< "$IMAGES"
 
-        echo -e "${COLOR_GREEN}✨ Optimization complete!${COLOR_RESET}"
+        echo -e "${COLOR_GREEN}✨ Optimization complete! (${OPTIMIZED_COUNT} files)${COLOR_RESET}"
     else
         echo -e "${COLOR_YELLOW}ℹ️  No images to optimize${COLOR_RESET}"
     fi

@@ -137,59 +137,44 @@ check_command() {
     command -v "$cmd" >/dev/null 2>&1
 }
 
-install_dependencies() {
-    local tools=("$@")
-
-    log INFO "Installing dependencies: ${tools[*]}"
-
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        if check_command brew; then
-            brew install "${tools[@]}" 2>/dev/null || true
-        else
-            log ERROR "Homebrew not found. Please install: https://brew.sh"
-            return 1
-        fi
-    elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-        if check_command apt-get; then
-            sudo apt-get update && sudo apt-get install -y "${tools[@]}" 2>/dev/null || true
-        elif check_command yum; then
-            sudo yum install -y "${tools[@]}" 2>/dev/null || true
-        else
-            log ERROR "Package manager not found"
-            return 1
-        fi
-    fi
-
-    return 0
-}
-
 ensure_dependencies() {
     local required_tools=("jpegoptim" "optipng")
     local optional_tools=("gifsicle" "svgo")
-    local missing_tools=()
+    local missing_required=()
+    local missing_optional=()
 
     # 必須ツールのチェック
     for tool in "${required_tools[@]}"; do
         if ! check_command "$tool"; then
-            missing_tools+=("$tool")
+            missing_required+=("$tool")
         fi
     done
 
-    # 必須ツールがない場合はインストール
-    if (( ${#missing_tools[@]} > 0 )); then
-        log WARNING "Missing required tools: ${missing_tools[*]}"
-        if ! install_dependencies "${missing_tools[@]}"; then
-            log ERROR "Failed to install required dependencies"
-            return 1
-        fi
-    fi
-
-    # オプションツールの確認（インストールはしない）
+    # オプションツールのチェック
     for tool in "${optional_tools[@]}"; do
         if ! check_command "$tool"; then
-            log INFO "Optional tool not found: $tool (some features will be unavailable)"
+            missing_optional+=("$tool")
         fi
     done
+
+    # 必須ツールがない場合はエラー
+    if (( ${#missing_required[@]} > 0 )); then
+        log ERROR "Missing required tools: ${missing_required[*]}"
+        log ERROR "Please install them manually:"
+
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            log ERROR "  brew install ${missing_required[*]}"
+        elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+            log ERROR "  sudo apt-get install ${missing_required[*]}"
+        fi
+
+        return 1
+    fi
+
+    # オプションツールの警告
+    if (( ${#missing_optional[@]} > 0 )); then
+        log WARNING "Optional tools not found: ${missing_optional[*]} (some formats will be skipped)"
+    fi
 
     return 0
 }

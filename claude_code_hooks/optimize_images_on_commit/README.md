@@ -14,27 +14,23 @@ git commit実行時に、ステージングされた画像ファイルを自動�
 
 ### 1. 依存ツールのインストール
 
-#### macOS (Homebrew)
 ```bash
 brew install jpegoptim optipng gifsicle
 npm install -g svgo  # SVG最適化（オプション）
 ```
 
-#### Ubuntu/Debian
-```bash
-sudo apt-get install jpegoptim optipng gifsicle
-npm install -g svgo  # SVG最適化（オプション）
-```
-
 ### 2. スクリプトの配置
+
+**重要**: `optimize-before-commit.sh`と`optimize-images.sh`は**同じディレクトリ**に配置してください。
 
 ```bash
 # Hooksディレクトリ作成
 mkdir -p ~/.claude/hooks
 
-# スクリプトをコピー
-cp optimize-before-commit.sh ~/.claude/hooks/
-cp optimize-images.sh ~/.claude/hooks/
+# このリポジトリのスクリプトをコピー（両方とも同じディレクトリに配置）
+cd /path/to/ai_development_tools
+cp claude_code_hooks/optimize_images_on_commit/optimize-before-commit.sh ~/.claude/hooks/
+cp claude_code_hooks/optimize_images_on_commit/optimize-images.sh ~/.claude/hooks/
 
 # 実行権限を付与
 chmod +x ~/.claude/hooks/optimize-before-commit.sh
@@ -106,7 +102,7 @@ git commit -m "Add new image"
 #   - assets/image.jpg
 #   Processing: assets/image.jpg
 # ✅ Optimized: image.jpg | Saved: 23.5% (1.2MB → 920KB)
-# ✨ Optimization complete!
+# ✨ Optimization complete! (1 files)
 # [main abc123] Add new image
 ```
 
@@ -131,21 +127,21 @@ git commit -m "Add new image"
 
 - 10KB未満の小さい画像はスキップされます
 - 最適化でサイズが増えた場合は元のファイルに復元されます
-- 初回実行時に依存ツールが自動インストールされます（macOS/Linux）
+- **依存ツール（jpegoptim, optipng等）は事前に手動でインストールが必要です**
+- 依存ツールがない場合はエラーメッセージが表示されますが、commitは続行されます
 - エラーが発生してもcommitは続行されます
 
 ## トラブルシューティング
 
-### 依存ツールがインストールされない
+### 依存ツールが見つからないエラー
 
-手動でインストールしてください：
+依存ツールがインストールされていない場合、エラーメッセージが表示されます。
+[セットアップ > 1. 依存ツールのインストール](#1-依存ツールのインストール)を参照してインストールしてください。
+
+インストール後、以下のコマンドで確認できます：
 
 ```bash
-# macOS
-brew install jpegoptim optipng gifsicle
-
-# Ubuntu/Debian
-sudo apt-get install jpegoptim optipng gifsicle
+which jpegoptim optipng gifsicle svgo
 ```
 
 ### Hookが動作しない
