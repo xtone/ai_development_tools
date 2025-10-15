@@ -16,21 +16,31 @@ Claude Code用の開発支援ツールとプラグインのコレクションで
 
 Claude Codeのマーケットプレイス機能を使用して、プラグインを簡単にインストールできます。
 
-1. マーケットプレイスにこのリポジトリを追加:
+1. Claude Code上でマーケットプレイスにこのリポジトリを追加:
 
-```bash
-# Claude Codeの設定ファイル（~/.config/claude/config.json）に以下を追加
-{
-  "marketplaces": [
-    {
-      "name": "xtone-ai-development-tools",
-      "url": "https://raw.githubusercontent.com/xtone/ai_development_tools/main/.claude-plugin/marketplace.json"
-    }
-  ]
-}
+```
+/plugin marketplace add git@github.com:xtone/ai_development_tools.git
 ```
 
-2. Claude Codeのマーケットプレイスからプラグインをインストール:
+または、HTTPSを使用する場合:
+
+```
+/plugin marketplace add xtone/ai_development_tools
+```
+
+2. プラグインをインストール:
+
+インタラクティブにプラグインを選択してインストール:
+
+```
+/plugin
+```
+
+または、直接プラグイン名を指定してインストール:
+
+```
+/plugin install biome-format@xtone-ai-development-tools
+```
 
 プラグインをインストールすると、以下が自動的に行われます:
 - 必要なスクリプトがインストールディレクトリにコピーされる
@@ -40,6 +50,9 @@ Claude Codeのマーケットプレイス機能を使用して、プラグイン
 ### Method 2: 手動インストール
 
 個別のプラグインを手動でセットアップする場合は、各プラグインのREADMEを参照してください。
+
+**参考文献:**
+- [Claude Code Plugins - 公式ドキュメント](https://docs.claude.com/en/docs/claude-code/plugins)
 
 ## このリポジトリをマーケットプレイスに追加する方法
 
@@ -129,13 +142,12 @@ git add your_plugin/hooks/your_script.sh
 git update-index --chmod=+x your_plugin/hooks/your_script.sh
 ```
 
-### 6. マーケットプレイスURLの公開
+### 6. リポジトリの公開
 
-リポジトリをGitHubにプッシュ後、以下のURLをマーケットプレイスURLとして公開します:
+リポジトリをGitHubにプッシュすることで、他のユーザーがマーケットプレイスを追加できるようになります。
 
-```
-https://raw.githubusercontent.com/yourusername/yourrepo/main/.claude-plugin/marketplace.json
-```
+**参考文献:**
+- [Claude Code Plugins - Develop More Complex Plugins](https://docs.claude.com/en/docs/claude-code/plugins#develop-more-complex-plugins)
 
 ## ライセンス
 
