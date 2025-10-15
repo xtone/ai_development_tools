@@ -1,0 +1,19 @@
+{
+    "name": "xtone-ai-development-tools",
+    "owner": {
+        "name": "TOYOTA, Yoichi",
+        "email": "y.toyota@xtone.co.jp"
+    },
+    "plugins": [
+        {
+            "name": "biome-format",
+            "source": "./claude_code_hooks/biome_format",
+            "description": "biomeによるファイル保存時の自動コードフォーマット",
+            "version": "0.1.0",
+            "author": {
+                "name": "TOYOTA, Yoichi"
+            },
+            "hooks": "hooks.json"
+        }
+    ]
+}
