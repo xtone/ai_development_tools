@@ -12,8 +12,7 @@
             "version": "0.1.0",
             "author": {
                 "name": "TOYOTA, Yoichi"
-            },
-            "hooks": "./hooks.json"
+            }
         }
     ]
 }
