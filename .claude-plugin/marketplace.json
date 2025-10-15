@@ -13,7 +13,7 @@
             "author": {
                 "name": "TOYOTA, Yoichi"
             },
-            "hooks": "hooks.json"
+            "hooks": "./hooks.json"
         }
     ]
 }
