@@ -1,0 +1,393 @@
+---
+componentName: Button
+atomicCategory: Atom
+semanticElement: button
+figmaNodeId: "123:456"
+figmaUrl: "https://figma.com/design/abc123def456/Design-System?node-id=123-456"
+dateCreated: 2025-10-21
+lastUpdated: 2025-10-21
+---
+
+# Button Component Specification
+
+## Overview
+A primary action button component used for user interactions throughout the application. Supports multiple variants (primary, secondary, tertiary) and sizes (small, medium, large) to accommodate different use cases and hierarchy levels.
+
+## Atomic Design Classification
+- **Category**: Atom
+- **Reason**: Single, indivisible interactive element with no sub-components. Represents the most basic building block for user interactions.
+
+## Layout
+- **Method**: Flexbox
+- **Direction**: row
+- **Justify Content**: center
+- **Align Items**: center
+- **Flex Wrap**: nowrap
+- **Display**: inline-flex
+
+## Spacing
+- **Padding**: px-6 py-3 (default medium size)
+- **Gap**: gap-2 (space between icon and text)
+- **Margin**: None (avoid margins, use gap in parent)
+- **Border Radius**: rounded-lg (8px)
+
+## Typography
+- **Font Family**: font-sans (Inter, system-ui)
+- **Font Size**: text-base (16px, default medium size)
+- **Font Weight**: font-semibold (600)
+- **Line Height**: leading-normal (1.5)
+- **Letter Spacing**: tracking-normal
+- **Text Color**: text-white (for primary variant)
+- **Text Alignment**: text-center
+- **Text Transform**: None
+- **Text Decoration**: None
+
+## Colors
+- **Background**: bg-blue-500 (primary variant)
+- **Hover Background**: hover:bg-blue-600
+- **Active Background**: active:bg-blue-700
+- **Disabled Background**: disabled:bg-gray-300
+- **Text Color**: text-white (primary)
+- **Border Color**: border-transparent (primary)
+
+## Visual Properties
+- **Border Width**: border-0 (primary), border-2 (secondary)
+- **Border Radius**: rounded-lg
+- **Box Shadow**: shadow-md
+- **Opacity**: opacity-100 (enabled), opacity-50 (disabled)
+- **Transition**: transition-colors duration-200 ease-in-out
+- **Cursor**: cursor-pointer (enabled), cursor-not-allowed (disabled)
+
+## Semantic HTML
+- **Root Element**: `button`
+- **ARIA Attributes**:
+  - `aria-label`: Required when button has no text content (icon-only buttons)
+  - `aria-disabled`: Set to "true" when disabled (in addition to disabled attribute)
+- **Role**: button (implicit from element, no need to specify)
+- **Type**: "button" (default), "submit" (for forms), "reset" (for form reset)
+
+## Variants
+
+### Variant Types
+
+#### variant (primary | secondary | tertiary)
+
+**primary** (default):
+- Background: bg-blue-500
+- Text: text-white
+- Border: border-transparent
+- Hover: hover:bg-blue-600
+- Active: active:bg-blue-700
+- Shadow: shadow-md
+- Focus Ring: ring-blue-500
+
+**secondary**:
+- Background: bg-white
+- Text: text-blue-500
+- Border: border-2 border-blue-500
+- Hover: hover:bg-blue-50
+- Active: active:bg-blue-100
+- Shadow: shadow-sm
+- Focus Ring: ring-blue-500
+
+**tertiary**:
+- Background: bg-transparent
+- Text: text-blue-500
+- Border: border-transparent
+- Hover: hover:bg-blue-50
+- Active: active:bg-blue-100
+- Shadow: None
+- Focus Ring: ring-blue-500
+
+#### size (small | medium | large)
+
+**small**:
+- Padding: px-4 py-2
+- Font Size: text-sm (14px)
+- Icon Size: 16×16px
+- Gap: gap-1.5
+- Border Radius: rounded-md
+
+**medium** (default):
+- Padding: px-6 py-3
+- Font Size: text-base (16px)
+- Icon Size: 20×20px
+- Gap: gap-2
+- Border Radius: rounded-lg
+
+**large**:
+- Padding: px-8 py-4
+- Font Size: text-lg (18px)
+- Icon Size: 24×24px
+- Gap: gap-2.5
+- Border Radius: rounded-xl
+
+## States
+
+### Default
+As specified in the Colors and Visual Properties sections above.
+
+### Hover
+- Background: Next shade darker (e.g., bg-blue-500 → bg-blue-600)
+- Cursor: cursor-pointer
+- Transition: Smooth 200ms transition
+
+### Active (Pressed)
+- Background: Two shades darker (e.g., bg-blue-500 → bg-blue-700)
+- Transform: scale-[0.98] (subtle press effect)
+- Transition: Immediate (duration-75)
+
+### Focus
+- Outline: ring-2 ring-blue-500 ring-offset-2
+- Outline Style: ring-offset-white
+- Outline Offset: 2px
+- Note: Focus ring should be visible for keyboard navigation
+
+### Disabled
+- Background: bg-gray-300 (all variants)
+- Text: text-gray-500 (all variants)
+- Border: border-gray-300 (for secondary)
+- Cursor: cursor-not-allowed
+- Opacity: opacity-50
+- Pointer Events: None (prevent interactions)
+- Shadow: None
+
+### Loading (Optional Enhancement)
+- Cursor: cursor-wait
+- Pointer Events: None
+- Show spinner icon
+- Reduce text opacity: opacity-70
+
+## Responsive Behavior
+
+### Mobile (default, < 768px)
+- Width: w-full (full width on mobile)
+- Padding: px-4 py-2 (slightly smaller for touch targets)
+- Font Size: text-sm
+- Max Width: None
+
+### Tablet (md, >= 768px)
+- Width: w-auto (inline width based on content)
+- Padding: md:px-6 md:py-3
+- Font Size: md:text-base
+- Max Width: None
+
+### Desktop (lg, >= 1024px)
+- Padding: lg:px-8 lg:py-4
+- Font Size: lg:text-lg
+- Max Width: None
+
+## Accessibility
+
+### Keyboard Navigation
+- **Focus**: Tab key to focus, Shift+Tab to focus previous
+- **Activation**: Enter or Space key to activate
+- **Focus Indicator**: Visible 2px ring outline in brand color
+- **Tab Order**: Follows natural DOM order
+
+### Screen Reader
+- **Announced As**: "Button, {button text}" or "{aria-label}, button"
+- **State Announcements**:
+  - "disabled" when disabled
+  - "loading" when in loading state (use aria-live)
+- **Role**: Implicit "button" role from semantic element
+
+### Color Contrast
+- **Primary Text/Background**: 7.2:1 (WCAG AAA) - White on Blue-500
+- **Secondary Text/Background**: 8.5:1 (WCAG AAA) - Blue-500 on White
+- **Focus Indicator**: 3:1 minimum contrast ratio
+- **Disabled State**: May not meet contrast requirements (acceptable per WCAG)
+
+### Additional Requirements
+- Must have accessible name (text content or aria-label)
+- Icon-only buttons must have aria-label
+- Disabled state must be programmatically determinable (disabled attribute + aria-disabled)
+- Focus indicator must be clearly visible
+- Minimum touch target: 44×44px (already met with padding)
+
+## Assets
+
+### Icons (Optional)
+- **Arrow Icon**: `/public/assets/icons/arrow-right.svg`
+  - Size: Varies by button size (16px, 20px, 24px)
+  - Color: currentColor (inherits text color)
+  - Position: Can be before or after text
+- **Loading Spinner**: `/public/assets/icons/spinner.svg`
+  - Size: Same as arrow icon
+  - Animation: Rotating animation (animate-spin)
+
+### Images
+None
+
+### Fonts
+- **Primary**: Inter (Google Fonts)
+- **Weight**: 600 (Semibold)
+- **Fallback**: system-ui, -apple-system, sans-serif
+
+## Component Hierarchy
+
+This is an Atom component with no child components. However, it may contain:
+- Text content (direct children)
+- Optional icon (as React element)
+
+### Composition Pattern
+```tsx
+// Text only
+<Button>Click Me</Button>
+
+// With icon before text
+<Button>
+  <Icon name="arrow-right" className="mr-2" />
+  Continue
+</Button>
+
+// With icon after text
+<Button>
+  Next
+  <Icon name="arrow-right" className="ml-2" />
+</Button>
+
+// Icon only (requires aria-label)
+<Button aria-label="Close">
+  <Icon name="close" />
+</Button>
+```
+
+## Implementation Notes
+
+### Best Practices
+- Always use semantic `<button>` element
+- Never use `<a>` styled as button unless it's truly a navigation link
+- Include loading state if button triggers async actions
+- Disable button during async operations to prevent double-clicks
+- Use appropriate `type` attribute (button, submit, reset)
+
+### Common Patterns
+
+**Form Submit Button**:
+```tsx
+<Button type="submit" variant="primary">
+  Submit Form
+</Button>
+```
+
+**Cancel/Close Button**:
+```tsx
+<Button type="button" variant="secondary" onClick={onCancel}>
+  Cancel
+</Button>
+```
+
+**Async Action Button**:
+```tsx
+<Button onClick={handleAsync} disabled={isLoading}>
+  {isLoading ? 'Saving...' : 'Save Changes'}
+</Button>
+```
+
+### Edge Cases
+- **Icon-only buttons**: Must have `aria-label` for accessibility
+- **Long button text**: Should truncate with ellipsis on very small screens
+  ```tsx
+  className="truncate max-w-full"
+  ```
+- **Multi-line button text**: Should be avoided; if necessary, adjust padding and alignment
+- **Buttons in forms**: Default `type` is "submit"; use `type="button"` for non-submit actions
+
+### Performance Considerations
+- Memoize click handlers in parent components using `useCallback`
+- Use `React.memo` if button is re-rendering unnecessarily
+- Avoid inline function definitions for `onClick` when possible
+
+### TypeScript Props Interface
+```typescript
+export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  /** Button variant style */
+  variant?: 'primary' | 'secondary' | 'tertiary';
+  /** Button size */
+  size?: 'small' | 'medium' | 'large';
+  /** Button content */
+  children: React.ReactNode;
+  /** Loading state */
+  isLoading?: boolean;
+  /** Additional CSS classes */
+  className?: string;
+}
+```
+
+## Design Tokens
+
+These values are available as Figma variables and should be referenced in the implementation:
+
+### Colors
+- `--color-primary-500`: #3B82F6 (Blue-500)
+- `--color-primary-600`: #2563EB (Blue-600)
+- `--color-primary-700`: #1D4ED8 (Blue-700)
+- `--color-gray-300`: #D1D5DB (Gray-300)
+- `--color-gray-500`: #6B7280 (Gray-500)
+- `--color-white`: #FFFFFF
+
+### Spacing
+- `--spacing-1-5`: 6px (gap-1.5)
+- `--spacing-2`: 8px (gap-2, py-2, rounded-md)
+- `--spacing-2-5`: 10px (gap-2.5)
+- `--spacing-3`: 12px (py-3)
+- `--spacing-4`: 16px (px-4, py-4)
+- `--spacing-6`: 24px (px-6)
+- `--spacing-8`: 32px (px-8, rounded-xl)
+
+### Typography
+- `--font-size-sm`: 14px (text-sm)
+- `--font-size-base`: 16px (text-base)
+- `--font-size-lg`: 18px (text-lg)
+- `--font-weight-semibold`: 600
+- `--line-height-normal`: 1.5
+
+### Shadows
+- `--shadow-sm`: 0 1px 2px 0 rgb(0 0 0 / 0.05)
+- `--shadow-md`: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)
+
+### Border Radius
+- `--radius-md`: 6px (rounded-md)
+- `--radius-lg`: 8px (rounded-lg)
+- `--radius-xl`: 12px (rounded-xl)
+
+## Testing Requirements
+
+### Unit Tests
+- Renders correctly with default props
+- Renders all variants correctly
+- Renders all sizes correctly
+- Handles click events
+- Respects disabled state
+- Shows loading state
+- Applies custom className
+- Forwards ref correctly
+
+### Integration Tests
+- Works in forms (submit, reset)
+- Handles async operations
+- Maintains focus after re-render
+- Works with keyboard navigation
+
+### Accessibility Tests
+- Has accessible name
+- Announces disabled state
+- Focus indicator is visible
+- Meets color contrast requirements
+- Works with screen readers
+
+### Visual Regression Tests
+- All variants rendered correctly
+- All sizes rendered correctly
+- All states (hover, active, focus, disabled) rendered correctly
+- Responsive behavior works correctly
+
+## Version History
+
+### v1.0.0 (2025-10-21)
+- Initial specification
+- Three variants: primary, secondary, tertiary
+- Three sizes: small, medium, large
+- Full responsive behavior
+- Comprehensive accessibility support

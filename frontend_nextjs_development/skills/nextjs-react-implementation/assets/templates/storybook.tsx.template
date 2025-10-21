@@ -1,0 +1,39 @@
+/**
+ * {{COMPONENT_NAME}} の Storybook ストーリー
+ */
+
+import type { Meta, StoryObj } from '@storybook/react';
+import { {{COMPONENT_NAME}} } from './{{COMPONENT_NAME}}';
+
+const meta = {
+  title: '{{ATOMIC_CATEGORY}}/{{COMPONENT_NAME}}',
+  component: {{COMPONENT_NAME}},
+  parameters: {
+    layout: 'centered',
+  },
+  tags: ['autodocs'],
+  argTypes: {
+    {{ARG_TYPES}}
+  },
+} satisfies Meta<typeof {{COMPONENT_NAME}}>;
+
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+/**
+ * デフォルトの {{COMPONENT_NAME}}
+ */
+export const Default: Story = {
+  args: {
+    {{DEFAULT_ARGS}}
+  },
+};
+
+/**
+ * {{VARIANT_DESCRIPTION}}
+ */
+export const {{VARIANT_NAME}}: Story = {
+  args: {
+    {{VARIANT_ARGS}}
+  },
+};

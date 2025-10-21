@@ -1,0 +1,34 @@
+/**
+ * {{COMPONENT_NAME}} のテスト
+ */
+
+import { describe, it, expect } from 'vitest';
+import { page } from '@vitest/browser/context';
+import { render } from 'vitest-browser-react';
+import { {{COMPONENT_NAME}} } from './{{COMPONENT_NAME}}';
+
+describe('{{COMPONENT_NAME}}', () => {
+  it('正しくレンダリングされること', async () => {
+    // Arrange
+    const props = {
+      {{TEST_PROPS}}
+    };
+
+    // Act
+    await render(<{{COMPONENT_NAME}} {...props} />);
+
+    // Assert
+    {{TEST_ASSERTIONS}}
+  });
+
+  it('{{TEST_CASE_DESCRIPTION}}', async () => {
+    // Arrange
+    {{TEST_ARRANGE}}
+
+    // Act
+    {{TEST_ACT}}
+
+    // Assert
+    {{TEST_ASSERT}}
+  });
+});

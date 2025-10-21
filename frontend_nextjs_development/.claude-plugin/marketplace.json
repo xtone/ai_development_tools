@@ -1,0 +1,31 @@
+{
+    "name": "frontend-nextjs-development",
+    "description": "Next.js/React開発向けのツール群。Figmaデザインの分析・抽出から、コンポーネント実装までをサポート",
+    "version": "0.2.0",
+    "owner": {
+        "name": "TOYOTA, Yoichi",
+        "email": "y.toyota@xtone.co.jp"
+    },
+    "skills": [
+        {
+            "name": "figma-design-analyzer",
+            "source": "./skills/figma-design-analyzer",
+            "description": "Figmaデザインを分析し、構造化された設計仕様書を生成します。レイアウト、スペーシング、タイポグラフィ、Atomic Design分類、セマンティックHTML選択などを体系的に抽出します。",
+            "version": "1.0.0",
+            "author": {
+                "name": "TOYOTA, Yoichi"
+            },
+            "tags": ["figma", "design", "analysis", "design-system", "atomic-design"]
+        },
+        {
+            "name": "nextjs-react-implementation",
+            "source": "./skills/nextjs-react-implementation",
+            "description": "設計仕様書から本番環境向けのNext.js/Reactコンポーネントを生成します。TypeScript、Tailwind CSS、Vitestテスト、Storybookドキュメントを含む完全な実装を提供します。",
+            "version": "1.0.0",
+            "author": {
+                "name": "TOYOTA, Yoichi"
+            },
+            "tags": ["nextjs", "react", "typescript", "tailwindcss", "vitest", "storybook", "components"]
+        }
+    ]
+}

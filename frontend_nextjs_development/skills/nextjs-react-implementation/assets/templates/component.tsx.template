@@ -1,0 +1,33 @@
+/**
+ * {{COMPONENT_NAME}}
+ *
+ * {{COMPONENT_DESCRIPTION}}
+ *
+ * @category {{ATOMIC_CATEGORY}}
+ */
+
+import React from 'react';
+
+export interface {{COMPONENT_NAME}}Props {
+  /**
+   * {{PROP_DESCRIPTION}}
+   */
+  {{PROP_NAME}}{{PROP_OPTIONAL}}: {{PROP_TYPE}};
+}
+
+/**
+ * {{COMPONENT_NAME}} component
+ *
+ * {{USAGE_EXAMPLE}}
+ */
+export const {{COMPONENT_NAME}} = ({
+  {{PROPS_DESTRUCTURED}}
+}: {{COMPONENT_NAME}}Props) => {
+  return (
+    <{{ROOT_ELEMENT}} className="{{TAILWIND_CLASSES}}">
+      {{COMPONENT_CONTENT}}
+    </{{ROOT_ELEMENT}}>
+  );
+};
+
+{{COMPONENT_NAME}}.displayName = '{{COMPONENT_NAME}}';
