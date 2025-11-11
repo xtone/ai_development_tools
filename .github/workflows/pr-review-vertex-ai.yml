@@ -45,7 +45,6 @@ jobs:
         with:
           github_token: ${{ steps.app-token.outputs.token }}
           use_vertex: "true"
-          additional_permissions: "Bash(gh:*)"
           prompt: |
             このPull Requestを包括的にレビューしてください。
 
@@ -340,3 +339,4 @@ jobs:
           claude_args: |
             --model claude-sonnet-4-5@20250929
             --max-turns 10
+            --allowedTools "Bash(gh:*)"
