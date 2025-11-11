@@ -1,0 +1,92 @@
+name: Automated PR Review (Vertex AI)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  id-token: write  # Workload Identity Federation用
+
+jobs:
+  automated-review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - name: Run Claude Code PR Review via Vertex AI
+        uses: anthropics/claude-code-action@v1
+        with:
+          github_token: ${{ steps.app-token.outputs.token }}
+          use_vertex: "true"
+          prompt: |
+            このPull Requestを包括的にレビューしてください。
+
+            以下の観点から分析を行ってください：
+            1. コード品質（可読性、保守性、設計パターン、ベストプラクティス）
+            2. セキュリティ（OWASP Top 10、認証・認可、入力検証、機密情報漏洩）
+            3. テスト（カバレッジ、テストケースの妥当性、エッジケース）
+            4. パフォーマンス（アルゴリズム効率、リソース使用、N+1問題）
+
+            分析結果に基づいて、以下のアクションを実行してください：
+
+            - **Critical問題がある場合**:
+              - PRに変更要求のレビューコメントを投稿
+              - 具体的な問題箇所と修正方法を明示
+
+            - **Major/Minor問題がある場合**:
+              - PRを条件付きでApprove
+              - 各改善点をIssueとして起票（PR作成者にアサイン）
+              - Issueには以下のラベルを付与：
+                - 重要度: priority:high, priority:medium, priority:low
+                - 種類: code-quality, security, testing, performance
+                - technical-debt
+
+            - **問題がない場合**:
+              - PRをApprove
+
+            レビュー結果は以下の形式でPRにコメントしてください：
+
+            ## PR Review Summary
+
+            **Status**: [絵文字] [状態]
+
+            ### Analysis Results
+
+            #### Code Quality: X/10
+            - ✅ Good: [良い点]
+            - ⚠️ Minor: [改善点]
+
+            #### Security: X/10
+            - ✅ Good: [良い点]
+
+            #### Testing: X/10
+            - ⚠️ Major: [問題点]
+
+            #### Performance: X/10
+            - ✅ Good: [良い点]
+
+            ### Actions Taken
+            1. [実行したアクション]
+
+            ### Summary
+            [総合的な評価]
+          claude_args: |
+            --model claude-sonnet-4-5@20250929
+            --max-turns 10
