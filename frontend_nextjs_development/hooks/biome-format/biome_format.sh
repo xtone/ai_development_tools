@@ -59,10 +59,20 @@ if [ -z "$config_dir" ]; then
     echo "biome.json not found, using default configuration"
     echo "Formatting $file_path with Biome (default config)"
     # デフォルト設定でbiome formatを実行
-    npx @biomejs/biome format --write "$file_path"
+    if npx @biomejs/biome format --write "$file_path"; then
+        echo "Successfully formatted: $file_path"
+    else
+        echo "Error: Failed to format $file_path" >&2
+        exit 1
+    fi
 else
     echo "Found biome.json in: $config_dir"
     echo "Formatting $file_path with Biome"
     # biome.jsonがあるディレクトリに移動してから実行
-    (cd "$config_dir" && npx @biomejs/biome format --write "$file_path")
+    if (cd "$config_dir" && npx @biomejs/biome format --write "$file_path"); then
+        echo "Successfully formatted: $file_path"
+    else
+        echo "Error: Failed to format $file_path" >&2
+        exit 1
+    fi
 fi
