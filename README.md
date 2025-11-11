@@ -11,6 +11,7 @@ Claude Code用の開発支援ツールとプラグインのコレクションで
 - **[biome-format](./claude_code_hooks/biome_format/README.md)** - JavaScript/TypeScriptファイルの編集時に自動的にBiomeフォーマッターを実行
 - **[frontend-nextjs-development](./frontend_nextjs_development/README.md)** - Next.js開発向けのツール群（Figmaデザイン抽出、コンポーネント生成など）
 - **[backend-development](./backend_development/README.md)** - Ruby on Rails/PostgreSQLバックエンド開発向けのツール群（JSON仕様からAPI・管理画面の実装までをサポート）
+- **[flutter-development](./flutter_development/README.md)** - Flutter開発向けのツール群（Widget実装アシスタントなど）
 
 ## プラグインのインストール方法
 
@@ -44,6 +45,7 @@ Claude Codeのマーケットプレイス機能を使用して、プラグイン
 /plugin install biome-format@xtone-ai-development-tools
 /plugin install frontend-nextjs-development@xtone-ai-development-tools
 /plugin install backend-development@xtone-ai-development-tools
+/plugin install flutter-development@xtone-ai-development-tools
 ```
 
 プラグインをインストールすると、以下が自動的に行われます:
