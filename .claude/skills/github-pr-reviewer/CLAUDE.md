@@ -1,6 +1,20 @@
 # GitHub PR Reviewer - Claude 設定
 
-このファイルは、GitHub ActionsでClaude Code を使用してPRレビューを行う際の設定と指示を定義します。
+このファイルは、GitHub ActionsでClaude Codeを使用してPRレビューを行う際の設定と指示を定義します。
+
+## 実装方式
+
+このスキルは以下の技術を使用します：
+
+- **`gh` CLI**: PR情報の取得、レビュー投稿、Issue作成
+- **GitHub MCP**: インラインコメント投稿（オプション）
+- **プロンプトベース**: Pythonスクリプト不要のシンプルな実装
+
+## 動作環境
+
+- GitHub Actions環境で実行
+- リポジトリとPR番号はワークフローから提供される
+- レビュー結果は`gh`コマンドで直接投稿
 
 ## レビュー基準
 

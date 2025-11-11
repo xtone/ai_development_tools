@@ -1,256 +1,216 @@
 # GitHub PR Reviewer Skill
 
-GitHub Pull Requestを自動的にレビューし、コード品質、セキュリティ、テスト、パフォーマンスを評価するClaude Skillです。
+GitHub Pull Requestを自動的にレビューし、コード品質、セキュリティ、テスト、パフォーマンスを評価するClaude Codeスキルです。
 
 ## 概要
 
-このスキルは以下の機能を提供します：
+このスキルは**GitHub Actions専用**で、以下の機能を提供します：
 
-- PR情報の自動取得
+- `gh`コマンドを使用したPR情報の取得
 - コード品質、セキュリティ、テスト、パフォーマンスの包括的な分析
 - 重大な問題がない場合の条件付きApprove
 - 改善点のIssue自動起票（PR作成者にアサイン）
 - Critical問題発見時の変更要求
+- GitHub MCPを使用したインラインコメント（オプション）
+
+## 特徴
+
+- ✅ **シンプル**: Pythonスクリプト不要、プロンプトベースの実装
+- ✅ **標準ツール**: `gh`コマンドのみ使用
+- ✅ **柔軟性**: GitHub MCPでインラインコメントが可能
+- ✅ **複数の認証方式**: Anthropic API、GitHub App、Vertex AI
 
 ## クイックスタート
 
-### 新規リポジトリの場合
-このREADMEの「セットアップ」セクションを参照してください。
+### 前提条件
 
-### 既にClaude Code Actionsが動作しているリポジトリの場合
-**[INTEGRATION_GUIDE.md](./INTEGRATION_GUIDE.md)** を参照してください。
+- GitHub Actions環境
+- `gh` CLIがインストール済み（通常のGitHub Actions環境には含まれています）
+- GitHub MCPがインストール済み（インラインコメント用、オプション）
 
-既存の設定を保ったまま、このPRレビュースキルを追加する方法を詳しく説明しています。
+### 基本セットアップ
 
-## セットアップ
-
-### 1. GitHub Personal Access Token (PAT) の取得
-
-1. GitHubの Settings → Developer settings → Personal access tokens → Tokens (classic) に移動
-2. "Generate new token (classic)" をクリック
-3. 以下のスコープを選択：
-   - `repo` (プライベートリポジトリの場合)
-   - `public_repo` (パブリックリポジトリのみの場合)
-4. トークンを生成してコピー
-
-### 2. トークンの設定
-
-以下のいずれかの方法でトークンを設定：
-
-**方法1: 環境変数**
-```bash
-export GITHUB_TOKEN="your_github_personal_access_token"
-```
-
-**方法2: ファイル保存**
-```bash
-echo "your_github_personal_access_token" > ~/.github_token
-chmod 600 ~/.github_token
-```
-
-### 3. スキルのインストール
-
-このスキルを Claude Code のスキルディレクトリに配置します。
+1. **スキルファイルをリポジトリに配置**
 
 ```bash
-# スキルディレクトリの例
-~/.claude/skills/github-pr-reviewer/
+# スキルディレクトリを .claude/skills/ にコピー
+cp -r github-pr-reviewer /path/to/your/repo/.claude/skills/
 ```
 
-## 使い方
+2. **ワークフローファイルを選択して配置**
 
-このスキルは3つの方法で使用できます：
+3つのオプションから選択:
 
-### 方法1: GitHub Actions（推奨）
-
-**自動的にPRを作成/更新時にレビューを実行**
-
-#### オプションA: Anthropic API（直接）
-
-詳細なセットアップ手順は [GITHUB_ACTIONS_SETUP.md](./GITHUB_ACTIONS_SETUP.md) を参照してください。
-
-**2つの認証方法**:
-
-**A-1. GITHUB_TOKEN使用（シンプル）**
-```
-実行ユーザー: github-actions[bot]
-ワークフロー: pr-review.yml
-```
-簡易セットアップ：
-1. Anthropic APIキーをリポジトリシークレットに追加（`ANTHROPIC_API_KEY`）
-2. `.github/workflows/pr-review.yml` をリポジトリにコピー
-3. PRを作成すると自動的にレビューが実行されます
-
-**A-2. GitHub App使用（推奨・エンタープライズ）**
-```
-実行ユーザー: [カスタムApp名][bot]
-ワークフロー: pr-review-with-github-app.yml
-```
-簡易セットアップ：
-1. GitHub Appを作成（詳細は [PERMISSIONS_GUIDE.md](./PERMISSIONS_GUIDE.md)）
-2. Anthropic APIキーとGitHub App情報をシークレットに追加
-3. `.github/workflows/pr-review-with-github-app.yml` をリポジトリにコピー
-
-**権限の詳細**: [PERMISSIONS_GUIDE.md](./PERMISSIONS_GUIDE.md) を参照
-
-#### オプションB: Google Cloud Vertex AI（エンタープライズ向け）
-
-詳細なセットアップ手順は [VERTEX_AI_SETUP.md](./VERTEX_AI_SETUP.md) を参照してください。
-
-**メリット**:
-- エンタープライズサポート
-- データレジデンシーの管理
-- Google Cloudとの統合課金
-- Workload Identity Federationによる安全な認証
-
-簡易セットアップ：
-1. Google Cloud でVertex AI APIを有効化
-2. Workload Identity Federationを設定
-3. GitHub Secretsを設定（`GCP_WORKLOAD_IDENTITY_PROVIDER`、`GCP_SERVICE_ACCOUNT`など）
-4. `.github/workflows/pr-review-vertex-ai.yml` をリポジトリにコピー
-5. PRを作成すると自動的にレビューが実行されます
-
-### 方法2: Claude Code CLI（手動実行）
-
-Claude Code で以下のようにリクエストしてください：
-
-```
-https://github.com/owner/repo/pull/123 をレビューしてください
-```
-
-または
-
-```
-owner/repo のPR #456をレビューして
-```
-
-### スキルが自動的に実行する処理
-
-1. **PR情報の取得**: PRの詳細、変更ファイル、コミット履歴を取得
-2. **コード分析**: 以下の観点から分析
-   - コード品質（可読性、保守性、設計パターン）
-   - セキュリティ（脆弱性、認証・認可、入力検証）
-   - テスト（カバレッジ、テストケースの妥当性）
-   - パフォーマンス（アルゴリズム効率、リソース使用）
-3. **結果の分類**: Critical/Major/Minor/Suggestionに分類
-4. **アクションの実行**:
-   - Critical問題がある場合: 変更要求（REQUEST_CHANGES）
-   - Major/Minor問題がある場合: 条件付きApprove + Issue起票
-   - 問題がない場合: Approve
-
-## スクリプト
-
-このスキルには以下のPythonスクリプトが含まれています：
-
-### github_api.py
-GitHub API操作の共通モジュール
-
-### fetch_pr_info.py
-PR情報を取得してJSON形式で出力
+#### オプション1: Anthropic API（直接）
 
 ```bash
-python scripts/fetch_pr_info.py --pr-url https://github.com/owner/repo/pull/123
+cp .github/workflows/pr-review.yml /path/to/your/repo/.github/workflows/
 ```
 
-### analyze_pr.py
-PR情報を分析してコード品質、セキュリティ、テスト、パフォーマンスを評価
+**必要なシークレット**:
+- `ANTHROPIC_API_KEY`: Anthropic APIキー
+
+#### オプション2: GitHub App（推奨）
 
 ```bash
-python scripts/analyze_pr.py --pr-data pr_info.json
+cp .github/workflows/pr-review-with-github-app.yml /path/to/your/repo/.github/workflows/
 ```
 
-### approve_pr.py
-PRをApprove
+**必要なシークレット**:
+- `ANTHROPIC_API_KEY`: Anthropic APIキー
+- `APP_ID`: GitHub AppのID
+- `APP_PRIVATE_KEY`: GitHub Appの秘密鍵
+
+#### オプション3: Vertex AI（エンタープライズ向け）
 
 ```bash
-python scripts/approve_pr.py --pr-url https://github.com/owner/repo/pull/123 --analysis analysis.json
+cp .github/workflows/pr-review-vertex-ai.yml /path/to/your/repo/.github/workflows/
 ```
 
-### post_review_comment.py
-変更要求のレビューコメントを投稿
+**必要なシークレット**:
+- `GCP_WORKLOAD_IDENTITY_PROVIDER`: GCPのWorkload Identity Provider
+- `GCP_SERVICE_ACCOUNT`: GCPのサービスアカウント
+- `APP_ID`: GitHub AppのID
+- `APP_PRIVATE_KEY`: GitHub Appの秘密鍵
+
+3. **PRを作成**
+
+PRを作成または更新すると、自動的にレビューが実行されます。
+
+## 使用方法
+
+### GitHub Actionsでの自動実行
+
+PR作成・更新時に自動実行されます。ワークフローは以下を実行します：
+
+1. `gh`コマンドでPR情報を取得
+2. スキル `github-pr-reviewer` を呼び出し
+3. コードを包括的に分析
+4. レビュー結果を投稿
+5. 必要に応じてIssueを起票
+
+### レビュー観点
+
+以下の4つの観点から分析します：
+
+#### 🔧 コード品質
+- 可読性、保守性
+- 設計パターン、ベストプラクティス
+- コーディング規約
+
+#### 🔒 セキュリティ
+- OWASP Top 10
+- 認証・認可、入力検証
+- 機密情報漏洩チェック
+
+#### 🧪 テスト
+- テストカバレッジ
+- テストケースの妥当性
+- エッジケース
+
+#### ⚡ パフォーマンス
+- アルゴリズム効率
+- リソース使用
+- データベース最適化
+
+### レビュー結果のアクション
+
+| 問題の重要度 | アクション |
+|------------|------------|
+| **Critical** | REQUEST_CHANGES（変更要求） |
+| **Major/Minor** | 条件付きApprove + Issue起票 |
+| **なし** | Approve |
+
+## 高度な設定
+
+### インラインコメントの有効化
+
+GitHub MCPをインストールすることで、特定のコード行にコメントを投稿できます：
 
 ```bash
-python scripts/post_review_comment.py --pr-url https://github.com/owner/repo/pull/123 --findings analysis.json
+# GitHub MCPのインストール（Claude Code環境）
+npm install -g @anthropic-ai/github-mcp
 ```
 
-### create_issues.py
-分析結果から改善点をIssueとして起票
+スキルは自動的にGitHub MCPを検出し、必要に応じて使用します。
 
-```bash
-python scripts/create_issues.py --pr-url https://github.com/owner/repo/pull/123 --findings analysis.json
-```
+### カスタムレビュー基準
 
-## レビュー出力例
+`CLAUDE.md`ファイルを編集してレビュー基準をカスタマイズできます：
 
 ```markdown
-## PR Review Summary
-
-**PR**: #123 - Feature: Add user authentication
-**Author**: @username
-**Status**: ✅ Approved with suggestions
-
-### Analysis Results
-
-#### Code Quality: 8/10
-- ✅ Good: 命名規則が適切
-- ✅ Good: コードの構造が明確
-- ⚠️ Minor: 一部のメソッドが長すぎる
-
-#### Security: 9/10
-- ✅ Good: 入力検証が適切
-- ✅ Good: 認証処理が適切に実装されている
-
-#### Testing: 7/10
-- ✅ Good: ユニットテストが追加されている
-- ⚠️ Major: 統合テストが不足している
-
-#### Performance: 8/10
-- ✅ Good: クエリが最適化されている
-
-### Actions Taken
-
-1. ✅ **Approved** with conditional approval
-2. 📋 Created **Issue #124**: "統合テストの追加" (assigned to @username)
-3. 📋 Created **Issue #125**: "メソッドのリファクタリング" (assigned to @username)
-
-### Summary
-
-このPRは全体的に良好な品質です。条件付きでApproveし、改善項目をIssueとして起票しました。
+### コード品質
+- **可読性**: [カスタム基準]
+- **保守性**: [カスタム基準]
+...
 ```
 
-## 制限事項
+## ディレクトリ構造
 
-- PRが非常に大きい（1000ファイル以上）場合、分析に時間がかかる可能性があります
-- 一部の言語やフレームワーク固有の高度な分析には限界があります
-- レビューはAIによる自動分析であり、最終的な判断は人間が行う必要があります
+```
+github-pr-reviewer/
+├── SKILL.md                      # スキルのメインロジック
+├── CLAUDE.md                     # レビュー基準とガイドライン
+├── README.md                     # このファイル
+├── GITHUB_ACTIONS_SETUP.md       # GitHub Actions設定ガイド
+├── INTEGRATION_GUIDE.md          # 統合ガイド
+├── PERMISSIONS_GUIDE.md          # 権限設定ガイド
+├── VERTEX_AI_SETUP.md            # Vertex AI設定ガイド
+├── .github/workflows/
+│   ├── pr-review.yml             # Anthropic API版
+│   ├── pr-review-with-github-app.yml  # GitHub App版
+│   └── pr-review-vertex-ai.yml   # Vertex AI版
+└── assets/                       # ドキュメント用画像
+```
 
 ## トラブルシューティング
 
-### 認証エラー
-```
-GitHub token not found. Please set GITHUB_TOKEN environment variable
-```
+### `gh`コマンドが見つからない
 
-→ GitHub Personal Access Tokenが設定されていません。セットアップ手順を確認してください。
+GitHub Actionsワークフローに以下を追加：
+
+```yaml
+- name: Setup GitHub CLI
+  run: |
+    type -p gh >/dev/null || (sudo apt update && sudo apt install gh)
+```
 
 ### 権限エラー
-```
-403 Forbidden
-```
 
-→ トークンに必要な権限がないか、レート制限に達しています。トークンのスコープを確認してください。
+`GITHUB_TOKEN`に以下の権限が必要です：
+- `pull-requests: write`
+- `issues: write`
+- `contents: read`
 
-### PR URLが無効
-```
-Invalid PR URL
-```
+ワークフローファイルの`permissions`セクションを確認してください。
 
-→ PR URLの形式が正しくありません。`https://github.com/owner/repo/pull/123` の形式で指定してください。
+### GitHub MCPが動作しない
+
+GitHub MCPは必須ではありません。利用できない場合、通常のレビューコメントのみが投稿されます。
+
+## 詳細ドキュメント
+
+- **[SKILL.md](./SKILL.md)**: スキルの詳細な実装とワークフロー
+- **[GITHUB_ACTIONS_SETUP.md](./GITHUB_ACTIONS_SETUP.md)**: GitHub Actionsの詳細設定
+- **[INTEGRATION_GUIDE.md](./INTEGRATION_GUIDE.md)**: 既存プロジェクトへの統合方法
+- **[PERMISSIONS_GUIDE.md](./PERMISSIONS_GUIDE.md)**: 必要な権限の詳細
+- **[VERTEX_AI_SETUP.md](./VERTEX_AI_SETUP.md)**: Vertex AI統合の設定方法
+
+## 制限事項
+
+- GitHub Actions環境専用（ローカル実行は非対応）
+- 大規模PR（500ファイル以上）は処理時間がかかる場合があります
+- 言語やフレームワーク固有の高度な分析には限界があります
+- AIによる自動分析であり、最終的な判断は人間のレビュアーが行う必要があります
 
 ## ライセンス
 
-このスキルはMITライセンスの下で提供されます。
+このスキルはオープンソースプロジェクトとして提供されています。
 
-## 貢献
+## サポート
 
-バグ報告や機能要望は、GitHubのIssueでお願いします。
+問題や質問がある場合は、リポジトリのIssueを作成してください。
+
+---
+
+**注意**: このスキルはGitHub Actions環境で実行されることを前提としています。`gh`コマンドとGitHub MCPを活用し、Pythonスクリプトを使用しないシンプルな実装になっています。
