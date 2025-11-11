@@ -5,7 +5,7 @@ on:
     types: [opened, synchronize, reopened]
 
 permissions:
-  contents: write
+  contents: read
   pull-requests: write
   issues: write
 
@@ -25,59 +25,100 @@ jobs:
 
       - name: Run Claude Code PR Review
         uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           github_token: ${{ steps.app-token.outputs.token }}
           prompt: |
-            このPull Requestを包括的にレビューしてください。
+            以下のPull Requestを包括的にレビューしてください：
+
+            **リポジトリ**: ${{ github.repository }}
+            **PR番号**: ${{ github.event.pull_request.number }}
+            **ブランチ**: ${{ github.event.pull_request.head.ref }}
+            **ベースブランチ**: ${{ github.event.pull_request.base.ref }}
+            **作成者**: ${{ github.event.pull_request.user.login }}
+
+            スキル `github-pr-reviewer` を使用してレビューを実行してください。
+
+            ## レビュー指示
 
             以下の観点から分析を行ってください：
-            1. コード品質（可読性、保守性、設計パターン、ベストプラクティス）
-            2. セキュリティ（OWASP Top 10、認証・認可、入力検証、機密情報漏洩）
-            3. テスト（カバレッジ、テストケースの妥当性、エッジケース）
-            4. パフォーマンス（アルゴリズム効率、リソース使用、N+1問題）
+            1. **コード品質**: 可読性、保守性、設計パターン、ベストプラクティス
+            2. **セキュリティ**: OWASP Top 10、認証・認可、入力検証、機密情報漏洩
+            3. **テスト**: カバレッジ、テストケースの妥当性、エッジケース
+            4. **パフォーマンス**: アルゴリズム効率、リソース使用、データベース最適化
 
-            分析結果に基づいて、以下のアクションを実行してください：
+            ## レビュー後のアクション
 
-            - **Critical問題がある場合**:
-              - PRに変更要求のレビューコメントを投稿
-              - 具体的な問題箇所と修正方法を明示
+            分析結果に基づいて、以下のアクションを`gh`コマンドで実行してください：
 
-            - **Major/Minor問題がある場合**:
-              - PRを条件付きでApprove
-              - 各改善点をIssueとして起票（PR作成者にアサイン）
-              - Issueには以下のラベルを付与：
-                - 重要度: priority:high, priority:medium, priority:low
-                - 種類: code-quality, security, testing, performance
-                - technical-debt
+            ### Critical問題がある場合
+            ```bash
+            gh pr review ${{ github.event.pull_request.number }} \
+              --request-changes \
+              --body "[レビュー結果]"
+            ```
 
-            - **問題がない場合**:
-              - PRをApprove
+            ### Major/Minor問題がある場合
+            1. 条件付きApprove:
+            ```bash
+            gh pr review ${{ github.event.pull_request.number }} \
+              --approve \
+              --body "[レビュー結果]"
+            ```
 
-            レビュー結果は以下の形式でPRにコメントしてください：
+            2. Issue起票:
+            ```bash
+            gh issue create \
+              --title "[絵文字] [SEVERITY] 問題の概要 (ファイル名)" \
+              --body "[Issue詳細]" \
+              --assignee "${{ github.event.pull_request.user.login }}" \
+              --label "priority:high,security"
+            ```
 
-            ## PR Review Summary
+            ### 問題がない場合
+            ```bash
+            gh pr review ${{ github.event.pull_request.number }} \
+              --approve \
+              --body "[レビュー結果]"
+            ```
 
-            **Status**: [絵文字] [状態]
+            ## 出力形式
 
-            ### Analysis Results
+            レビュー結果は以下の形式で投稿してください：
+
+            ```markdown
+            ## [絵文字] [ステータス]
+
+            ### 分析結果
 
             #### Code Quality: X/10
             - ✅ Good: [良い点]
             - ⚠️ Minor: [改善点]
+            - ❌ Critical: [致命的な問題]
 
             #### Security: X/10
-            - ✅ Good: [良い点]
+            [同様の形式]
 
             #### Testing: X/10
-            - ⚠️ Major: [問題点]
+            [同様の形式]
 
             #### Performance: X/10
-            - ✅ Good: [良い点]
+            [同様の形式]
 
-            ### Actions Taken
-            1. [実行したアクション]
+            ### 実行されたアクション
+
+            1. [アクション1]
+            2. 📋 Created **Issue #XXX**: "[タイトル]" (assigned to @${{ github.event.pull_request.user.login }})
 
             ### Summary
-            [総合的な評価]
-          claude_args: "--max-turns 10"
+
+            [総合的な評価と推奨事項]
+            ```
+
+            ## 重要な注意事項
+
+            - インラインコメントが必要な場合は、GitHub MCPを使用してください
+            - ロックファイルや自動生成ファイルは除外してください
+            - PRが大きすぎる場合は、主要な変更箇所に焦点を当ててください
