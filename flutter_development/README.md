@@ -169,7 +169,7 @@ MIT License
 
 ## 👤 作成者
 
-**HINO, Yusaku**
+**HINO, Yasushi**
 - Email: y.hino@xtone.co.jp
 - Organization: XTONE
 
