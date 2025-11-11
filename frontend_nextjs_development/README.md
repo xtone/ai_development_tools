@@ -33,6 +33,24 @@ Figmaデザインを体系的に分析し、構造化された設計仕様書を
 
 **詳細:** [skills/nextjs-react-implementation/SKILL.md](./skills/nextjs-react-implementation/SKILL.md)
 
+## 🪝 含まれるフック
+
+### biome-format
+
+ファイル保存時（Write/Edit/MultiEdit）に自動的にBiomeによるコードフォーマットを実行します。
+
+**対応ファイル形式:**
+- TypeScript (.ts, .tsx)
+- JavaScript (.js, .jsx)
+
+**動作:**
+1. ファイルのディレクトリから`biome.json`を検索（上位ディレクトリも含む）
+2. 見つかった場合はその設定を使用
+3. 見つからない場合はデフォルト設定を使用
+4. `npx @biomejs/biome format --write`でフォーマット実行
+
+**詳細:** [hooks/biome-format/](./hooks/biome-format/)
+
 ## 🚀 使い方
 
 ### 基本的なワークフロー
@@ -100,10 +118,13 @@ Claude Codeが自動的に：
 ```
 frontend_nextjs_development/
 ├── .claude-plugin/
-│   └── marketplace.json          # スキル登録情報
+│   └── marketplace.json          # スキル・フック登録情報
 ├── agents/                       # エージェント（将来用）
 ├── commands/                     # コマンド（将来用）
-├── hooks/                        # フック（将来用）
+├── hooks/                        # フック
+│   └── biome-format/            # Biome自動フォーマット
+│       ├── hooks.json
+│       └── biome_format.sh
 ├── skills/                       # スキル
 │   ├── figma-design-analyzer/   # デザイン分析スキル
 │   │   ├── SKILL.md
