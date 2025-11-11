@@ -3,6 +3,11 @@ name: Automated PR Review (Vertex AI)
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+    paths-ignore:
+      - '.github/workflows/**'
+      - '.claude/skills/**'
+      - '*.md'
+      - 'LICENSE'
 
 permissions:
   contents: read
@@ -333,4 +338,5 @@ jobs:
             - PRが大きすぎる場合（500ファイル以上、10,000行以上の変更）は、主要な変更箇所に焦点を当ててください
           claude_args: |
             --model claude-sonnet-4-5@20250929
-            --max-turns 20
+            --max-turns 10
+            --timeout 600
