@@ -85,19 +85,35 @@
 
 このプラグインは既にプロジェクトに含まれています。
 
-### スキルの実行
+### カスタムコマンドの実行
 
-Claude Codeで以下のコマンドを実行してスキルを起動します：
+Claude Codeで以下のスラッシュコマンドを実行してスキルを起動します：
 
 ```bash
 # 機能見積もり提案を作成
-/skill business-communication:feature-estimation-assistant
+/estimate
 
 # 修正対応の方針相談資料を作成
-/skill business-communication:fix-approach-assistant
+/fix-consult
 
 # 不具合調査報告書を作成
-/skill business-communication:bug-investigation-assistant
+/bug-report
+```
+
+### 会話の中で使用
+
+スラッシュコマンドを使わず、会話の中で自然に依頼することもできます：
+
+```
+機能見積もりの提案書を作成したい
+```
+
+```
+コード修正の方針について相談したい
+```
+
+```
+不具合調査の報告書を作りたい
 ```
 
 ### 使用フロー
@@ -155,6 +171,10 @@ Claude Codeで以下のコマンドを実行してスキルを起動します：
 business_communication/
 ├── .claude-plugin/
 │   └── marketplace.json          # プラグイン設定
+├── commands/
+│   ├── estimate.md               # /estimate コマンド
+│   ├── fix-consult.md            # /fix-consult コマンド
+│   └── bug-report.md             # /bug-report コマンド
 ├── skills/
 │   ├── feature-estimation-assistant/
 │   │   └── SKILL.md              # 機能見積もりスキル
