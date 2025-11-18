@@ -1,0 +1,41 @@
+{
+    "name": "business-communication",
+    "description": "ビジネスコミュニケーション支援ツール群。上司への技術報告・相談資料を効率的に作成",
+    "version": "0.1.0",
+    "owner": {
+        "name": "HINO, Yasushi",
+        "email": "y.hino@xtone.co.jp"
+    },
+    "skills": [
+        {
+            "name": "feature-estimation-assistant",
+            "source": "./skills/feature-estimation-assistant",
+            "description": "機能開発の見積もり提案を作成するインタビューアシスタント。機能概要、要件、技術アプローチ、作業項目、工数見積もりを段階的に収集し、上司に提出できる構造化された見積もり提案書を生成します。",
+            "version": "1.0.0",
+            "author": {
+                "name": "HINO, Yasushi"
+            },
+            "tags": ["estimation", "planning", "feature", "proposal", "interview", "management"]
+        },
+        {
+            "name": "fix-approach-assistant",
+            "source": "./skills/fix-approach-assistant",
+            "description": "コード修正の方針相談を行うインタビューアシスタント。修正箇所、背景、現状の問題、複数の修正アプローチ案とその比較を収集し、上司に判断を仰ぐための構造化された相談資料を生成します。",
+            "version": "1.0.0",
+            "author": {
+                "name": "HINO, Yasushi"
+            },
+            "tags": ["fix", "refactoring", "code-review", "approach", "interview", "decision"]
+        },
+        {
+            "name": "bug-investigation-assistant",
+            "source": "./skills/bug-investigation-assistant",
+            "description": "不具合調査の現状報告と今後の作業方針の指示を仰ぐインタビューアシスタント。不具合の症状、調査内容、原因仮説、検証結果、次のアクション候補を収集し、上司に状況共有と判断を仰ぐための構造化された報告書を生成します。",
+            "version": "1.0.0",
+            "author": {
+                "name": "HINO, Yasushi"
+            },
+            "tags": ["bug", "investigation", "debugging", "troubleshooting", "interview", "report"]
+        }
+    ]
+}

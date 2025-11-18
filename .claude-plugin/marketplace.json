@@ -22,6 +22,24 @@
             "author": {
                 "name": "TOYOTA, Yoichi"
             }
+        },
+        {
+            "name": "flutter-development",
+            "source": "./flutter_development",
+            "description": "Flutter開発向けのツール群（Widget実装アシスタントなど）",
+            "version": "0.1.0",
+            "author": {
+                "name": "HINO, Yasushi"
+            }
+        },
+        {
+            "name": "business-communication",
+            "source": "./business_communication",
+            "description": "ビジネスコミュニケーション支援ツール群（機能見積もり、修正方針相談、不具合調査報告）",
+            "version": "0.1.0",
+            "author": {
+                "name": "HINO, Yasushi"
+            }
         }
     ]
 }
