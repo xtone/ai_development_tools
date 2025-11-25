@@ -132,6 +132,79 @@ cat ~/.claude-code/prompt-logs/*.jsonl | jq 'select(.evaluation.score < 6)'
 cat ~/.claude-code/prompt-logs/*.jsonl | jq -s 'map(.evaluation.score) | add / length'
 ```
 
+## Notion 連携（オプション）
+
+プロンプト評価結果を Notion データベースに保存することができます。
+
+### セットアップ
+
+1. **Notion データベースの準備**
+
+   以下のスクリプトを実行して、Notion データベースをセットアップします：
+
+   ```bash
+   ${CLAUDE_PLUGIN_ROOT}/hooks/setup_notion_db.sh
+   ```
+
+   このスクリプトは以下の2つのオプションを提供します：
+   - 新しい Notion データベースを作成（手動で Claude Code 経由で作成）
+   - 既存の Notion データベースを使用（データベース ID を指定）
+
+2. **Notion データベースのスキーマ**
+
+   データベースには以下のプロパティが必要です：
+
+   | プロパティ名 | 型 | 説明 |
+   |------------|-----|------|
+   | Name | Title | プロンプト評価のタイトル |
+   | Score | Number | 総合スコア (1-10) |
+   | Clarity | Number | 明確性スコア (1-10) |
+   | Completeness | Number | 完全性スコア (1-10) |
+   | Structure | Number | 構造スコア (1-10) |
+   | Date | Date | 評価日 |
+   | Preview | Rich Text | プロンプトのプレビュー |
+
+3. **Notion への同期**
+
+   ログファイルから Notion へ同期するには、以下のコマンドを実行します：
+
+   ```bash
+   ${CLAUDE_PLUGIN_ROOT}/hooks/sync_to_notion.sh
+   ```
+
+   このスクリプトは：
+   - 未同期のログエントリを検出
+   - 各エントリを Notion データベースに追加
+   - 同期状態を記録（重複を防止）
+
+### 自動同期の設定（オプション）
+
+定期的に自動同期するには、cron を使用します：
+
+```bash
+# crontab を編集
+crontab -e
+
+# 例: 毎時0分に同期（プラグインのパスを適切に設定してください）
+0 * * * * ~/.claude-code/plugins/prompt-reviewer@xtone-ai-development-tools/hooks/sync_to_notion.sh
+```
+
+### Notion MCP との統合
+
+現在の実装では、`sync_to_notion.sh` スクリプトが同期ロジックを提供していますが、実際の Notion MCP 呼び出しは環境に応じてカスタマイズが必要です。
+
+以下の方法で Notion MCP を統合できます：
+
+1. **Claude Code の Notion MCP を使用**
+   - `sync_to_notion.sh` 内で Claude Code API を呼び出す
+   - または、Claude Code に対してタスクを送信して Notion に保存
+
+2. **Notion Integration Token を使用**
+   - Notion API を直接呼び出す
+   - `save_to_notion.sh` を編集して `curl` コマンドで API を呼び出す
+
+詳細は[Notion MCP ドキュメント](https://code.claude.com/docs/en/mcp-servers)を参照してください。
+
 ## カスタマイズ
 
 ### 評価基準の調整
