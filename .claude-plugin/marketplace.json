@@ -22,6 +22,15 @@
             "author": {
                 "name": "TOYOTA, Yoichi"
             }
+        },
+        {
+            "name": "prompt-reviewer",
+            "source": "./claude_code_hooks/prompt_reviewer",
+            "description": "プロンプトの品質を自動評価し、改善提案を提供。履歴ログも記録",
+            "version": "0.1.0",
+            "author": {
+                "name": "TOYOTA, Yoichi"
+            }
         }
     ]
 }
