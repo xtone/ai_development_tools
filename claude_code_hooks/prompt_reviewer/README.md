@@ -199,14 +199,20 @@ crontab -e
 
 **セットアップ:**
 
-1. Notion API Key を取得（前述の手順を参照）
-2. 環境変数を設定:
+1. プラグインをインストール:
    ```bash
-   export NOTION_API_KEY="secret_xxxxxxxxxxxxxxxxxxxxx"
+   /plugin install prompt-reviewer@xtone-ai-development-tools
    ```
-3. Claude Code を再起動して MCP サーバーを有効化
+
+2. Claude Code を再起動
+
+3. Notion MCP の初回使用時に OAuth 認証が自動的に開始されます
+   - ブラウザで Notion のログイン画面が開きます
+   - アクセスを許可してください
+   - 認証情報は自動的に保存されます
 
 **利点:**
+- 環境変数の設定不要（OAuth 認証）
 - Claude Code の MCP ツールを直接使用できる
 - より統合された体験
 - エラーハンドリングが改善される
@@ -287,7 +293,7 @@ LOG_DIR="${HOME}/custom/path/to/logs"
 
 - Claude Code がインストールされていること
 - `jq` コマンドが利用可能であること（ログスクリプト用）
-- Notion 連携を使用する場合: Notion API Key または Notion MCP が設定されていること
+- Notion 連携を使用する場合: Notion へのアクセス権限（OAuth 認証または API Token）
 
 ## 注意事項
 
