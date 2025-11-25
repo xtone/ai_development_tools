@@ -115,15 +115,70 @@ ${improved_prompt}
 
         echo "  - Syncing entry: $timestamp (Score: $score/10)"
 
-        # Notion への保存コマンドを実行
-        # ここで実際に Notion MCP を使用してページを作成します
-        # Claude Code の場合、以下のようなコマンドが必要になります
-        # TODO: 実際の Notion MCP 呼び出しを実装
+        # Notion MCP を使用してページを作成
+        # Claude Code の Notion MCP を使用する場合、以下のようなアプローチが考えられます：
+        #
+        # 方法1: Notion API を直接呼び出す（Integration Token が必要）
+        # 方法2: Claude Code CLI を使用して MCP 経由でページを作成
+        # 方法3: 一時ファイルを作成し、別のプロセスで処理
 
-        # 一時的なマーカー（実際の実装では Notion API または MCP を呼び出す）
-        # echo "    [Would create Notion page with score: $score]"
+        # ここでは、Notion API を直接呼び出す実装例を示します
+        # 実際に使用するには、NOTION_TOKEN 環境変数を設定してください
 
-        ((success_count++))
+        if [ -n "$NOTION_TOKEN" ]; then
+            # プロパティを JSON 形式で構築
+            properties_json=$(jq -n \
+                --arg title "$page_title" \
+                --argjson score "$score" \
+                --argjson clarity "$clarity" \
+                --argjson completeness "$completeness" \
+                --argjson structure "$structure" \
+                --arg date "$date_only" \
+                --arg preview "$prompt_preview" \
+                '{
+                    "Name": {"title": [{"text": {"content": $title}}]},
+                    "Score": {"number": $score},
+                    "Clarity": {"number": $clarity},
+                    "Completeness": {"number": $completeness},
+                    "Structure": {"number": $structure},
+                    "Date": {"date": {"start": $date}},
+                    "Preview": {"rich_text": [{"text": {"content": $preview}}]}
+                }')
+
+            # ページ内容を Notion blocks 形式に変換
+            # （簡略化のため、ここではテキストのみ）
+
+            # Notion API にリクエストを送信
+            response=$(curl -s -X POST https://api.notion.com/v1/pages \
+                -H "Authorization: Bearer $NOTION_TOKEN" \
+                -H "Content-Type: application/json" \
+                -H "Notion-Version: 2022-06-28" \
+                -d "{
+                    \"parent\": {\"database_id\": \"$database_id\"},
+                    \"properties\": $properties_json
+                }")
+
+            # エラーチェック
+            error=$(echo "$response" | jq -r '.message // empty')
+            if [ -n "$error" ]; then
+                echo "    ✗ Failed: $error"
+            else
+                echo "    ✓ Synced successfully"
+                ((success_count++))
+            fi
+        else
+            # NOTION_TOKEN が設定されていない場合は、ログに記録のみ
+            echo "    ⚠ NOTION_TOKEN not set, skipping actual sync"
+            echo "    (Set NOTION_TOKEN environment variable to enable actual sync)"
+
+            # デバッグ用：作成されるはずのデータを表示
+            if [ -n "$DEBUG" ]; then
+                echo "    Debug: Would create page with:"
+                echo "      Title: $page_title"
+                echo "      Score: $score"
+                echo "      Date: $date_only"
+            fi
+        fi
 
     done < "$log_file"
 done

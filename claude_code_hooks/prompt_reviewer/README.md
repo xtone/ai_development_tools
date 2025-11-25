@@ -189,21 +189,50 @@ crontab -e
 0 * * * * ~/.claude-code/plugins/prompt-reviewer@xtone-ai-development-tools/hooks/sync_to_notion.sh
 ```
 
-### Notion MCP との統合
+### Notion API との統合
 
-現在の実装では、`sync_to_notion.sh` スクリプトが同期ロジックを提供していますが、実際の Notion MCP 呼び出しは環境に応じてカスタマイズが必要です。
+`sync_to_notion.sh` スクリプトは Notion API を直接呼び出して、評価結果をデータベースに保存します。
 
-以下の方法で Notion MCP を統合できます：
+#### Notion Integration Token の取得
 
-1. **Claude Code の Notion MCP を使用**
-   - `sync_to_notion.sh` 内で Claude Code API を呼び出す
-   - または、Claude Code に対してタスクを送信して Notion に保存
+1. [Notion Integrations](https://www.notion.so/my-integrations) にアクセス
+2. "New integration" をクリック
+3. Integration に名前を付けて作成
+4. "Internal Integration Token" をコピー
+5. データベースがあるページで、"..." メニューから "Connections" → 作成した Integration を追加
 
-2. **Notion Integration Token を使用**
-   - Notion API を直接呼び出す
-   - `save_to_notion.sh` を編集して `curl` コマンドで API を呼び出す
+#### 環境変数の設定
 
-詳細は[Notion MCP ドキュメント](https://code.claude.com/docs/en/mcp-servers)を参照してください。
+Notion Token を環境変数として設定します：
+
+```bash
+# ~/.bashrc または ~/.zshrc に追加
+export NOTION_TOKEN="secret_xxxxxxxxxxxxxxxxxxxxx"
+```
+
+設定後、シェルを再起動するか `source ~/.bashrc` を実行してください。
+
+#### 同期の実行
+
+Token を設定後、同期スクリプトを実行すると、実際に Notion にデータが保存されます：
+
+```bash
+${CLAUDE_PLUGIN_ROOT}/hooks/sync_to_notion.sh
+```
+
+#### デバッグモード
+
+同期がうまくいかない場合は、デバッグモードで実行してください：
+
+```bash
+DEBUG=1 ${CLAUDE_PLUGIN_ROOT}/hooks/sync_to_notion.sh
+```
+
+#### 代替方法: Claude Code の Notion MCP を使用
+
+Notion API の代わりに、Claude Code の Notion MCP を使用することもできます。この場合は `sync_to_notion.sh` をカスタマイズして、Claude Code の MCP エンドポイントを呼び出すように変更してください。
+
+詳細は [Notion MCP ドキュメント](https://code.claude.com/docs/en/mcp-servers) を参照してください。
 
 ## カスタマイズ
 
