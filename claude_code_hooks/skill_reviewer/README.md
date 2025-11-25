@@ -1,181 +1,181 @@
-# Prompt Reviewer Hook
+# Skill Reviewer Hook
 
-Claude Codeに送信するプロンプトを自動的に評価し、品質スコアと改善提案を提供するプラグインです。
+Claude Code でツールやスキルを使用する際に、自動的に使用品質を評価し、改善提案を提供するプラグインです。
 
-## 機能
+## 🎯 このプラグインは何をするのか？
 
-### 1. プロンプト品質評価
+Claude Code で**ツール（Read, Write, Bash など）やスキル（Task）を使用するたびに**、その使い方を自動的に評価し、より効率的な方法を提案します。
 
-ユーザーがプロンプトを送信する際、自動的に以下の観点で評価します：
+## ⚡ 自動で動くタイミング
 
-- **明確性** (1-10点): 要求が具体的で理解しやすいか
-  - 曖昧な表現がないか
-  - 期待する成果物が明確か
-  - 専門用語が適切に使用されているか
+プラグインをインストールすると、**すべてのツール使用後に自動的に評価**されます：
 
-- **完全性** (1-10点): 必要な情報が含まれているか
-  - コンテキストが十分に提供されているか
-  - 制約条件が明示されているか
-  - 期待する出力形式が指定されているか
+- ✅ ファイルを読み込んだ時（`Read` ツール）
+- ✅ ファイルを編集・作成した時（`Edit`, `Write` ツール）
+- ✅ コマンドを実行した時（`Bash` ツール）
+- ✅ スキルを実行した時（`Task` ツール）
+- ✅ その他、すべてのツール使用時
 
-- **構造** (1-10点): 適切にフォーマットされているか
-  - 論理的な順序で記述されているか
-  - 重要な情報が強調されているか
-  - 読みやすく整理されているか
+**ユーザーが何もする必要はありません**。自動的に評価され、フィードバックが表示されます。
 
-### 2. プロンプト改善提案
+## 📊 評価内容
 
-- 総合スコアが8未満の場合、具体的な改善案を提示
-- スコアが6未満の場合は、改善されたプロンプト例も提供
-- プロンプトは常に送信されます（ブロックしません）
+### 評価される3つの観点（各1-10点）
 
-### 3. プロンプト履歴ログ
+1. **適切性 (Appropriateness)**
+   - タスクに対して最適なツールを選択しているか
+   - ツールのパラメータが適切に設定されているか
+   - より効率的な代替手段がないか
 
-すべてのプロンプトと評価結果を自動的にログファイルに記録：
+2. **効率性 (Efficiency)**
+   - 必要最小限のツール呼び出しで済んでいるか
+   - 並列実行可能な場合に活用しているか
+   - 不要なツール呼び出しがないか
 
-- **保存先**: `~/.claude-code/prompt-logs/YYYY-MM-DD.jsonl`
-- **形式**: JSONL（1行1レコード）
-- **記録内容**:
-  - タイムスタンプ
-  - オリジナルプロンプト
-  - 評価スコア（総合・項目別）
-  - 改善提案
-  - 改善プロンプト例（該当する場合）
-
-## セットアップ
-
-### Plugin Marketplaceからインストール（推奨）
-
-1. Claude Codeでマーケットプレイスにリポジトリを追加（未追加の場合）:
-
-```bash
-/plugin marketplace add xtone/ai_development_tools
-```
-
-2. プラグインをインストール:
-
-```bash
-/plugin install prompt-reviewer@xtone-ai-development-tools
-```
-
-### 手動インストール
-
-1. このディレクトリ全体を任意の場所にコピー
-
-2. Claude Codeの設定に以下を追加:
-
-```json
-{
-  "hooks": {
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "prompt",
-            "prompt": "<hooks.json内のプロンプト内容>",
-            "timeout": 30000,
-            "output_as": "json",
-            "model": "haiku"
-          },
-          {
-            "type": "command",
-            "command": "/path/to/log_prompt.sh"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
-
-## 動作イメージ
+3. **結果品質 (Result Quality)**
+   - 期待される結果が得られているか
+   - エラーハンドリングが適切か
+   - 結果の検証が行われているか
 
 ### 評価結果の表示例
 
-プロンプトを送信すると、以下のような評価結果が表示されます：
+ツール使用後、以下のような評価結果が自動的に表示されます：
 
 ```json
 {
   "score": 7,
   "scores": {
-    "clarity": 8,
-    "completeness": 6,
-    "structure": 7
+    "appropriateness": 8,
+    "efficiency": 6,
+    "result_quality": 7
   },
-  "feedback": "プロンプトは明確ですが、期待する出力形式が明示されていません。また、制約条件（例：使用技術、パフォーマンス要件など）を追加すると、より良い結果が得られます。",
-  "improved_prompt": null,
+  "feedback": "Read ツールの使用は適切ですが、複数のファイルを読む場合は並列で Read を実行すると効率的です。",
+  "suggested_approach": null,
   "decision": "allow"
 }
 ```
 
-### ログファイルの例
+## 📁 ログの保存場所
 
-`~/.claude-code/prompt-logs/2025-01-15.jsonl`:
+すべてのツール使用と評価結果は自動的にログファイルに記録されます：
+
+### ログディレクトリ
+```
+~/.claude-code/tool-use-logs/
+```
+
+### ログファイル名
+```
+~/.claude-code/tool-use-logs/2025-01-15.jsonl
+~/.claude-code/tool-use-logs/2025-01-16.jsonl
+...
+```
+
+日付ごとにファイルが分割されるため、管理しやすくなっています。
+
+### ログファイルの内容例
 
 ```jsonl
-{"timestamp":"2025-01-15T10:30:45Z","user_prompt":"Reactコンポーネントを作成して","evaluation":{"score":5,"scores":{"clarity":4,"completeness":3,"structure":6},"feedback":"プロンプトが曖昧です。どのようなコンポーネントを作成したいか、具体的な要件を追加してください。","improved_prompt":"TypeScript + React で、ユーザープロフィール表示用のコンポーネントを作成してください。\n\n要件:\n- 名前、メールアドレス、アバター画像を表示\n- props で情報を受け取る\n- Tailwind CSS でスタイリング\n- レスポンシブ対応","decision":"allow"}}
-{"timestamp":"2025-01-15T10:35:22Z","user_prompt":"TypeScript + React で、ユーザー一覧表示用のテーブルコンポーネントを作成してください。ソート機能とページネーション機能を含めてください。","evaluation":{"score":9,"scores":{"clarity":9,"completeness":9,"structure":9},"feedback":"優れたプロンプトです。要件が明確で具体的です。","improved_prompt":null,"decision":"allow"}}
+{"timestamp":"2025-01-15T10:30:45Z","tool_name":"Read","tool_input":{"file_path":"src/index.ts"},"tool_output":"...","evaluation":{"score":9,"scores":{"appropriateness":9,"efficiency":9,"result_quality":9},"feedback":"適切なツール使用です。","suggested_approach":null,"decision":"allow"}}
+{"timestamp":"2025-01-15T10:31:22Z","tool_name":"Bash","tool_input":{"command":"cat src/index.ts"},"tool_output":"...","evaluation":{"score":5,"scores":{"appropriateness":4,"efficiency":5,"result_quality":6},"feedback":"cat コマンドではなく Read ツールを使用した方が効率的です。","suggested_approach":"Read ツールを使用してファイルを読み込む","decision":"allow"}}
 ```
 
-## ログファイルの活用
+## 🚀 セットアップ
 
-ログファイルは以下のように活用できます：
+### インストール（推奨方法）
 
+**Step 1: マーケットプレイスを追加（初回のみ）**
 ```bash
-# 今日のログを確認
-cat ~/.claude-code/prompt-logs/$(date +%Y-%m-%d).jsonl
-
-# スコアが低いプロンプトを抽出
-cat ~/.claude-code/prompt-logs/*.jsonl | jq 'select(.evaluation.score < 6)'
-
-# 平均スコアを計算
-cat ~/.claude-code/prompt-logs/*.jsonl | jq -s 'map(.evaluation.score) | add / length'
+/plugin marketplace add xtone/ai_development_tools
 ```
 
-## Notion 連携（オプション）
+**Step 2: プラグインをインストール**
+```bash
+/plugin install skill-reviewer@xtone-ai-development-tools
+```
 
-プロンプト評価結果を Notion データベースに保存することができます。
+**Step 3: Claude Code を再起動**
 
-### セットアップ
+これで完了です！次回からツールを使用すると自動的に評価されます。
 
-1. **Notion データベースの準備**
+### 動作確認
 
-   以下のスクリプトを実行して、Notion データベースをセットアップします：
+インストール後、適当なファイルを読み込んでみてください：
 
+```
+src/index.ts の内容を確認してください
+```
+
+ファイルが読み込まれた後、評価結果が表示されれば正常に動作しています。
+
+## 📈 ログの活用方法
+
+### 今日のログを確認
+```bash
+cat ~/.claude-code/tool-use-logs/$(date +%Y-%m-%d).jsonl
+```
+
+### スコアが低いツール使用を抽出
+```bash
+cat ~/.claude-code/tool-use-logs/*.jsonl | jq 'select(.evaluation.score < 6)'
+```
+
+### 特定のツールの使用履歴を確認
+```bash
+cat ~/.claude-code/tool-use-logs/*.jsonl | jq 'select(.tool_name == "Bash")'
+```
+
+### 平均スコアを計算
+```bash
+cat ~/.claude-code/tool-use-logs/*.jsonl | jq -s 'map(.evaluation.score) | add / length'
+```
+
+### ツール別の平均スコアを計算
+```bash
+cat ~/.claude-code/tool-use-logs/*.jsonl | jq -s 'group_by(.tool_name) | map({tool: .[0].tool_name, avg_score: (map(.evaluation.score) | add / length)})'
+```
+
+## 🔗 Notion 連携（オプション）
+
+ツール使用の評価結果を Notion データベースに保存することができます。
+
+### Notion MCP を使用（推奨）
+
+このプラグインには Notion MCP サーバーの設定が含まれています。
+
+**セットアップ:**
+
+1. Claude Code を再起動（プラグインインストール時に自動設定済み）
+
+2. Notion MCP の初回使用時に OAuth 認証が自動的に開始されます
+   - ブラウザで Notion のログイン画面が開きます
+   - アクセスを許可してください
+   - 認証情報は自動的に保存されます
+
+3. Notion データベースを準備:
    ```bash
    ${CLAUDE_PLUGIN_ROOT}/hooks/setup_notion_db.sh
    ```
 
-   このスクリプトは以下の2つのオプションを提供します：
-   - 新しい Notion データベースを作成（手動で Claude Code 経由で作成）
-   - 既存の Notion データベースを使用（データベース ID を指定）
-
-2. **Notion データベースのスキーマ**
-
-   データベースには以下のプロパティが必要です：
-
-   | プロパティ名 | 型 | 説明 |
-   |------------|-----|------|
-   | Name | Title | プロンプト評価のタイトル |
-   | Score | Number | 総合スコア (1-10) |
-   | Clarity | Number | 明確性スコア (1-10) |
-   | Completeness | Number | 完全性スコア (1-10) |
-   | Structure | Number | 構造スコア (1-10) |
-   | Date | Date | 評価日 |
-   | Preview | Rich Text | プロンプトのプレビュー |
-
-3. **Notion への同期**
-
-   ログファイルから Notion へ同期するには、以下のコマンドを実行します：
-
+4. ログを Notion に同期:
    ```bash
    ${CLAUDE_PLUGIN_ROOT}/hooks/sync_to_notion.sh
    ```
 
-   このスクリプトは：
-   - 未同期のログエントリを検出
-   - 各エントリを Notion データベースに追加
-   - 同期状態を記録（重複を防止）
+### Notion データベースのスキーマ
+
+データベースには以下のプロパティが必要です：
+
+| プロパティ名 | 型 | 説明 |
+|------------|-----|------|
+| Name | Title | ツール使用評価のタイトル |
+| Score | Number | 総合スコア (1-10) |
+| Appropriateness | Number | 適切性スコア (1-10) |
+| Efficiency | Number | 効率性スコア (1-10) |
+| Result Quality | Number | 結果品質スコア (1-10) |
+| Date | Date | 評価日 |
+| Tool Name | Text | 使用したツール名 |
+| Preview | Rich Text | ツール入力のプレビュー |
 
 ### 自動同期の設定（オプション）
 
@@ -185,92 +185,28 @@ cat ~/.claude-code/prompt-logs/*.jsonl | jq -s 'map(.evaluation.score) | add / l
 # crontab を編集
 crontab -e
 
-# 例: 毎時0分に同期（プラグインのパスを適切に設定してください）
-0 * * * * ~/.claude-code/plugins/prompt-reviewer@xtone-ai-development-tools/hooks/sync_to_notion.sh
+# 例: 毎時0分に同期
+0 * * * * ~/.claude-code/plugins/skill-reviewer@xtone-ai-development-tools/hooks/sync_to_notion.sh
 ```
 
-### Notion との統合
-
-このプラグインは2つの方法で Notion との統合をサポートしています：
-
-#### 方法1: Notion MCP を使用（推奨）
-
-このプラグインには Notion MCP サーバーの設定（`.mcp.json`）が含まれています。プラグインをインストールすると、自動的に Notion MCP が利用可能になります。
-
-**セットアップ:**
-
-1. プラグインをインストール:
-   ```bash
-   /plugin install prompt-reviewer@xtone-ai-development-tools
-   ```
-
-2. Claude Code を再起動
-
-3. Notion MCP の初回使用時に OAuth 認証が自動的に開始されます
-   - ブラウザで Notion のログイン画面が開きます
-   - アクセスを許可してください
-   - 認証情報は自動的に保存されます
-
-**利点:**
-- 環境変数の設定不要（OAuth 認証）
-- Claude Code の MCP ツールを直接使用できる
-- より統合された体験
-- エラーハンドリングが改善される
-
-#### 方法2: Notion API を直接使用
-
-`sync_to_notion.sh` スクリプトは Notion API を直接呼び出して、評価結果をデータベースに保存することもできます。
-
-#### Notion Integration Token の取得
-
-1. [Notion Integrations](https://www.notion.so/my-integrations) にアクセス
-2. "New integration" をクリック
-3. Integration に名前を付けて作成
-4. "Internal Integration Token" をコピー
-5. データベースがあるページで、"..." メニューから "Connections" → 作成した Integration を追加
-
-#### 環境変数の設定
-
-Notion Token を環境変数として設定します：
-
-```bash
-# ~/.bashrc または ~/.zshrc に追加
-export NOTION_TOKEN="secret_xxxxxxxxxxxxxxxxxxxxx"
-```
-
-設定後、シェルを再起動するか `source ~/.bashrc` を実行してください。
-
-#### 同期の実行
-
-Token を設定後、同期スクリプトを実行すると、実際に Notion にデータが保存されます：
-
-```bash
-${CLAUDE_PLUGIN_ROOT}/hooks/sync_to_notion.sh
-```
-
-#### デバッグモード
-
-同期がうまくいかない場合は、デバッグモードで実行してください：
-
-```bash
-DEBUG=1 ${CLAUDE_PLUGIN_ROOT}/hooks/sync_to_notion.sh
-```
-
-#### 代替方法: Claude Code の Notion MCP を使用
-
-Notion API の代わりに、Claude Code の Notion MCP を使用することもできます。この場合は `sync_to_notion.sh` をカスタマイズして、Claude Code の MCP エンドポイントを呼び出すように変更してください。
-
-詳細は [Notion MCP ドキュメント](https://code.claude.com/docs/en/mcp-servers) を参照してください。
-
-## カスタマイズ
+## ⚙️ カスタマイズ
 
 ### 評価基準の調整
 
-`hooks/hooks.json` 内のプロンプトを編集することで、評価基準を調整できます。
+`hooks/hooks.json` 内のプロンプトを編集することで、評価基準を調整できます：
+
+```bash
+${CLAUDE_PLUGIN_ROOT}/hooks/hooks.json
+```
+
+変更例：
+- スコアの配点を変更
+- 評価項目を追加
+- フィードバックの詳細度を調整
 
 ### ログ保存先の変更
 
-`hooks/log_prompt.sh` 内の `LOG_DIR` 変数を変更してください：
+`hooks/log_tool_use.sh` 内の `LOG_DIR` 変数を変更してください：
 
 ```bash
 LOG_DIR="${HOME}/custom/path/to/logs"
@@ -278,7 +214,7 @@ LOG_DIR="${HOME}/custom/path/to/logs"
 
 ### モデルの変更
 
-デフォルトは Haiku ですが、より詳細な評価が必要な場合は Claude Sonnet に変更できます：
+デフォルトは Haiku（高速）ですが、より詳細な評価が必要な場合は Sonnet に変更可能：
 
 ```json
 {
@@ -287,32 +223,97 @@ LOG_DIR="${HOME}/custom/path/to/logs"
 }
 ```
 
-注意: Sonnet を使用すると評価時間が長くなります。
+⚠️ **注意**: Sonnet を使用すると評価時間が長くなります。
 
-## 前提条件
+## 📋 前提条件
 
 - Claude Code がインストールされていること
 - `jq` コマンドが利用可能であること（ログスクリプト用）
-- Notion 連携を使用する場合: Notion へのアクセス権限（OAuth 認証または API Token）
+- Notion 連携を使用する場合: Notion へのアクセス権限（OAuth 認証）
 
-## 注意事項
+## ⚠️ 注意事項
 
-- プロンプトは常に送信されます（ブロックされません）
+- ツール使用は常にブロックされません（評価のみ）
 - 評価には数秒かかる場合があります
 - ログファイルは自動的に日付ごとに分割されます
-- プライベートな情報を含むプロンプトもログに記録されるため、ログファイルの取り扱いに注意してください
+- ツールの入出力もログに記録されるため、機密情報の取り扱いに注意してください
 
-## トラブルシューティング
+## 🔧 トラブルシューティング
 
 ### 評価が表示されない
 
-- Claude Code の hooks 設定が正しく読み込まれているか確認してください
-- プラグインが正しくインストールされているか確認してください
+- Claude Code の hooks 設定が正しく読み込まれているか確認
+- プラグインが正しくインストールされているか確認
+- Claude Code を再起動してみてください
 
 ### ログファイルが作成されない
 
-- `jq` コマンドがインストールされているか確認してください
-- ログディレクトリ (`~/.claude-code/prompt-logs/`) への書き込み権限があるか確認してください
+- `jq` コマンドがインストールされているか確認:
+  ```bash
+  which jq
+  ```
+- ログディレクトリへの書き込み権限があるか確認:
+  ```bash
+  ls -la ~/.claude-code/tool-use-logs/
+  ```
+
+### Notion 同期がうまくいかない
+
+- Notion MCP の OAuth 認証が完了しているか確認
+- データベース ID が正しく設定されているか確認:
+  ```bash
+  cat ~/.claude-code/skill-reviewer/config.json
+  ```
+- デバッグモードで実行:
+  ```bash
+  DEBUG=1 ${CLAUDE_PLUGIN_ROOT}/hooks/sync_to_notion.sh
+  ```
+
+## 🎓 使用例
+
+### 例1: 効率的なツール使用
+
+**ユーザーの指示:**
+```
+src/ ディレクトリ内のすべての .ts ファイルを確認してください
+```
+
+**Claude の動作:**
+- Glob ツールでファイルを検索
+- 並列で複数の Read ツールを実行
+
+**評価結果:**
+```json
+{
+  "score": 9,
+  "feedback": "適切なツール選択と並列実行により、効率的にファイルを確認できました。"
+}
+```
+
+### 例2: 非効率なツール使用
+
+**ユーザーの指示:**
+```
+src/index.ts の内容を cat コマンドで確認してください
+```
+
+**Claude の動作:**
+- Bash ツールで cat コマンドを実行
+
+**評価結果:**
+```json
+{
+  "score": 5,
+  "feedback": "cat コマンドではなく Read ツールを使用した方が効率的です。Read ツールは構文ハイライトや行番号表示などの機能を提供します。",
+  "suggested_approach": "Read ツールを使用: Read(file_path='src/index.ts')"
+}
+```
+
+## 📚 詳細情報
+
+- [Claude Code 公式ドキュメント](https://code.claude.com/docs)
+- [Hooks リファレンス](https://code.claude.com/docs/en/hooks)
+- [Notion MCP ドキュメント](https://code.claude.com/docs/en/mcp-servers)
 
 ## ライセンス
 
