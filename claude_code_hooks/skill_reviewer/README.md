@@ -55,30 +55,25 @@ Claude Code で**ツール（Read, Write, Bash など）やスキル（Task）�
 }
 ```
 
-## 📁 ログの保存場所
+## 📁 評価結果の保存
 
-すべてのツール使用と評価結果は自動的にログファイルに記録されます：
+### 自動表示
+評価結果は**ツール使用直後に自動的に表示**されます。コマンドを打って確認する必要はありません。
 
-### ログディレクトリ
-```
-~/.claude-code/tool-use-logs/
-```
+### バックグラウンドログ
+すべての評価結果は自動的にログファイルに記録されます：
 
-### ログファイル名
+**保存場所:**
 ```
-~/.claude-code/tool-use-logs/2025-01-15.jsonl
-~/.claude-code/tool-use-logs/2025-01-16.jsonl
-...
+~/.claude-code/tool-use-logs/YYYY-MM-DD.jsonl
 ```
 
-日付ごとにファイルが分割されるため、管理しやすくなっています。
+**用途:**
+- Notion への同期用データソース
+- 長期的な使用傾向の分析
+- デバッグ時の確認用
 
-### ログファイルの内容例
-
-```jsonl
-{"timestamp":"2025-01-15T10:30:45Z","tool_name":"Read","tool_input":{"file_path":"src/index.ts"},"tool_output":"...","evaluation":{"score":9,"scores":{"appropriateness":9,"efficiency":9,"result_quality":9},"feedback":"適切なツール使用です。","suggested_approach":null,"decision":"allow"}}
-{"timestamp":"2025-01-15T10:31:22Z","tool_name":"Bash","tool_input":{"command":"cat src/index.ts"},"tool_output":"...","evaluation":{"score":5,"scores":{"appropriateness":4,"efficiency":5,"result_quality":6},"feedback":"cat コマンドではなく Read ツールを使用した方が効率的です。","suggested_approach":"Read ツールを使用してファイルを読み込む","decision":"allow"}}
-```
+**注意:** ログファイルは手動で確認することを想定していません。Notion 連携で可視化することを推奨します。
 
 ## 🚀 セットアップ
 
@@ -108,32 +103,28 @@ src/index.ts の内容を確認してください
 
 ファイルが読み込まれた後、評価結果が表示されれば正常に動作しています。
 
-## 📈 ログの活用方法
+## 📊 評価結果の確認方法
 
-### 今日のログを確認
-```bash
-cat ~/.claude-code/tool-use-logs/$(date +%Y-%m-%d).jsonl
+### リアルタイム表示
+**ツール使用直後に自動的に表示されます。**
+
+例：
+```json
+{
+  "score": 7,
+  "scores": {
+    "appropriateness": 8,
+    "efficiency": 6,
+    "result_quality": 7
+  },
+  "feedback": "Read ツールの使用は適切ですが、複数のファイルを読む場合は並列で Read を実行すると効率的です。"
+}
 ```
 
-### スコアが低いツール使用を抽出
-```bash
-cat ~/.claude-code/tool-use-logs/*.jsonl | jq 'select(.evaluation.score < 6)'
-```
+### 長期的な分析
+**Notion 連携を使用して可視化します（次のセクション参照）。**
 
-### 特定のツールの使用履歴を確認
-```bash
-cat ~/.claude-code/tool-use-logs/*.jsonl | jq 'select(.tool_name == "Bash")'
-```
-
-### 平均スコアを計算
-```bash
-cat ~/.claude-code/tool-use-logs/*.jsonl | jq -s 'map(.evaluation.score) | add / length'
-```
-
-### ツール別の平均スコアを計算
-```bash
-cat ~/.claude-code/tool-use-logs/*.jsonl | jq -s 'group_by(.tool_name) | map({tool: .[0].tool_name, avg_score: (map(.evaluation.score) | add / length)})'
-```
+ログファイルは Notion への同期用のデータソースとして自動的に使用されます。
 
 ## 🔗 Notion 連携（オプション）
 
