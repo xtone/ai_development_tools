@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# プロンプト評価結果をログファイルに記録するスクリプト
+# Tool/Skill 使用評価結果をログファイルに記録するスクリプト
 
 # ログディレクトリの設定
-LOG_DIR="${HOME}/.claude-code/prompt-logs"
+LOG_DIR="${HOME}/.claude-code/tool-use-logs"
 mkdir -p "$LOG_DIR"
 
 # 今日の日付でログファイル名を生成
@@ -15,8 +15,10 @@ input_data=$(cat)
 # タイムスタンプを追加
 timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-# ユーザープロンプトを取得
-user_prompt=$(echo "$input_data" | jq -r '.user_input // empty')
+# ツール情報を取得
+tool_name=$(echo "$input_data" | jq -r '.tool_name // empty')
+tool_input=$(echo "$input_data" | jq -c '.tool_input // {}')
+tool_output=$(echo "$input_data" | jq -c '.tool_output // empty')
 
 # 前のhookの評価結果を取得（存在する場合）
 evaluation=$(echo "$input_data" | jq -c '.hook_results[-1].output // empty' 2>/dev/null)
@@ -24,11 +26,15 @@ evaluation=$(echo "$input_data" | jq -c '.hook_results[-1].output // empty' 2>/d
 # ログエントリを作成
 log_entry=$(jq -n \
   --arg timestamp "$timestamp" \
-  --arg user_prompt "$user_prompt" \
+  --arg tool_name "$tool_name" \
+  --argjson tool_input "$tool_input" \
+  --arg tool_output "$tool_output" \
   --argjson evaluation "$evaluation" \
   '{
     timestamp: $timestamp,
-    user_prompt: $user_prompt,
+    tool_name: $tool_name,
+    tool_input: $tool_input,
+    tool_output: $tool_output,
     evaluation: $evaluation
   }')
 
@@ -36,4 +42,4 @@ log_entry=$(jq -n \
 echo "$log_entry" >> "$LOG_FILE"
 
 # 成功メッセージを出力
-echo "Prompt evaluation logged to: $LOG_FILE"
+echo "Tool use evaluation logged to: $LOG_FILE"
