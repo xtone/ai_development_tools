@@ -1,11 +1,8 @@
 {
   "mcpServers": {
-    "notion": {
+    "notionMCP": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-notion"
-      ]
+      "args": ["-y", "mcp-remote", "https://mcp.notion.com/sse"]
     }
   }
 }
