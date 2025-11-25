@@ -189,9 +189,31 @@ crontab -e
 0 * * * * ~/.claude-code/plugins/prompt-reviewer@xtone-ai-development-tools/hooks/sync_to_notion.sh
 ```
 
-### Notion API との統合
+### Notion との統合
 
-`sync_to_notion.sh` スクリプトは Notion API を直接呼び出して、評価結果をデータベースに保存します。
+このプラグインは2つの方法で Notion との統合をサポートしています：
+
+#### 方法1: Notion MCP を使用（推奨）
+
+このプラグインには Notion MCP サーバーの設定（`.mcp.json`）が含まれています。プラグインをインストールすると、自動的に Notion MCP が利用可能になります。
+
+**セットアップ:**
+
+1. Notion API Key を取得（前述の手順を参照）
+2. 環境変数を設定:
+   ```bash
+   export NOTION_API_KEY="secret_xxxxxxxxxxxxxxxxxxxxx"
+   ```
+3. Claude Code を再起動して MCP サーバーを有効化
+
+**利点:**
+- Claude Code の MCP ツールを直接使用できる
+- より統合された体験
+- エラーハンドリングが改善される
+
+#### 方法2: Notion API を直接使用
+
+`sync_to_notion.sh` スクリプトは Notion API を直接呼び出して、評価結果をデータベースに保存することもできます。
 
 #### Notion Integration Token の取得
 
@@ -265,6 +287,7 @@ LOG_DIR="${HOME}/custom/path/to/logs"
 
 - Claude Code がインストールされていること
 - `jq` コマンドが利用可能であること（ログスクリプト用）
+- Notion 連携を使用する場合: Notion API Key または Notion MCP が設定されていること
 
 ## 注意事項
 
