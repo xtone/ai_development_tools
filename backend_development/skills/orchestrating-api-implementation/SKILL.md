@@ -1,5 +1,5 @@
 ---
-name: orchestrating-api-implementations
+name: orchestrating-api-implementation
 description: JSONで定義されたAPI仕様を元にRuby on RailsでAPIと管理画面を実装するスキル。全体のオーケストレーションを行い、各ステップの詳細ガイドラインに従って実装を進めます。
 ---
 
