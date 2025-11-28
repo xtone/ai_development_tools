@@ -1,4 +1,18 @@
-# ステップ4: DBスキーマを設計する
+# ステップ5: DBスキーマを設計する
+
+## 目次
+
+- [目的](#目的)
+- [手順](#手順)
+  - [4.1 フィールド型のマッピング](#41-フィールド型のマッピング)
+  - [4.2 テーブル設計のルール](#42-テーブル設計のルール)
+  - [4.3 リレーションの設計](#43-リレーションの設計)
+  - [4.4 role型（配列カラム）の設計](#44-role型配列カラムの設計)
+  - [4.5 カスタム型の展開](#45-カスタム型の展開)
+  - [4.6 論理削除の検討](#46-論理削除の検討)
+- [出力](#出力)
+
+---
 
 ## 目的
 
@@ -22,8 +36,9 @@ JSON仕様の`type`をPostgreSQLの型にマッピング：
 | `uuid` | `uuid` | `uuid` |
 | `image` | `varchar(255)` | `string` (URLを格納) |
 | `enum` | `varchar(50)` | `string` + enum定義 |
-| `relation` | `bigint` (FK) | `references` |
+| `relation` | `bigint` / `uuid` (FK) | `references` |
 | `custom` | 展開してカラム化 | 複数カラム |
+| `role` | `varchar[]` (配列) | `string, array: true` |
 
 ### 4.2 テーブル設計のルール
 
@@ -85,7 +100,66 @@ Rails 8のenumを使用：
 enum :status, { draft: 'draft', published: 'published', archived: 'archived' }
 ```
 
-### 4.5 スキーマ設計書を作成する
+### 4.5 Role型（配列）の定義
+
+`isList: true` の `role` 型はPostgreSQLの配列カラムとして定義：
+
+```ruby
+# マイグレーション
+t.string :roles, array: true, default: []
+
+# インデックス（GINインデックスで高速検索）
+add_index :accounts, :roles, using: :gin
+```
+
+モデルでの使用：
+
+```ruby
+# app/models/account.rb
+class Account < ApplicationRecord
+  # 配列カラムはそのまま使用可能
+  # account.roles = ['admin', 'user']
+  # account.roles << 'editor'
+
+  # ロールのバリデーション
+  VALID_ROLES = %w[public admin user editor].freeze
+
+  validate :validate_roles
+
+  def has_role?(role)
+    roles.include?(role.to_s)
+  end
+
+  def admin?
+    has_role?('admin')
+  end
+
+  private
+
+  def validate_roles
+    return if roles.blank?
+
+    invalid_roles = roles - VALID_ROLES
+    if invalid_roles.any?
+      errors.add(:roles, "に無効な値が含まれています: #{invalid_roles.join(', ')}")
+    end
+  end
+end
+```
+
+クエリ例：
+
+```ruby
+# 特定のロールを持つユーザーを検索
+Account.where("'admin' = ANY(roles)")
+
+# Ransackでの検索設定
+ransacker :roles do
+  Arel.sql("array_to_string(roles, ',')")
+end
+```
+
+### 4.6 スキーマ設計書を作成する
 
 以下の形式でまとめる：
 

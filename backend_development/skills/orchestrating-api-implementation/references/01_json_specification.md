@@ -6,6 +6,24 @@ API Designerで作成されるモデルデータのJSON構造仕様です。
 > [!TIP]
 > **JSON Schema**: [model-persistence-schema.json](./model-persistence-schema.json)
 
+## 目次
+
+- [ルートオブジェクト (ApiProject)](#ルートオブジェクト-apiproject)
+- [モデル (Model)](#モデル-model)
+  - [アクセス制御 (AccessControl)](#アクセス制御-accesscontrol)
+  - [Webhook](#webhook)
+- [フィールド (Field)](#フィールド-field)
+  - [データ型 (FieldType)](#データ型-fieldtype)
+  - [バリデーション (FieldValidation)](#バリデーション-fieldvalidation)
+  - [オプション (FieldOptions)](#オプション-fieldoptions)
+- [カスタム型 (CustomType)](#カスタム型-customtype-new)
+- [ユーザー管理・認証 (AuthConfig)](#ユーザー管理認証-authconfig-new)
+- [アクター (Actor)](#アクター-actor-new)
+- [ユースケース (UseCase)](#ユースケース-usecase-new)
+- [JSONサンプル (拡張版)](#jsonサンプル-拡張版)
+
+---
+
 ## ルートオブジェクト (ApiProject)
 
 プロジェクト全体を表すルートオブジェクトです。
@@ -17,6 +35,9 @@ API Designerで作成されるモデルデータのJSON構造仕様です。
 | `models` | Model[] | Yes | 定義されたモデルのリスト |
 | `customTypes` | CustomType[] | No | **[New]** カスタム型定義のリスト |
 | `authConfig` | AuthConfig | No | **[New]** 認証・ユーザー管理設定 |
+| `roles` | string[] | No | **[New]** グローバルロールのリスト |
+| `actors` | Actor[] | No | **[New]** アクターのリスト |
+| `useCases` | UseCase[] | No | **[New]** ユースケースのリスト |
 
 ```json
 {
@@ -172,6 +193,27 @@ API Designerで作成されるモデルデータのJSON構造仕様です。
 例: `Post` モデルに `author` フィールド (Userへのリレーション) を追加し、
 `AccessControl.rowLevel.ownerField` に `author` を指定する。
 
+## アクター (Actor) **[New]**
+
+システムを利用するユーザーや外部システムの役割を定義します。
+
+| プロパティ名 | 型 | 必須 | 説明 |
+| --- | --- | --- | --- |
+| `id` | string | Yes | アクターの一意なID |
+| `name` | string | Yes | アクター名 |
+| `description` | string | No | アクターの説明 |
+
+## ユースケース (UseCase) **[New]**
+
+システムが提供する機能や振る舞いを定義します。
+
+| プロパティ名 | 型 | 必須 | 説明 |
+| --- | --- | --- | --- |
+| `id` | string | Yes | ユースケースの一意なID |
+| `name` | string | Yes | ユースケース名 |
+| `description` | string | No | ユースケースの説明 |
+| `actorIds` | string[] | Yes | このユースケースを実行できるアクターのIDリスト |
+
 ## JSONサンプル (拡張版)
 
 ```json
@@ -182,6 +224,22 @@ API Designerで作成されるモデルデータのJSON構造仕様です。
     "enabled": true,
     "userModelName": "User"
   },
+  "roles": ["public", "admin", "user"],
+  "actors": [
+    {
+      "id": "actor-1",
+      "name": "Customer",
+      "description": "一般顧客"
+    }
+  ],
+  "useCases": [
+    {
+      "id": "uc-1",
+      "name": "Purchase Product",
+      "description": "商品を購入する",
+      "actorIds": ["actor-1"]
+    }
+  ],
   "customTypes": [
     {
       "name": "SEO",
@@ -238,4 +296,3 @@ API Designerで作成されるモデルデータのJSON構造仕様です。
   ]
 }
 ```
-

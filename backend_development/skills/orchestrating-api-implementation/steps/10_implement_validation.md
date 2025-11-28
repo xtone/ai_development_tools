@@ -1,4 +1,19 @@
-# ステップ9: バリデーションを実装する
+# ステップ10: バリデーションを実装する
+
+## 目次
+
+- [目的](#目的)
+- [手順](#手順)
+  - [9.1 JSON仕様とRailsバリデーションのマッピング](#91-json仕様とrailsバリデーションのマッピング)
+  - [9.2 基本バリデーションの実装](#92-基本バリデーションの実装)
+  - [9.3 Enum値のバリデーション](#93-enum値のバリデーション)
+  - [9.4 日本語enumValuesの対応方法](#94-日本語enumvaluesの対応方法)
+  - [9.5 リレーションのバリデーション](#95-リレーションのバリデーション)
+  - [9.6 カスタムバリデーション](#96-カスタムバリデーション)
+  - [9.7 エラーメッセージのカスタマイズ](#97-エラーメッセージのカスタマイズ)
+- [出力](#出力)
+
+---
 
 ## 目的
 
@@ -49,6 +64,8 @@ end
 
 ### 9.3 Enum値のバリデーション
 
+#### 英語キーの場合（推奨）
+
 ```ruby
 class Post < ApplicationRecord
   enum :status, {
@@ -60,6 +77,90 @@ class Post < ApplicationRecord
   # Enumは自動的にバリデーションされるが、明示的に追加も可能
   validates :status, inclusion: { in: statuses.keys }
 end
+```
+
+#### 日本語enumValuesの対応方法
+
+JSON仕様で `enumValues: ["ドラフト", "公開"]` のように日本語が定義されている場合、以下の方法で対応する：
+
+**方法1: 英語キーを使用し、i18nで日本語表示（推奨）**
+
+```ruby
+# app/models/article.rb
+class Article < ApplicationRecord
+  # DBには英語キーで保存
+  enum :publish_status, {
+    draft: 'draft',
+    published: 'published'
+  }
+end
+```
+
+```yaml
+# config/locales/ja.yml
+ja:
+  activerecord:
+    attributes:
+      article:
+        publish_status: 公開ステータス
+    enums:
+      article:
+        publish_status:
+          draft: ドラフト
+          published: 公開
+```
+
+```ruby
+# 表示時
+Article.human_attribute_name("publish_status.#{article.publish_status}")
+# => "ドラフト" または "公開"
+
+# フォームでの選択肢
+Article.publish_statuses.keys.map { |k| [Article.human_attribute_name("publish_status.#{k}"), k] }
+# => [["ドラフト", "draft"], ["公開", "published"]]
+```
+
+**方法2: string型でinclusion validationを使用**
+
+日本語の値をそのままDBに保存する場合：
+
+```ruby
+# app/models/article.rb
+class Article < ApplicationRecord
+  PUBLISH_STATUSES = %w[ドラフト 公開].freeze
+
+  validates :publish_status, inclusion: {
+    in: PUBLISH_STATUSES,
+    message: "は「#{PUBLISH_STATUSES.join('」「')}」のいずれかを選択してください"
+  }, allow_blank: true
+
+  # スコープ
+  scope :draft, -> { where(publish_status: 'ドラフト') }
+  scope :published, -> { where(publish_status: '公開') }
+
+  def draft?
+    publish_status == 'ドラフト'
+  end
+
+  def published?
+    publish_status == '公開'
+  end
+end
+```
+
+> **注意**: 方法2はDBに日本語が保存されるため、将来の多言語対応が困難になります。特別な理由がない限り、**方法1（英語キー + i18n）を推奨**します。
+
+**enumとinclusion validationの衝突を避ける**
+
+Rails enumを使用する場合、enumが自動的にバリデーションを行うため、別途inclusion validationを追加すると衝突する可能性があります：
+
+```ruby
+# NG: enumとinclusionを併用するとエラーになる場合がある
+enum :status, { draft: 'draft', published: 'published' }
+validates :status, inclusion: { in: %w[draft published] }  # 不要
+
+# OK: enumのみ使用
+enum :status, { draft: 'draft', published: 'published' }
 ```
 
 ### 9.4 リレーションのバリデーション

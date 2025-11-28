@@ -1,21 +1,103 @@
-# ステップ6: プロジェクトを初期化する
+# ステップ7: プロジェクトを初期化する
+
+## 目次
+
+- [目的](#目的)
+- [開発環境](#開発環境)
+- [方式A: Docker環境でのセットアップ（推奨）](#方式a-docker環境でのセットアップ推奨)
+  - [A.0 空のプロジェクトからのセットアップ](#a0-空のプロジェクトからのセットアップ)
+  - [A.1 既存のRailsプロジェクトのセットアップ](#a1-既存のrailsプロジェクトのセットアップ)
+  - [A.2 Gemを追加する](#a2-gemを追加する)
+  - [A.3 データベースを設定する](#a3-データベースを設定する)
+  - [A.4 API設定を行う](#a4-api設定を行う)
+- [方式B: ローカル環境でのセットアップ](#方式b-ローカル環境でのセットアップ)
+- [出力](#出力)
+
+---
 
 ## 目的
 
 Rails 8.1プロジェクトを作成し、必要な設定とGemをセットアップする。
 
-## 開発環境の選択
+## 開発環境
 
-ユーザーに開発環境を確認する：
+このスキルでは**Docker Compose環境**を標準として使用する。
 
-| 方式 | 特徴 | 推奨ケース |
-|------|------|-----------|
-| **ローカル開発** | Ruby/PostgreSQLをホストにインストール | 環境構築済み、シンプル |
-| **Docker開発** | コンテナで環境を分離 | 環境の再現性重視、チーム開発 |
+> **重要**: ステップ2で作成したDockerfile/docker-compose.ymlを使用してプロジェクトを初期化する。
 
 ---
 
-## 方式A: Docker環境でのセットアップ
+## 方式A: Docker環境でのセットアップ（推奨）
+
+### A.0 空のプロジェクトからのセットアップ
+
+**Gemfile/Gemfile.lockが存在しない新規プロジェクトの場合**、以下の手順で初期化する：
+
+#### 1. 最小限のGemfileを作成する
+
+```ruby
+# Gemfile
+source "https://rubygems.org"
+
+gem "rails", "~> 8.1"
+```
+
+#### 2. 空のGemfile.lockを作成する
+
+```bash
+touch Gemfile.lock
+```
+
+#### 3. Dockerイメージをビルドする
+
+```bash
+docker compose build
+```
+
+#### 4. bundle installを実行する
+
+```bash
+docker compose run --rm web bundle install
+```
+
+#### 5. rails newを実行する
+
+```bash
+# 管理画面を含む場合（推奨）
+docker compose run --rm web bundle exec rails new . \
+  --database=postgresql \
+  --skip-test \
+  --css=tailwind \
+  --force
+
+# APIのみの場合
+docker compose run --rm web bundle exec rails new . \
+  --api \
+  --database=postgresql \
+  --skip-test \
+  --force
+```
+
+#### 6. ファイル権限を修正する（必要な場合）
+
+```bash
+# rootで作成されたファイルの権限を修正
+sudo chown -R $(id -u):$(id -g) .
+```
+
+#### 7. 再度bundle installを実行する
+
+```bash
+docker compose run --rm web bundle install
+```
+
+#### 8. データベースを作成する
+
+```bash
+docker compose run --rm web bundle exec rails db:create
+```
+
+---
 
 ### A.1 Dockerfile.devを作成する（推奨）
 
