@@ -1,5 +1,61 @@
 # ステップ1: アプリケーション仕様を確認する
 
+## サブエージェント実行情報
+
+| 項目 | 値 |
+|------|-----|
+| **入力ファイル** | `app.json` または同等のJSON仕様ファイル |
+| **出力ファイル** | `.artifacts/01_specification.json` |
+| **依存ステップ** | なし |
+
+### 出力ファイル形式
+
+```json
+{
+  "version": "1.0",
+  "generatedAt": "2025-01-01T00:00:00Z",
+  "step": "01_specification",
+  "data": {
+    "projectName": "プロジェクト名",
+    "projectVersion": "1.0.0",
+    "models": [
+      {
+        "name": "Post",
+        "displayName": "記事",
+        "description": "ブログ記事",
+        "fields": [
+          {
+            "name": "title",
+            "type": "string",
+            "required": true,
+            "validation": { "max": 255 }
+          }
+        ],
+        "relations": [
+          {
+            "field": "author",
+            "type": "belongsTo",
+            "target": "User"
+          }
+        ]
+      }
+    ],
+    "customTypes": [],
+    "actors": [],
+    "useCases": []
+  }
+}
+```
+
+### 完了報告に含める情報
+
+- モデル数
+- リレーション数
+- カスタム型の有無
+- 出力ファイルパス
+
+---
+
 ## 目次
 
 - [目的](#目的)

@@ -1,5 +1,28 @@
 # ステップ8: DBマイグレーションを実装する
 
+## サブエージェント実行情報
+
+| 項目 | 値 |
+|------|-----|
+| **入力ファイル** | `.artifacts/05_db_schema.json`, `.artifacts/06_indexes.json` |
+| **出力ファイル** | `db/migrate/*`, `db/schema.rb` |
+| **依存ステップ** | ステップ5, ステップ6 |
+
+### 生成されるファイル
+
+- `db/migrate/YYYYMMDDHHMMSS_create_{table_name}.rb`（各テーブル）
+- `db/migrate/YYYYMMDDHHMMSS_add_searchable_to_{table_name}.rb`（全文検索）
+- `db/schema.rb`（マイグレーション実行後）
+
+### 完了報告に含める情報
+
+- 作成したマイグレーションファイル数
+- `rails db:migrate:status` の結果
+- エラーがあれば詳細
+- 出力ファイルパス一覧
+
+---
+
 ## 目次
 
 - [目的](#目的)
