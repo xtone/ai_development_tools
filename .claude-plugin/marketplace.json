@@ -22,6 +22,15 @@
             "author": {
                 "name": "TOYOTA, Yoichi"
             }
+        },
+        {
+            "name": "backend-development",
+            "source": "./backend_development",
+            "description": "Ruby on Rails/PostgreSQL バックエンド開発向けのツール群。JSON仕様からAPI・管理画面の実装までをサポート",
+            "version": "0.1.0",
+            "author": {
+                "name": "TOYOTA, Yoichi"
+            }
         }
     ]
 }
