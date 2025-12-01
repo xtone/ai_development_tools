@@ -1,5 +1,30 @@
 # ステップ13c: Hotwireで管理画面を自作する
 
+## サブエージェント実行情報
+
+| 項目 | 値 |
+|------|-----|
+| **入力ファイル** | `.artifacts/01_specification.json`, `.artifacts/02_tech_stack.json` |
+| **出力ファイル** | `app/controllers/admin/*.rb`, `app/views/admin/*` |
+| **依存ステップ** | ステップ1, ステップ2, ステップ9 |
+
+### 生成されるファイル
+
+- `app/controllers/admin/base_controller.rb`
+- `app/controllers/admin/{model_name}s_controller.rb`（各モデル）
+- `app/views/admin/{model_name}s/*.html.erb`（各モデル）
+- `app/views/layouts/admin.html.erb`
+- `app/javascript/controllers/*_controller.js`（Stimulus）
+
+### 完了報告に含める情報
+
+- 作成したコントローラ数
+- 作成したビュー数
+- 管理画面URL
+- 出力ファイルパス一覧
+
+---
+
 ## 目次
 
 - [概要](#概要)

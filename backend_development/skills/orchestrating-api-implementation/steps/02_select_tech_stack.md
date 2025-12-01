@@ -1,5 +1,47 @@
 # ステップ2: 技術スタックを決定する
 
+## サブエージェント実行情報
+
+| 項目 | 値 |
+|------|-----|
+| **入力ファイル** | `.artifacts/01_specification.json` |
+| **出力ファイル** | `.artifacts/02_tech_stack.json` |
+| **依存ステップ** | ステップ1 |
+
+### 出力ファイル形式
+
+```json
+{
+  "version": "1.0",
+  "generatedAt": "2025-01-01T00:00:00Z",
+  "step": "02_tech_stack",
+  "data": {
+    "ruby": "3.4",
+    "rails": "8.1",
+    "database": "postgresql",
+    "databaseVersion": "18",
+    "adminPanel": "activeadmin",
+    "gems": {
+      "api": ["alba", "kaminari", "ransack", "rack-cors"],
+      "admin": ["activeadmin", "devise", "dartsass-rails"],
+      "test": ["rspec-rails", "factory_bot_rails", "faker"],
+      "development": ["annotate", "bullet"]
+    },
+    "docker": true,
+    "primaryKeyType": "uuid"
+  }
+}
+```
+
+### 完了報告に含める情報
+
+- 選択した管理画面方式
+- Docker使用有無
+- 主要なGem一覧
+- 出力ファイルパス
+
+---
+
 ## 目次
 
 - [技術スタック（固定）](#技術スタック固定)

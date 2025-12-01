@@ -1,5 +1,71 @@
 # ステップ3: ユースケースを洗い出す
 
+## サブエージェント実行情報
+
+| 項目 | 値 |
+|------|-----|
+| **入力ファイル** | `.artifacts/01_specification.json` |
+| **出力ファイル** | `.artifacts/03_usecases.json` |
+| **依存ステップ** | ステップ1 |
+
+### 出力ファイル形式
+
+```json
+{
+  "version": "1.0",
+  "generatedAt": "2025-01-01T00:00:00Z",
+  "step": "03_usecases",
+  "data": {
+    "actors": [
+      {
+        "id": "actor-1",
+        "name": "Customer",
+        "description": "一般顧客"
+      }
+    ],
+    "useCases": [
+      {
+        "id": "uc-1",
+        "name": "Browse Products",
+        "description": "商品を閲覧する",
+        "actorIds": ["actor-1"]
+      }
+    ],
+    "endpoints": [
+      {
+        "model": "Post",
+        "basePath": "/api/v1/posts",
+        "actions": ["index", "show", "create", "update", "destroy"],
+        "filters": ["status", "author_id", "category_id"],
+        "sorts": ["created_at", "updated_at", "title"],
+        "includes": ["author", "category", "tags"],
+        "search": {
+          "enabled": true,
+          "fields": ["title", "content"]
+        }
+      }
+    ],
+    "accessControl": [
+      {
+        "useCase": "uc-1",
+        "actor": "actor-1",
+        "roles": ["user"],
+        "rowLevelSecurity": null
+      }
+    ]
+  }
+}
+```
+
+### 完了報告に含める情報
+
+- アクター数
+- ユースケース数
+- エンドポイント数
+- 出力ファイルパス
+
+---
+
 ## 目次
 
 - [目的](#目的)

@@ -1,5 +1,28 @@
 # ステップ12: APIの動作確認を行う
 
+## サブエージェント実行情報
+
+| 項目 | 値 |
+|------|-----|
+| **入力ファイル** | 実装済みのAPIコード（`app/controllers/`, `app/models/`） |
+| **出力ファイル** | `spec/requests/api/v1/*.rb`, `spec/factories/*.rb` |
+| **依存ステップ** | ステップ7-11 |
+
+### 生成されるファイル
+
+- `spec/rails_helper.rb`（更新）
+- `spec/requests/api/v1/{model_name}s_spec.rb`（各モデル）
+- `spec/factories/{model_name}s.rb`（各モデル）
+
+### 完了報告に含める情報
+
+- curl テスト結果
+- RSpec テスト結果（パス数/失敗数）
+- N+1問題の検出結果（Bullet）
+- 出力ファイルパス一覧
+
+---
+
 ## 目次
 
 - [目的](#目的)
