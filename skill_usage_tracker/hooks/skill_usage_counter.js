@@ -1,20 +1,22 @@
 #!/usr/bin/env node
 
 /**
- * Skill Usage Counter Hook
+ * Skill Usage Counter Hook (PostToolUse)
  *
- * This hook counts skill invocations via the "Skill" tool.
- * It reads tool usage data from stdin, extracts the skill name,
- * and persists usage counts to ~/.claude/hooks/state/skill_usage_counts.json
+ * This hook records skill invocations via the "Skill" tool with detailed metadata.
+ * It stores events with timestamps, user info, and context for later aggregation.
+ *
+ * Data is stored in ~/.claude/hooks/state/skill_usage_events.json
  */
 
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { execSync } = require('child_process');
 
 // Configuration
 const STATE_DIR = path.join(os.homedir(), '.claude', 'hooks', 'state');
-const COUNTS_FILE = path.join(STATE_DIR, 'skill_usage_counts.json');
+const EVENTS_FILE = path.join(STATE_DIR, 'skill_usage_events.json');
 
 /**
  * Ensure state directory exists
@@ -26,44 +28,94 @@ function ensureStateDirectory() {
 }
 
 /**
- * Load existing skill usage counts
- * @returns {Object} Skill usage counts object
+ * Execute command safely and return result or default value
  */
-function loadCounts() {
+function execSafe(command, defaultValue = '') {
   try {
-    if (fs.existsSync(COUNTS_FILE)) {
-      const data = fs.readFileSync(COUNTS_FILE, 'utf8');
-      return JSON.parse(data);
-    }
-  } catch (error) {
-    console.error(`Warning: Failed to load counts file: ${error.message}`);
+    return execSync(command, { encoding: 'utf8', timeout: 5000 }).trim();
+  } catch {
+    return defaultValue;
   }
-  return {};
 }
 
 /**
- * Save skill usage counts
- * @param {Object} counts - Skill usage counts object
+ * Get user information from git config and environment
  */
-function saveCounts(counts) {
+function getUserInfo() {
+  return {
+    name: execSafe('git config user.name'),
+    email: execSafe('git config user.email'),
+    system_user: process.env.USER || os.userInfo().username,
+  };
+}
+
+/**
+ * Get context information (project, branch, etc.)
+ */
+function getContextInfo() {
+  return {
+    project: path.basename(process.cwd()),
+    branch: execSafe('git branch --show-current'),
+    remote: execSafe('git remote get-url origin'),
+    hostname: os.hostname(),
+    cwd: process.cwd(),
+  };
+}
+
+/**
+ * Load existing events data
+ */
+function loadEventsData() {
+  try {
+    if (fs.existsSync(EVENTS_FILE)) {
+      const data = fs.readFileSync(EVENTS_FILE, 'utf8');
+      return JSON.parse(data);
+    }
+  } catch (error) {
+    console.error(`Warning: Failed to load events file: ${error.message}`);
+  }
+  return { events: [], summary: {}, pending_sync: true };
+}
+
+/**
+ * Save events data
+ */
+function saveEventsData(data) {
   try {
     ensureStateDirectory();
-    fs.writeFileSync(COUNTS_FILE, JSON.stringify(counts, null, 2), 'utf8');
+    fs.writeFileSync(EVENTS_FILE, JSON.stringify(data, null, 2), 'utf8');
   } catch (error) {
-    console.error(`Error: Failed to save counts: ${error.message}`);
+    console.error(`Error: Failed to save events: ${error.message}`);
     process.exit(1);
   }
 }
 
 /**
- * Increment skill usage count
- * @param {string} skillName - Name of the skill to increment
+ * Record a skill usage event
  */
-function incrementSkillCount(skillName) {
-  const counts = loadCounts();
-  counts[skillName] = (counts[skillName] || 0) + 1;
-  saveCounts(counts);
-  console.log(`Skill "${skillName}" usage count: ${counts[skillName]}`);
+function recordSkillEvent(skillName) {
+  const data = loadEventsData();
+
+  // Create new event
+  const event = {
+    skill: skillName,
+    timestamp: new Date().toISOString(),
+    user: getUserInfo(),
+    context: getContextInfo(),
+  };
+
+  // Add event to list
+  data.events.push(event);
+
+  // Update summary counts
+  data.summary[skillName] = (data.summary[skillName] || 0) + 1;
+
+  // Mark as pending sync
+  data.pending_sync = true;
+
+  saveEventsData(data);
+
+  console.log(`Recorded: ${skillName} (total: ${data.summary[skillName]})`);
 }
 
 /**
@@ -87,7 +139,6 @@ async function main() {
     const data = JSON.parse(input);
 
     // Extract skill name from tool_input.skill
-    // The Skill tool uses "skill" parameter to specify which skill to invoke
     const skillName = data?.tool_input?.skill;
 
     if (!skillName) {
@@ -95,8 +146,8 @@ async function main() {
       process.exit(0);
     }
 
-    // Increment the count for this skill
-    incrementSkillCount(skillName);
+    // Record the skill usage event
+    recordSkillEvent(skillName);
 
   } catch (error) {
     console.error(`Error: ${error.message}`);
