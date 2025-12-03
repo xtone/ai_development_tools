@@ -44,7 +44,9 @@ function main() {
   // Count skills used in this session (events since last clear)
   const sessionSkills = {};
   for (const event of data.events) {
-    sessionSkills[event.skill] = (sessionSkills[event.skill] || 0) + 1;
+    if (event && event.skill) {
+      sessionSkills[event.skill] = (sessionSkills[event.skill] || 0) + 1;
+    }
   }
 
   // Display summary
