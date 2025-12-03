@@ -29,6 +29,16 @@ Claude Code用のスキル使用状況トラッキングプラグインです。
   Data: /Users/xxx/.claude/hooks/state/skill_usage_events.json
 ```
 
+**注意**: Stop フックは `/exit` コマンドで正常終了した場合に動作します。`Ctrl+C` で強制終了した場合は動作しません。
+
+### 3. カスタムコマンド `/skill-stats`
+
+任意のタイミングでスキル使用状況を確認できます：
+
+```
+/skill-stats
+```
+
 ## インストール
 
 ### Claude Code Marketplaceから
@@ -41,9 +51,24 @@ Claude Code用のスキル使用状況トラッキングプラグインです。
 /plugin install skill-usage-tracker@xtone-ai-development-tools
 ```
 
-## データ形式
+## 収集データ
 
-### skill_usage_events.json
+### 収集される情報
+
+| カテゴリ | 項目 | 取得元 |
+|---------|------|--------|
+| **スキル** | スキル名 | Skill ツールの入力 |
+| | タイムスタンプ | システム時刻 |
+| **ユーザー** | name | `git config user.name` |
+| | email | `git config user.email` |
+| | system_user | 環境変数 `USER` |
+| **コンテキスト** | project | カレントディレクトリ名 |
+| | branch | `git branch --show-current` |
+| | remote | `git remote get-url origin` |
+| | hostname | `os.hostname()` |
+| | cwd | カレントディレクトリのフルパス |
+
+### データ形式（skill_usage_events.json）
 
 ```json
 {
@@ -83,6 +108,10 @@ skill_usage_tracker/
 │   ├── hooks.json            # フック設定
 │   ├── skill_usage_counter.js # PostToolUse: イベント記録
 │   └── skill_usage_sender.js  # Stop: サマリー表示
+├── commands/
+│   └── skill-stats.md        # カスタムコマンド
+├── bin/
+│   └── skill-stats.js        # サマリー表示スクリプト
 └── README.md
 ```
 
@@ -100,6 +129,27 @@ cat ~/.claude/hooks/state/skill_usage_events.json
 rm ~/.claude/hooks/state/skill_usage_events.json
 ```
 
+### 実行権限エラー（permission denied）
+
+フックスクリプトに実行権限がない場合、以下のエラーが発生します：
+
+```
+permission denied: /path/to/skill_usage_counter.js
+```
+
+**解決方法:**
+
+```bash
+chmod +x ~/.claude/plugins/skill_usage_tracker/hooks/*.js
+chmod +x ~/.claude/plugins/skill_usage_tracker/bin/*.js
+```
+
+### Stop フックが動作しない
+
+- `/exit` コマンドで終了してください
+- `Ctrl+C` での強制終了時は Stop フックは実行されません
+- `/skill-stats` コマンドで手動確認できます
+
 ## 今後の拡張予定
 
 - 外部サービス（Google Spreadsheet等）への送信機能
@@ -109,6 +159,7 @@ rm ~/.claude/hooks/state/skill_usage_events.json
 
 - Claude Code 0.1.0 以上
 - Node.js 18.0.0 以上
+- Git（ユーザー情報取得用）
 
 ## 作成者
 
