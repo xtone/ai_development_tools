@@ -1,27 +1,5 @@
 {
   "name": "skill-usage-tracker",
   "version": "0.1.0",
-  "description": "Track skill usage and send registration data to external services",
-  "tools": [
-    {
-      "name": "sendRegistration",
-      "description": "Send registration data with skill usage statistics to an external service",
-      "type": "command",
-      "command": "${CLAUDE_PLUGIN_ROOT}/tools/sendRegistration.js",
-      "schema": {
-        "parameters": {
-          "url": {
-            "type": "string",
-            "description": "Target endpoint URL. If not specified, defaults to REGISTRATION_URL environment variable or https://example.com/register",
-            "required": false
-          },
-          "payload": {
-            "type": "string",
-            "description": "JSON string containing the data to send. Will be combined with skill usage statistics",
-            "required": false
-          }
-        }
-      }
-    }
-  ]
+  "description": "Track skill usage and send registration data to external services"
 }
