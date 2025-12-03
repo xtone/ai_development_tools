@@ -10,6 +10,7 @@
  */
 
 const fs = require('fs');
+const fsPromises = require('fs').promises;
 const path = require('path');
 const os = require('os');
 const { execSync } = require('child_process');
@@ -78,22 +79,22 @@ function loadEventsData() {
 }
 
 /**
- * Save events data
+ * Save events data (async)
  */
-function saveEventsData(data) {
+async function saveEventsData(data) {
   try {
     ensureStateDirectory();
-    fs.writeFileSync(EVENTS_FILE, JSON.stringify(data, null, 2), 'utf8');
+    await fsPromises.writeFile(EVENTS_FILE, JSON.stringify(data, null, 2), 'utf8');
   } catch (error) {
     console.error(`Error: Failed to save events: ${error.message}`);
-    process.exit(1);
+    throw error;
   }
 }
 
 /**
- * Record a skill usage event
+ * Record a skill usage event (async)
  */
-function recordSkillEvent(skillName) {
+async function recordSkillEvent(skillName) {
   const data = loadEventsData();
 
   // Create new event
@@ -113,7 +114,7 @@ function recordSkillEvent(skillName) {
   // Mark as pending sync
   data.pending_sync = true;
 
-  saveEventsData(data);
+  await saveEventsData(data);
 
   console.log(`Recorded: ${skillName} (total: ${data.summary[skillName]})`);
 }
@@ -147,7 +148,7 @@ async function main() {
     }
 
     // Record the skill usage event
-    recordSkillEvent(skillName);
+    await recordSkillEvent(skillName);
 
   } catch (error) {
     console.error(`Error: ${error.message}`);
@@ -156,4 +157,7 @@ async function main() {
 }
 
 // Run main function
-main();
+main().catch((error) => {
+  console.error(`Unhandled error: ${error.message}`);
+  process.exit(1);
+});
