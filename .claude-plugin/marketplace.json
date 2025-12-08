@@ -31,6 +31,15 @@
             "author": {
                 "name": "TOYOTA, Yoichi"
             }
+        },
+        {
+            "name": "flutter-development",
+            "source": "./flutter_development",
+            "description": "Flutter開発向けのツール群（Widget実装アシスタントなど）",
+            "version": "0.1.0",
+            "author": {
+                "name": "HINO, Yasushi"
+            }
         }
     ]
 }
