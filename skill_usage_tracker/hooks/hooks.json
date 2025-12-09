@@ -9,6 +9,15 @@
             "command": "${CLAUDE_PLUGIN_ROOT}/hooks/skill_usage_counter.js"
           }
         ]
+      },
+      {
+        "matcher": "SlashCommand",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/hooks/slash_command_counter.js"
+          }
+        ]
       }
     ],
     "Stop": [
