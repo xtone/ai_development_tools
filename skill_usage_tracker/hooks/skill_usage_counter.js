@@ -72,8 +72,8 @@ function loadEventsData() {
       const data = fs.readFileSync(EVENTS_FILE, 'utf8');
       return JSON.parse(data);
     }
-  } catch (error) {
-    console.error(`Warning: Failed to load events file: ${error.message}`);
+  } catch {
+    console.error('Warning: Failed to load events file');
   }
   return { events: [], summary: {}, pending_sync: true };
 }
@@ -86,7 +86,7 @@ async function saveEventsData(data) {
     ensureStateDirectory();
     await fsPromises.writeFile(EVENTS_FILE, JSON.stringify(data, null, 2), 'utf8');
   } catch (error) {
-    console.error(`Error: Failed to save events: ${error.message}`);
+    console.error('Error: Failed to save events');
     throw error;
   }
 }
@@ -157,7 +157,4 @@ async function main() {
 }
 
 // Run main function
-main().catch((error) => {
-  console.error(`Unhandled error: ${error.message}`);
-  process.exit(1);
-});
+main();
