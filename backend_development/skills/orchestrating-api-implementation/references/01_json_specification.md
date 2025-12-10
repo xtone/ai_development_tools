@@ -6,24 +6,6 @@ API Designerで作成されるモデルデータのJSON構造仕様です。
 > [!TIP]
 > **JSON Schema**: [model-persistence-schema.json](./model-persistence-schema.json)
 
-## 目次
-
-- [ルートオブジェクト (ApiProject)](#ルートオブジェクト-apiproject)
-- [モデル (Model)](#モデル-model)
-  - [アクセス制御 (AccessControl)](#アクセス制御-accesscontrol)
-  - [Webhook](#webhook)
-- [フィールド (Field)](#フィールド-field)
-  - [データ型 (FieldType)](#データ型-fieldtype)
-  - [バリデーション (FieldValidation)](#バリデーション-fieldvalidation)
-  - [オプション (FieldOptions)](#オプション-fieldoptions)
-- [カスタム型 (CustomType)](#カスタム型-customtype-new)
-- [ユーザー管理・認証 (AuthConfig)](#ユーザー管理認証-authconfig-new)
-- [アクター (Actor)](#アクター-actor-new)
-- [ユースケース (UseCase)](#ユースケース-usecase-new)
-- [JSONサンプル (拡張版)](#jsonサンプル-拡張版)
-
----
-
 ## ルートオブジェクト (ApiProject)
 
 プロジェクト全体を表すルートオブジェクトです。
@@ -119,6 +101,8 @@ API Designerで作成されるモデルデータのJSON構造仕様です。
 | `relationTo` | string | No | リレーション先のモデル名 (`type`が`relation`の場合) |
 | `customTypeName` | string | No | **[New]** カスタム型名 (`type`が`custom`の場合) |
 | `enumValues` | string[] | No | Enumの選択肢 (`type`が`enum`の場合) |
+| `apiOptions` | ApiOptions | No | **[New]** API公開オプション |
+| `relationOptions` | RelationOptions | No | **[New]** リレーション設定オプション |
 
 ### データ型 (FieldType)
 
@@ -154,6 +138,26 @@ API Designerで作成されるモデルデータのJSON構造仕様です。
 | `resize` | boolean | 画像のリサイズを行うか |
 | `format` | string | 画像フォーマット (`webp`, `jpeg`, `png`) |
 | `default` | any | デフォルト値 |
+
+### APIオプション (ApiOptions) **[New]**
+
+API経由でのアクセス制御に関するオプションです。
+
+| プロパティ名 | 型 | 説明 |
+| --- | --- | --- |
+| `filterable` | boolean | フィルタリング可能にするか |
+| `sortable` | boolean | ソート可能にするか |
+| `searchable` | boolean | 検索対象にするか |
+
+### リレーションオプション (RelationOptions) **[New]**
+
+リレーションフィールドに対する追加設定です。
+
+| プロパティ名 | 型 | 説明 |
+| --- | --- | --- |
+| `expandable` | boolean | APIレスポンスで展開(join)可能にするか |
+| `defaultExpand` | boolean | デフォルトで展開するか |
+| `onDelete` | string | 参照先削除時の挙動 (`cascade`, `nullify`, `restrict`) |
 
 ## カスタム型 (CustomType) **[New]**
 
@@ -205,7 +209,7 @@ API Designerで作成されるモデルデータのJSON構造仕様です。
 
 ## ユースケース (UseCase) **[New]**
 
-システムが提供する機能や振る舞いを定義します。
+システムが提供する機能や振る舞いを定義します。自然言語による設計をサポートするため、構造化された各フィールドを持ちます。
 
 | プロパティ名 | 型 | 必須 | 説明 |
 | --- | --- | --- | --- |
@@ -213,6 +217,20 @@ API Designerで作成されるモデルデータのJSON構造仕様です。
 | `name` | string | Yes | ユースケース名 |
 | `description` | string | No | ユースケースの説明 |
 | `actorIds` | string[] | Yes | このユースケースを実行できるアクターのIDリスト |
+| `preconditions` | string[] | No | 事前条件 |
+| `postconditions` | string[] | No | 事後条件 |
+| `modelInteractions` | ModelInteraction[] | No | モデルとのインタラクション |
+| `notes` | string | No | 設計に関するメモ・特記事項 |
+
+### モデルインタラクション (ModelInteraction)
+
+ユースケース内でどのモデルに対してどのような操作を行うかを定義します。
+
+| プロパティ名 | 型 | 必須 | 説明 |
+| --- | --- | --- | --- |
+| `model` | string | Yes | 対象モデル名 |
+| `description` | string | Yes | 操作の説明（自然言語） |
+| `hint` | string | No | 操作の種類のヒント (`read`, `write`, `delete`, `search`, `aggregate`, `other`) |
 
 ## JSONサンプル (拡張版)
 
@@ -237,7 +255,21 @@ API Designerで作成されるモデルデータのJSON構造仕様です。
       "id": "uc-1",
       "name": "Purchase Product",
       "description": "商品を購入する",
-      "actorIds": ["actor-1"]
+      "actorIds": ["actor-1"],
+      "preconditions": ["User must be logged in", "Product must be in stock"],
+      "postconditions": ["Order created", "Stock decreased", "Email sent"],
+      "modelInteractions": [
+        {
+          "model": "Product",
+          "description": "Check availability and price",
+          "hint": "read"
+        },
+        {
+          "model": "Order",
+          "description": "Create new order record",
+          "hint": "write"
+        }
+      ]
     }
   ],
   "customTypes": [
@@ -271,25 +303,35 @@ API Designerで作成されるモデルデータのJSON構造仕様です。
         {
           "id": "f2",
           "name": "description",
-          "type": "richText" // リッチテキスト
+          "type": "richText",
+          "apiOptions": {
+              "searchable": true
+          }
         },
         {
           "id": "f3",
           "name": "stock",
-          "type": "integer", // 整数
-          "validation": { "min": 0 }
+          "type": "integer",
+          "validation": { "min": 0 },
+          "apiOptions": {
+              "sortable": true,
+              "filterable": true
+          }
         },
         {
           "id": "f4",
           "name": "seoSettings",
-          "type": "custom", // カスタム型
+          "type": "custom",
           "customTypeName": "SEO"
         },
         {
           "id": "f5",
           "name": "createdBy",
           "type": "relation",
-          "relationTo": "User" // ユーザーモデルへのリレーション
+          "relationTo": "User",
+          "relationOptions": {
+              "onDelete": "restrict"
+          }
         }
       ]
     }
