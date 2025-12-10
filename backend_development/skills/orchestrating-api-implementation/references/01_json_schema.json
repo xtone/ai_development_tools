@@ -1,0 +1,478 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "ApiProject",
+    "type": "object",
+    "required": [
+        "projectName",
+        "version",
+        "models"
+    ],
+    "properties": {
+        "projectName": {
+            "type": "string",
+            "description": "Project name"
+        },
+        "version": {
+            "type": "string",
+            "description": "Project version (e.g., '1.0.0')"
+        },
+        "authConfig": {
+            "$ref": "#/definitions/AuthConfig"
+        },
+        "roles": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "description": "List of global roles"
+        },
+        "customTypes": {
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/CustomType"
+            },
+            "description": "List of custom type definitions"
+        },
+        "models": {
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/Model"
+            },
+            "description": "List of data models"
+        },
+        "actors": {
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/Actor"
+            },
+            "description": "List of actors"
+        },
+        "useCases": {
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/UseCase"
+            },
+            "description": "List of use cases"
+        }
+    },
+    "definitions": {
+        "AuthConfig": {
+            "type": "object",
+            "required": [
+                "enabled"
+            ],
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "description": "Whether user management is enabled"
+                },
+                "userModelName": {
+                    "type": "string",
+                    "default": "User",
+                    "description": "Name of the model used for user information"
+                },
+                "authFields": {
+                    "$ref": "#/definitions/AuthFields"
+                }
+            }
+        },
+        "AuthFields": {
+            "type": "object",
+            "properties": {
+                "username": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                }
+            }
+        },
+        "CustomType": {
+            "type": "object",
+            "required": [
+                "name",
+                "fields"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Name of the custom type"
+                },
+                "fields": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Field"
+                    }
+                }
+            }
+        },
+        "Model": {
+            "type": "object",
+            "required": [
+                "id",
+                "name",
+                "fields"
+            ],
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "description": "Unique ID (UUID)"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "Model name (Table name)"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "accessControl": {
+                    "$ref": "#/definitions/AccessControl"
+                },
+                "webhooks": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Webhook"
+                    }
+                },
+                "fields": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Field"
+                    }
+                }
+            }
+        },
+        "AccessControl": {
+            "type": "object",
+            "properties": {
+                "read": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "write": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "delete": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "rowLevel": {
+                    "$ref": "#/definitions/RowLevelAccess"
+                }
+            }
+        },
+        "RowLevelAccess": {
+            "type": "object",
+            "properties": {
+                "ownerField": {
+                    "type": "string",
+                    "description": "Field name holding the owner (e.g., 'createdBy')"
+                },
+                "rules": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/AccessRule"
+                    }
+                }
+            }
+        },
+        "AccessRule": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "condition": {
+                    "type": "object"
+                }
+            }
+        },
+        "Webhook": {
+            "type": "object",
+            "required": [
+                "event",
+                "url"
+            ],
+            "properties": {
+                "event": {
+                    "type": "string",
+                    "enum": [
+                        "onCreate",
+                        "onUpdate",
+                        "onDelete"
+                    ]
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
+        "Field": {
+            "type": "object",
+            "required": [
+                "id",
+                "name",
+                "type"
+            ],
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "description": "Unique Field ID"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "type": {
+                    "$ref": "#/definitions/FieldType"
+                },
+                "isPrimary": {
+                    "type": "boolean"
+                },
+                "isList": {
+                    "type": "boolean"
+                },
+                "isIndex": {
+                    "type": "boolean"
+                },
+                "validation": {
+                    "$ref": "#/definitions/FieldValidation"
+                },
+                "options": {
+                    "$ref": "#/definitions/FieldOptions"
+                },
+                "relationTo": {
+                    "type": "string",
+                    "description": "Target model name if type is 'relation'"
+                },
+                "customTypeName": {
+                    "type": "string",
+                    "description": "Custom type name if type is 'custom'"
+                },
+                "enumValues": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Enum values if type is 'enum'"
+                },
+                "apiOptions": {
+                    "$ref": "#/definitions/ApiOptions"
+                },
+                "relationOptions": {
+                    "$ref": "#/definitions/RelationOptions"
+                }
+            }
+        },
+        "FieldType": {
+            "type": "string",
+            "enum": [
+                "string",
+                "text",
+                "richText",
+                "number",
+                "integer",
+                "boolean",
+                "date",
+                "uuid",
+                "image",
+                "enum",
+                "relation",
+                "custom",
+                "role"
+            ]
+        },
+        "FieldValidation": {
+            "type": "object",
+            "properties": {
+                "required": {
+                    "type": "boolean"
+                },
+                "min": {
+                    "type": "number"
+                },
+                "max": {
+                    "type": "number"
+                },
+                "pattern": {
+                    "type": "string"
+                },
+                "unique": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "FieldOptions": {
+            "type": "object",
+            "properties": {
+                "resize": {
+                    "type": "boolean"
+                },
+                "format": {
+                    "type": "string",
+                    "enum": [
+                        "webp",
+                        "jpeg",
+                        "png"
+                    ]
+                },
+                "default": {
+                    "description": "Default value for the field (primitives only)",
+                    "oneOf": [
+                        { "type": "string" },
+                        { "type": "number" },
+                        { "type": "integer" },
+                        { "type": "boolean" },
+                        { "type": "null" }
+                    ]
+                }
+            }
+        },
+        "Actor": {
+            "type": "object",
+            "required": [
+                "id",
+                "name"
+            ],
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "description": "Unique Actor ID"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "Actor name"
+                },
+                "description": {
+                    "type": "string",
+                    "description": "Actor description"
+                }
+            }
+        },
+        "UseCase": {
+            "type": "object",
+            "required": [
+                "id",
+                "name",
+                "actorIds"
+            ],
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "description": "Unique UseCase ID"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "UseCase name"
+                },
+                "description": {
+                    "type": "string",
+                    "description": "UseCase description"
+                },
+                "actorIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "IDs of actors who can perform this use case"
+                },
+                "preconditions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Preconditions for the use case"
+                },
+                "postconditions": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Postconditions for the use case"
+                },
+                "modelInteractions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ModelInteraction"
+                    },
+                    "description": "Interactions with models"
+                },
+                "notes": {
+                    "type": "string",
+                    "description": "Additional notes"
+                }
+            }
+        },
+        "ApiOptions": {
+            "type": "object",
+            "properties": {
+                "filterable": {
+                    "type": "boolean"
+                },
+                "sortable": {
+                    "type": "boolean"
+                },
+                "searchable": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "RelationOptions": {
+            "type": "object",
+            "properties": {
+                "expandable": {
+                    "type": "boolean"
+                },
+                "defaultExpand": {
+                    "type": "boolean"
+                },
+                "onDelete": {
+                    "type": "string",
+                    "enum": [
+                        "cascade",
+                        "nullify",
+                        "restrict"
+                    ]
+                }
+            }
+        },
+        "ModelInteraction": {
+            "type": "object",
+            "required": [
+                "model",
+                "description"
+            ],
+            "properties": {
+                "model": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "hint": {
+                    "type": "string",
+                    "enum": [
+                        "read",
+                        "write",
+                        "delete",
+                        "search",
+                        "aggregate",
+                        "other"
+                    ]
+                }
+            }
+        }
+    }
+}

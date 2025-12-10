@@ -8,10 +8,12 @@
   - [4.2 認証スキームを定義する](#42-認証スキームを定義する)
   - [4.3 共通コンポーネントを定義する](#43-共通コンポーネントを定義する)
   - [4.4 モデルスキーマを定義する](#44-モデルスキーマを定義する)
-  - [4.5 エンドポイントを定義する](#45-エンドポイントを定義する)
-  - [4.6 アクセス制御をOpenAPIに反映する](#46-アクセス制御をopenapiに反映する)
-  - [4.7 ユースケースとエンドポイントの対応表を作成する](#47-ユースケースとエンドポイントの対応表を作成する)
-  - [4.8 OpenAPIファイルを出力する](#48-openapiファイルを出力する)
+  - [4.5 apiOptionsからパラメータを自動生成する](#45-apioptionsからパラメータを自動生成する)
+  - [4.6 relationOptionsから展開パラメータを自動生成する](#46-relationoptionsから展開パラメータを自動生成する)
+  - [4.7 エンドポイントを定義する](#47-エンドポイントを定義する)
+  - [4.8 アクセス制御をOpenAPIに反映する](#48-アクセス制御をopenapiに反映する)
+  - [4.9 ユースケースとエンドポイントの対応表を作成する](#49-ユースケースとエンドポイントの対応表を作成する)
+  - [4.10 OpenAPIファイルを出力する](#410-openapiファイルを出力する)
 - [出力](#出力)
 - [検証](#検証)
 - [次のステップ](#次のステップ)
@@ -21,6 +23,7 @@
 ## 目的
 
 ユースケースとモデル定義に基づいて、APIの仕様をOpenAPI 3.1形式で定義する。
+`apiOptions`と`relationOptions`から自動導出できる情報を活用し、一貫性のあるAPI仕様を生成する。
 
 ## 手順
 
@@ -245,7 +248,148 @@ components:
           format: uuid
 ```
 
-### 4.5 エンドポイントを定義する
+### 4.5 apiOptionsからパラメータを自動生成する
+
+JSON仕様の`apiOptions`に基づいて、クエリパラメータを自動生成する。
+
+#### フィルタパラメータの自動生成
+
+`apiOptions.filterable: true` のフィールドに対してフィルタパラメータを生成：
+
+```yaml
+# 各モデルに対して、filterable: true のフィールドからパラメータを生成
+components:
+  parameters:
+    # enum型のフィルタ
+    ProductStatusFilter:
+      name: status
+      in: query
+      schema:
+        type: string
+        enum: [draft, published, archived]
+      description: ステータスでフィルタ（filterable: true から自動生成）
+
+    # relation型のフィルタ
+    ProductCategoryIdFilter:
+      name: category_id
+      in: query
+      schema:
+        type: string
+        format: uuid
+      description: カテゴリIDでフィルタ（filterable: true から自動生成）
+
+    # date型のフィルタ（範囲指定）
+    ProductCreatedAtFromFilter:
+      name: created_at_from
+      in: query
+      schema:
+        type: string
+        format: date-time
+      description: 作成日時（開始）でフィルタ（filterable: true から自動生成）
+    ProductCreatedAtToFilter:
+      name: created_at_to
+      in: query
+      schema:
+        type: string
+        format: date-time
+      description: 作成日時（終了）でフィルタ（filterable: true から自動生成）
+
+    # integer/number型のフィルタ（範囲指定）
+    ProductPriceMinFilter:
+      name: price_min
+      in: query
+      schema:
+        type: integer
+      description: 価格（最小）でフィルタ（filterable: true から自動生成）
+    ProductPriceMaxFilter:
+      name: price_max
+      in: query
+      schema:
+        type: integer
+      description: 価格（最大）でフィルタ（filterable: true から自動生成）
+```
+
+#### ソートパラメータの自動生成
+
+`apiOptions.sortable: true` のフィールドからソートオプションを生成：
+
+```yaml
+components:
+  parameters:
+    ProductSortParam:
+      name: sort
+      in: query
+      schema:
+        type: string
+        # sortable: true のフィールドをenumに列挙
+        enum: [created_at, updated_at, name, price, stock]
+        default: created_at
+      description: ソート項目（sortable: true のフィールドから自動生成）
+
+    SortOrderParam:
+      name: order
+      in: query
+      schema:
+        type: string
+        enum: [asc, desc]
+        default: desc
+      description: ソート順
+```
+
+#### 全文検索パラメータの自動生成
+
+`apiOptions.searchable: true` のフィールドが1つ以上ある場合、検索パラメータを追加：
+
+```yaml
+components:
+  parameters:
+    SearchQueryParam:
+      name: q
+      in: query
+      schema:
+        type: string
+      description: |
+        全文検索クエリ（searchable: true のフィールドから自動生成）
+        検索対象: title, content, name, description
+```
+
+### 4.6 relationOptionsから展開パラメータを自動生成する
+
+`relationOptions.expandable: true` のリレーションから`include`パラメータを生成。
+
+```yaml
+components:
+  parameters:
+    ProductIncludeParam:
+      name: include
+      in: query
+      schema:
+        type: string
+      description: |
+        展開するリレーション（カンマ区切り）
+        利用可能な値（expandable: true から自動生成）:
+        - category (デフォルト展開: true)
+        - created_by (デフォルト展開: false)
+      example: category,created_by
+```
+
+#### デフォルト展開の説明追加
+
+```yaml
+paths:
+  /products:
+    get:
+      description: |
+        商品の一覧をページネーション付きで取得します。
+
+        **デフォルトで展開されるリレーション:**
+        - category (relationOptions.defaultExpand: true)
+
+        **明示的に指定が必要なリレーション:**
+        - created_by (?include=created_by)
+```
+
+### 4.7 エンドポイントを定義する
 
 ユースケースで定義した各エンドポイントをOpenAPIのpathsに変換する。
 
@@ -256,45 +400,35 @@ paths:
   /products:
     get:
       summary: 商品一覧を取得
-      description: 商品の一覧をページネーション付きで取得します
+      description: |
+        商品の一覧をページネーション付きで取得します。
+
+        **フィルタ可能なフィールド（apiOptions.filterable: true）:**
+        - status, category_id, created_at, price
+
+        **ソート可能なフィールド（apiOptions.sortable: true）:**
+        - created_at, updated_at, name, price, stock
+
+        **全文検索対象（apiOptions.searchable: true）:**
+        - name, description
       operationId: listProducts
       tags:
         - Products
       parameters:
         - $ref: '#/components/parameters/PageParam'
         - $ref: '#/components/parameters/PerPageParam'
-        - name: status
-          in: query
-          schema:
-            type: string
-            enum: [draft, published, archived]
-          description: ステータスでフィルタ
-        - name: category_id
-          in: query
-          schema:
-            type: string
-            format: uuid
-          description: カテゴリIDでフィルタ
-        - name: sort
-          in: query
-          schema:
-            type: string
-            enum: [created_at, updated_at, name, price]
-            default: created_at
-          description: ソート項目
-        - name: order
-          in: query
-          schema:
-            type: string
-            enum: [asc, desc]
-            default: desc
-          description: ソート順
-        - name: include
-          in: query
-          schema:
-            type: string
-          description: 展開するリレーション（カンマ区切り）
-          example: category,created_by
+        # apiOptions.filterable: true から自動生成
+        - $ref: '#/components/parameters/ProductStatusFilter'
+        - $ref: '#/components/parameters/ProductCategoryIdFilter'
+        - $ref: '#/components/parameters/ProductPriceMinFilter'
+        - $ref: '#/components/parameters/ProductPriceMaxFilter'
+        # apiOptions.sortable: true から自動生成
+        - $ref: '#/components/parameters/ProductSortParam'
+        - $ref: '#/components/parameters/SortOrderParam'
+        # apiOptions.searchable: true から自動生成
+        - $ref: '#/components/parameters/SearchQueryParam'
+        # relationOptions.expandable: true から自動生成
+        - $ref: '#/components/parameters/ProductIncludeParam'
       responses:
         '200':
           description: 成功
@@ -330,11 +464,7 @@ paths:
           schema:
             type: string
             format: uuid
-        - name: include
-          in: query
-          schema:
-            type: string
-          description: 展開するリレーション
+        - $ref: '#/components/parameters/ProductIncludeParam'
       responses:
         '200':
           description: 成功
@@ -427,7 +557,7 @@ paths:
           $ref: '#/components/responses/NotFound'
 ```
 
-### 4.6 アクセス制御をOpenAPIに反映する
+### 4.8 アクセス制御をOpenAPIに反映する
 
 #### ロールベースのセキュリティ
 
@@ -455,7 +585,9 @@ paths:
         行レベルアクセス制御により、他ユーザーの注文は参照できません。
 ```
 
-### 4.7 ユースケースとエンドポイントの対応表を作成する
+### 4.9 ユースケースとエンドポイントの対応表を作成する
+
+ユースケースの`modelInteractions`から、エンドポイントとの対応を記録する。
 
 ```yaml
 # OpenAPIのx-拡張を使用してユースケースとの対応を記録
@@ -463,13 +595,30 @@ paths:
   /products:
     get:
       x-use-cases:
-        - uc-1  # Browse Products
+        - id: uc-1
+          name: Browse Products
+          interaction: "商品一覧を閲覧し、在庫を確認する"
       x-actors:
         - actor-1  # Customer
         - actor-2  # Admin
+
+  /orders:
+    post:
+      x-use-cases:
+        - id: uc-1
+          name: Purchase Product
+          interaction: "注文レコードを作成し、カート内の商品を注文明細として登録する"
+      x-actors:
+        - actor-1  # Customer
+      x-preconditions:
+        - "顧客がログイン済みであること"
+        - "カートに1つ以上の商品が入っていること"
+      x-postconditions:
+        - "注文レコードが作成される"
+        - "在庫数が減少する"
 ```
 
-### 4.8 OpenAPIファイルを出力する
+### 4.10 OpenAPIファイルを出力する
 
 以下の構成でファイルを出力：
 
@@ -511,6 +660,40 @@ components:
 
 - `docs/api/openapi.yaml` - OpenAPI 3.1定義ファイル
 - 分割されたスキーマファイル（必要に応じて）
+
+### 自動生成されたパラメータの記録
+
+```markdown
+## 自動生成パラメータ一覧
+
+### フィルタパラメータ（apiOptions.filterable: true から生成）
+| モデル | フィールド | パラメータ名 | 型 |
+|--------|-----------|-------------|-----|
+| Product | status | status | enum |
+| Product | category_id | category_id | uuid |
+| Product | price | price_min, price_max | integer |
+| Product | created_at | created_at_from, created_at_to | date-time |
+
+### ソートパラメータ（apiOptions.sortable: true から生成）
+| モデル | 利用可能なソートフィールド |
+|--------|-------------------------|
+| Product | created_at, updated_at, name, price, stock |
+| Post | created_at, updated_at, title |
+
+### 全文検索（apiOptions.searchable: true から生成）
+| モデル | 検索対象フィールド |
+|--------|-------------------|
+| Product | name, description |
+| Post | title, content |
+
+### 展開パラメータ（relationOptions.expandable: true から生成）
+| モデル | リレーション | デフォルト展開 |
+|--------|-------------|---------------|
+| Product | category | true |
+| Product | created_by | false |
+| Post | author | false |
+| Post | category | true |
+```
 
 ## 検証
 
