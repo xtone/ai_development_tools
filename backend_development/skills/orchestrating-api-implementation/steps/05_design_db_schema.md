@@ -224,14 +224,26 @@ end
 クエリ例：
 
 ```ruby
-# 特定のロールを持つユーザーを検索
+# 特定のロールを持つユーザーを検索（固定値の場合）
 Account.where("'admin' = ANY(roles)")
+
+# ❌ 危険 - SQLインジェクションのリスク
+# role = params[:role]
+# Account.where("'#{role}' = ANY(roles)")  # 絶対にこうしないこと!
+
+# ✅ 安全 - プレースホルダーを使用（動的な値の場合）
+role = params[:role]
+Account.where("? = ANY(roles)", role)
 
 # Ransackでの検索設定
 ransacker :roles do
   Arel.sql("array_to_string(roles, ',')")
 end
 ```
+
+**セキュリティ注意事項:**
+- 動的な値をSQL文字列に直接埋め込まないこと
+- 必ずプレースホルダー（`?`）を使用してパラメータを渡すこと
 
 ### 5.8 スキーマ設計書を作成する
 

@@ -227,11 +227,18 @@ ORDER BY rank DESC;
 class Post < ApplicationRecord
   scope :search, ->(query) {
     return all if query.blank?
-    where("searchable @@ plainto_tsquery('japanese', ?)", query)
-      .order(Arel.sql("ts_rank(searchable, plainto_tsquery('japanese', '#{sanitize_sql_like(query)}')) DESC"))
+
+    # SQLインジェクション対策: connection.quoteで適切にエスケープ
+    sanitized_query = connection.quote(query)
+    where("searchable @@ plainto_tsquery('japanese', #{sanitized_query})")
+      .order(Arel.sql("ts_rank(searchable, plainto_tsquery('japanese', #{sanitized_query})) DESC"))
   }
 end
 ```
+
+**セキュリティ注意事項:**
+- `sanitize_sql_like`はLIKE句専用であり、SQL文字列への埋め込みには不十分
+- `connection.quote`を使用して適切にエスケープすること
 
 ### 6.6 インデックス一覧を作成する
 

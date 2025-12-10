@@ -147,14 +147,16 @@ module Api
 
       # apiOptions.sortable: true のフィールドでソート
       def apply_sorting(scope)
-        sort_field = params[:sort] || 'created_at'
-        sort_order = params[:order] || 'desc'
+        sort_field = params[:sort].to_s
+        sort_order = params[:order].to_s.downcase
 
-        # ALLOWED_SORTSに含まれるフィールドのみ許可
+        # ホワイトリストチェック - 不正な値はデフォルト値に戻す
         sort_field = 'created_at' unless ALLOWED_SORTS.include?(sort_field)
         sort_order = 'desc' unless %w[asc desc].include?(sort_order)
 
-        scope.order(sort_field => sort_order)
+        # Arelを使用したより安全なソート実装
+        table = scope.arel_table
+        scope.order(table[sort_field.to_sym].send(sort_order.to_sym))
       end
 
       # relationOptions.expandable: true のリレーションを展開
@@ -226,21 +228,24 @@ class PostsController < BaseController
   private
 
   def apply_filters(scope)
-    # filterable: true のフィールドのみフィルタ適用
-    ALLOWED_FILTERS.each do |filter|
-      next unless params[filter].present?
+    # セキュリティ: params.sliceでホワイトリストのキーのみを取得
+    # これにより、ALLOWED_FILTERSに含まれないパラメータは無視される
+    params.slice(*ALLOWED_FILTERS).each do |filter, value|
+      next if value.blank?
 
-      case filter
+      scope = case filter
       when 'status'
-        scope = scope.by_status(params[filter])
+        scope.by_status(value)
       when 'category_id'
-        scope = scope.by_category(params[filter])
+        scope.by_category(value)
       when 'author_id'
-        scope = scope.by_author(params[filter])
+        scope.by_author(value)
       when 'created_at_from'
-        scope = scope.created_from(params[filter])
+        scope.created_from(value)
       when 'created_at_to'
-        scope = scope.created_to(params[filter])
+        scope.created_to(value)
+      else
+        scope  # ホワイトリストにない場合はスキップ
       end
     end
 

@@ -202,11 +202,19 @@ class Post < ApplicationRecord
   # apiOptions.searchable: true のフィールド: title, content
   scope :search, ->(query) {
     return all if query.blank?
-    where("searchable @@ plainto_tsquery('japanese', ?)", query)
-      .order(Arel.sql("ts_rank(searchable, plainto_tsquery('japanese', '#{sanitize_sql_like(query)}')) DESC"))
+
+    # SQLインジェクション対策: connection.quoteで適切にエスケープ
+    sanitized_query = connection.quote(query)
+    where("searchable @@ plainto_tsquery('japanese', #{sanitized_query})")
+      .order(Arel.sql("ts_rank(searchable, plainto_tsquery('japanese', #{sanitized_query})) DESC"))
   }
 end
 ```
+
+**セキュリティ注意事項:**
+- `sanitize_sql_like`はLIKE句専用であり、SQL文字列への埋め込みには不十分
+- `connection.quote`を使用して適切にエスケープすること
+- WHERE句のプレースホルダ（`?`）はORDER BY句では使用不可のため、`quote`が必要
 
 ### 9.6 Ransackの設定（apiOptionsから自動導出）
 
