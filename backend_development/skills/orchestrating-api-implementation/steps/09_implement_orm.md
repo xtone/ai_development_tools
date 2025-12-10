@@ -292,11 +292,16 @@ class Post < ApplicationRecord
   # apiOptions.searchable: true のフィールド: title, content
   scope :search, ->(query) {
     return all if query.blank?
-    where("searchable @@ plainto_tsquery('japanese', ?)", query)
-      .order(Arel.sql("ts_rank(searchable, plainto_tsquery('japanese', '#{sanitize_sql_like(query)}')) DESC"))
+
+    # SQLインジェクション対策: connection.quoteで適切にエスケープ
+    sanitized_query = connection.quote(query)
+    where("searchable @@ plainto_tsquery('japanese', #{sanitized_query})")
+      .order(Arel.sql("ts_rank(searchable, plainto_tsquery('japanese', #{sanitized_query})) DESC"))
   }
 end
 ```
+
+**注意**: ORDER BY句ではプレースホルダー（`?`）が使用できないため、`connection.quote`でエスケープします。
 
 ### 9.9 カスタム型の実装（Virtual Attributes）
 
