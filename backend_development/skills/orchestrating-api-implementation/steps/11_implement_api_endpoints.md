@@ -155,7 +155,14 @@ module Api
         sort_order = 'desc' unless %w[asc desc].include?(sort_order)
 
         # Arelを使用した完全に安全なソート実装
-        column = scope.arel_table[sort_field.to_sym]
+        table = scope.arel_table
+
+        # 防御的プログラミング: カラム存在確認
+        unless scope.column_names.include?(sort_field)
+          sort_field = 'created_at'
+        end
+
+        column = table[sort_field.to_sym]
         order_node = sort_order == 'asc' ? column.asc : column.desc
         scope.order(order_node)
       end

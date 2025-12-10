@@ -329,15 +329,13 @@
                     ]
                 },
                 "default": {
-                    "description": "Default value for the field",
+                    "description": "Default value for the field (primitives only)",
                     "oneOf": [
                         { "type": "string" },
                         { "type": "number" },
                         { "type": "integer" },
                         { "type": "boolean" },
-                        { "type": "null" },
-                        { "type": "array" },
-                        { "type": "object" }
+                        { "type": "null" }
                     ]
                 }
             }
