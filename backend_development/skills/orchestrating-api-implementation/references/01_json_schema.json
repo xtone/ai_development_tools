@@ -328,7 +328,18 @@
                         "png"
                     ]
                 },
-                "default": {}
+                "default": {
+                    "description": "Default value for the field",
+                    "oneOf": [
+                        { "type": "string" },
+                        { "type": "number" },
+                        { "type": "integer" },
+                        { "type": "boolean" },
+                        { "type": "null" },
+                        { "type": "array" },
+                        { "type": "object" }
+                    ]
+                }
             }
         },
         "Actor": {

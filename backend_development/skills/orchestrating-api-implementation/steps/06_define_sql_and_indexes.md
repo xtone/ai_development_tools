@@ -228,17 +228,24 @@ class Post < ApplicationRecord
   scope :search, ->(query) {
     return all if query.blank?
 
-    # SQLインジェクション対策: connection.quoteで適切にエスケープ
-    sanitized_query = connection.quote(query)
-    where("searchable @@ plainto_tsquery('japanese', #{sanitized_query})")
-      .order(Arel.sql("ts_rank(searchable, plainto_tsquery('japanese', #{sanitized_query})) DESC"))
+    # プレースホルダーとsanitize_sql_arrayを使用した安全な実装
+    where("searchable @@ plainto_tsquery('japanese', ?)", query)
+      .order(
+        Arel.sql(
+          sanitize_sql_array([
+            "ts_rank(searchable, plainto_tsquery('japanese', ?)) DESC",
+            query
+          ])
+        )
+      )
   }
 end
 ```
 
 **セキュリティ注意事項:**
-- `sanitize_sql_like`はLIKE句専用であり、SQL文字列への埋め込みには不十分
-- `connection.quote`を使用して適切にエスケープすること
+- WHERE句ではプレースホルダー（`?`）を使用
+- ORDER BY句では`sanitize_sql_array`でパラメータをサニタイズ
+- `plainto_tsquery`自体も入力をサニタイズするため二重の保護
 
 ### 6.6 インデックス一覧を作成する
 

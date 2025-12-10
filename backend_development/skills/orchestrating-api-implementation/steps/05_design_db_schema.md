@@ -231,9 +231,21 @@ Account.where("'admin' = ANY(roles)")
 # role = params[:role]
 # Account.where("'#{role}' = ANY(roles)")  # 絶対にこうしないこと!
 
-# ✅ 安全 - プレースホルダーを使用（動的な値の場合）
+# ❌ 危険 - 複数の値を検索する場合も同様
+# roles = params[:roles] # ["admin", "editor"]
+# Account.where("roles && ARRAY[#{roles.map { |r| "'#{r}'" }.join(',')}]")  # 危険!
+
+# ✅ 安全 - プレースホルダーを使用（単一値）
 role = params[:role]
 Account.where("? = ANY(roles)", role)
+
+# ✅ 安全 - PostgreSQL配列演算子を使用（包含チェック）
+role = params[:role]
+Account.where("roles @> ARRAY[?]::varchar[]", role)
+
+# ✅ 安全 - 複数ロールの検索（共通要素チェック）
+roles = params[:roles]  # ['admin', 'editor']
+Account.where("roles && ARRAY[?]::varchar[]", roles)
 
 # Ransackでの検索設定
 ransacker :roles do
@@ -244,6 +256,12 @@ end
 **セキュリティ注意事項:**
 - 動的な値をSQL文字列に直接埋め込まないこと
 - 必ずプレースホルダー（`?`）を使用してパラメータを渡すこと
+- PostgreSQLの配列演算子（`@>`は包含、`&&`は共通要素チェック）を活用
+
+**セキュリティチェックリスト:**
+- [ ] 動的な値を直接SQL文字列に埋め込んでいないか
+- [ ] プレースホルダー（`?`）を使用しているか
+- [ ] 配列操作時も適切にエスケープされているか
 
 ### 5.8 スキーマ設計書を作成する
 

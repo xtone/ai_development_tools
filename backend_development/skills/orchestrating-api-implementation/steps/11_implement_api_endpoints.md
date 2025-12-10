@@ -154,8 +154,10 @@ module Api
         sort_field = 'created_at' unless ALLOWED_SORTS.include?(sort_field)
         sort_order = 'desc' unless %w[asc desc].include?(sort_order)
 
-        # Active Recordのorder(hash)形式を使用（sendを避ける）
-        scope.order(sort_field => sort_order.to_sym)
+        # Arelを使用した完全に安全なソート実装
+        column = scope.arel_table[sort_field.to_sym]
+        order_node = sort_order == 'asc' ? column.asc : column.desc
+        scope.order(order_node)
       end
 
       # relationOptions.expandable: true のリレーションを展開
