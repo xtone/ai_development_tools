@@ -40,6 +40,15 @@
             "author": {
                 "name": "HINO, Yasushi"
             }
+        },
+        {
+            "name": "skill-usage-tracker",
+            "source": "./skill_usage_tracker",
+            "description": "スキル使用状況トラッキングと外部サービスへの分析データ送信",
+            "version": "0.1.0",
+            "author": {
+                "name": "HINO, Yasushi"
+            }
         }
     ]
 }

@@ -1,0 +1,35 @@
+{
+  "name": "skill-usage-tracker",
+  "displayName": "Skill Usage Tracker",
+  "version": "0.1.0",
+  "description": "Track skill usage statistics locally. Automatically counts each skill invocation and displays usage summary on session end.",
+  "author": {
+    "name": "HINO, Yasushi",
+    "email": "y.hino@xtone.co.jp"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/xtone/ai_development_tools"
+  },
+  "license": "MIT",
+  "keywords": [
+    "analytics",
+    "tracking",
+    "usage",
+    "statistics",
+    "monitoring"
+  ],
+  "features": [
+    "Automatic skill usage counting via PostToolUse hook",
+    "Persistent local storage of usage statistics",
+    "Usage summary display on session end via Stop hook",
+    "Custom /skill-stats command for on-demand statistics"
+  ],
+  "requirements": {
+    "claudeCode": ">=0.1.0",
+    "node": ">=18.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
