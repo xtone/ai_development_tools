@@ -4,12 +4,14 @@
 
 - [目的](#目的)
 - [手順](#手順)
-  - [4.1 フィールド型のマッピング](#41-フィールド型のマッピング)
-  - [4.2 テーブル設計のルール](#42-テーブル設計のルール)
-  - [4.3 リレーションの設計](#43-リレーションの設計)
-  - [4.4 role型（配列カラム）の設計](#44-role型配列カラムの設計)
-  - [4.5 カスタム型の展開](#45-カスタム型の展開)
-  - [4.6 論理削除の検討](#46-論理削除の検討)
+  - [5.1 フィールド型のマッピング](#51-フィールド型のマッピング)
+  - [5.2 テーブル設計のルール](#52-テーブル設計のルール)
+  - [5.3 リレーションの設計](#53-リレーションの設計)
+  - [5.4 relationOptionsに基づく外部キー制約](#54-relationoptionsに基づく外部キー制約)
+  - [5.5 カスタム型の展開](#55-カスタム型の展開)
+  - [5.6 Enumの定義](#56-enumの定義)
+  - [5.7 Role型（配列）の定義](#57-role型配列の定義)
+  - [5.8 スキーマ設計書を作成する](#58-スキーマ設計書を作成する)
 - [出力](#出力)
 
 ---
@@ -17,10 +19,11 @@
 ## 目的
 
 JSON仕様をPostgreSQLのテーブル定義に変換する。
+`relationOptions.onDelete`に基づいて外部キー制約を適切に設定する。
 
 ## 手順
 
-### 4.1 フィールド型のマッピング
+### 5.1 フィールド型のマッピング
 
 JSON仕様の`type`をPostgreSQLの型にマッピング：
 
@@ -40,7 +43,7 @@ JSON仕様の`type`をPostgreSQLの型にマッピング：
 | `custom` | 展開してカラム化 | 複数カラム |
 | `role` | `varchar[]` (配列) | `string, array: true` |
 
-### 4.2 テーブル設計のルール
+### 5.2 テーブル設計のルール
 
 #### プライマリキー
 
@@ -64,7 +67,9 @@ end
 t.timestamps
 ```
 
-#### 外部キー
+### 5.3 リレーションの設計
+
+#### 基本的な外部キー
 
 リレーション型のフィールドには外部キー制約を設定：
 
@@ -72,7 +77,76 @@ t.timestamps
 t.references :author, foreign_key: { to_table: :users }
 ```
 
-### 4.3 カスタム型の展開
+### 5.4 relationOptionsに基づく外部キー制約
+
+JSON仕様の`relationOptions.onDelete`に基づいて、外部キー制約の削除時動作を設定する。
+
+#### onDeleteの値とRails/PostgreSQLマッピング
+
+| onDelete値 | PostgreSQL制約 | Railsマイグレーション | 動作 |
+|-----------|---------------|---------------------|------|
+| `cascade` | `ON DELETE CASCADE` | `on_delete: :cascade` | 親削除時に子も削除 |
+| `nullify` | `ON DELETE SET NULL` | `on_delete: :nullify` | 親削除時にNULL設定 |
+| `restrict` | `ON DELETE RESTRICT` | `on_delete: :restrict` | 子がある場合は削除禁止（デフォルト） |
+
+#### マイグレーション例
+
+```ruby
+# JSON仕様
+# {
+#   "name": "author",
+#   "type": "relation",
+#   "relationTo": "User",
+#   "relationOptions": {
+#     "onDelete": "nullify"
+#   }
+# }
+
+# マイグレーション
+create_table :posts, id: :uuid do |t|
+  # onDelete: nullify の場合
+  t.references :author,
+    type: :uuid,
+    foreign_key: { to_table: :users, on_delete: :nullify },
+    null: true  # nullifyの場合はNULL許可が必要
+
+  # onDelete: cascade の場合
+  t.references :category,
+    type: :uuid,
+    foreign_key: { to_table: :categories, on_delete: :cascade },
+    null: false
+
+  # onDelete: restrict の場合（デフォルト）
+  t.references :department,
+    type: :uuid,
+    foreign_key: { to_table: :departments, on_delete: :restrict },
+    null: false
+
+  t.timestamps
+end
+```
+
+#### 既存テーブルへの外部キー追加
+
+```ruby
+# 外部キーの追加（on_delete指定あり）
+add_foreign_key :posts, :users, column: :author_id, on_delete: :nullify
+add_foreign_key :posts, :categories, column: :category_id, on_delete: :cascade
+
+# 外部キーの変更（既存の制約を置き換え）
+remove_foreign_key :posts, :users
+add_foreign_key :posts, :users, column: :author_id, on_delete: :nullify
+```
+
+#### onDelete設定の注意事項
+
+| 設定 | 注意点 |
+|------|--------|
+| `cascade` | 意図しないデータ削除に注意。子テーブルのデータも完全に削除される |
+| `nullify` | カラムに`null: true`が必要。必須フィールドには使用不可 |
+| `restrict` | 参照しているレコードがある場合、親レコードは削除できない |
+
+### 5.5 カスタム型の展開
 
 カスタム型はプレフィックス付きのカラムとして展開：
 
@@ -91,7 +165,7 @@ t.string :seo_settings_title
 t.text :seo_settings_description
 ```
 
-### 4.4 Enumの定義
+### 5.6 Enumの定義
 
 Rails 8のenumを使用：
 
@@ -100,7 +174,7 @@ Rails 8のenumを使用：
 enum :status, { draft: 'draft', published: 'published', archived: 'archived' }
 ```
 
-### 4.5 Role型（配列）の定義
+### 5.7 Role型（配列）の定義
 
 `isList: true` の `role` 型はPostgreSQLの配列カラムとして定義：
 
@@ -159,7 +233,7 @@ ransacker :roles do
 end
 ```
 
-### 4.6 スキーマ設計書を作成する
+### 5.8 スキーマ設計書を作成する
 
 以下の形式でまとめる：
 
@@ -172,17 +246,59 @@ end
 | title | varchar(255) | NO | - | タイトル |
 | content | text | YES | - | 本文 |
 | status | varchar(50) | NO | 'draft' | ステータス |
-| author_id | uuid | NO | - | FK: users |
+| author_id | uuid | YES | - | FK: users |
+| category_id | uuid | NO | - | FK: categories |
 | created_at | timestamp | NO | - | 作成日時 |
 | updated_at | timestamp | NO | - | 更新日時 |
 
-### 外部キー
-- author_id → users(id)
+### 外部キー（relationOptionsから自動導出）
+
+| カラム | 参照先 | 削除時動作 | 由来 |
+|--------|--------|-----------|------|
+| author_id | users(id) | SET NULL | relationOptions.onDelete: "nullify" |
+| category_id | categories(id) | CASCADE | relationOptions.onDelete: "cascade" |
 
 ### Enum定義
+
 - status: draft, published, archived
 ```
 
 ## 出力
 
 全テーブルのスキーマ設計書を作成し、マイグレーション実装時に使用する。
+
+### 出力形式
+
+```markdown
+## スキーマ設計書
+
+### 1. postsテーブル
+
+[テーブル定義]
+
+#### 外部キー制約（relationOptionsから導出）
+
+| フィールド | 参照先 | onDelete | Railsオプション |
+|-----------|--------|----------|----------------|
+| author_id | users | nullify | `on_delete: :nullify, null: true` |
+| category_id | categories | cascade | `on_delete: :cascade` |
+
+#### マイグレーション例
+
+```ruby
+create_table :posts, id: :uuid do |t|
+  t.string :title, null: false
+  t.text :content
+  t.string :status, null: false, default: 'draft'
+  t.references :author, type: :uuid, foreign_key: { to_table: :users, on_delete: :nullify }, null: true
+  t.references :category, type: :uuid, foreign_key: { to_table: :categories, on_delete: :cascade }, null: false
+  t.timestamps
+end
+```
+
+### 2. usersテーブル
+
+[テーブル定義]
+
+...
+```
