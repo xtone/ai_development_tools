@@ -99,6 +99,60 @@ Column(modifier = Modifier.fillMaxSize()) {
 }
 ```
 
+#### 5. 固定サイズ優先の原則
+
+Flexboxの`grow`/`shrink`より、Figmaから直接取得した**固定値**を優先する。
+
+❌ **悪い例**：grow/shrinkをweight()に変換
+```kotlin
+// Figmaコード: grow basis-0, shrink-0 を見て...
+Column {
+    Box(modifier = Modifier.weight(1f)) { Cards() }  // 曖昧
+    Surface { MessageArea() }  // サイズ不定
+}
+```
+
+✅ **良い例**：スクリーンショットから実測して固定値を使用
+```kotlin
+Column {
+    Box(modifier = Modifier.weight(1f)) { Cards() }
+    Surface(modifier = Modifier.height(264.dp)) { MessageArea() }  // Figma実測値
+}
+```
+
+**重要**：
+- Figmaコードの`pb-[24px]`等の値と、**スクリーンショットの実際の見た目**が異なる場合がある
+- `grow`によってスペースが拡張されている可能性
+- **スクリーンショットからピクセル計測して検証**する
+
+#### 6. padding位置の注意
+
+Surfaceの背景を端まで伸ばす場合、paddingの位置に注意。
+
+❌ **悪い例**：Surfaceの外側にpadding → 背景が途切れる
+```kotlin
+Surface(
+    modifier = Modifier
+        .fillMaxWidth()
+        .padding(bottom = 24.dp)  // 背景の外側にpadding → 背景が途切れる
+) {
+    Content()
+}
+```
+
+✅ **良い例**：内側でpadding調整 → 背景が端まで伸びる
+```kotlin
+Surface(
+    modifier = Modifier.fillMaxWidth()
+) {
+    Column(
+        modifier = Modifier.padding(bottom = 24.dp)  // 内側でpadding
+    ) {
+        Content()
+    }
+}
+```
+
 ## 実行フロー（必須順序）
 
 ### Phase 1: Figma仕様の抽出（効果測定の基盤）
@@ -137,10 +191,28 @@ Column(modifier = Modifier.fillMaxSize()) {
      node_url: https://www.figma.com/design/[file-id]?node-id=[node-id]
    ```
 
+4. **親コンテナの確認** - **必須**：レイアウト文脈の把握
+   ```
+   コンポーネント単体だけでなく、親ノードも必ず確認する
+   親のgap、grow、shrinkが子要素のレイアウトに影響する
+   ```
+
 **重要事項**：
 - ✅ Figma MCP Toolsがメインアプローチ
 - ✅ `get_code` を省略してはならない（準拠率95%以上の鍵）
+- ✅ **親コンテナも必ず確認**（gap、grow、shrinkの影響を把握）
 - ⚠️ MCP接続失敗時のみ、直接API呼び出しにフォールバック（詳細は `references/figma-api-patterns.md` 参照）
+
+**実際に発生した問題**：
+```
+❌ コンポーネント単体（node-id: 21:3665）だけ見て実装
+   → 親コンテナ（node-id: 21:3294）のgap-[64px]を見落とし
+   → レイアウトが崩れた
+
+✅ 親ノードもget_codeで確認
+   → 親のgap: 64px、子のgrow/shrink設定を把握
+   → 正確なレイアウト実装
+```
 
 #### Step 1-3: Figma仕様レポートの生成
 
@@ -174,12 +246,30 @@ Column(modifier = Modifier.fillMaxSize()) {
 
 #### チェックリスト
 - [ ] `get_code` で全ての値を取得したか
+- [ ] **親コンテナも確認したか**（gap、grow、shrinkの影響）
 - [ ] 推測している箇所はないか（角丸、文字サイズ、色等）
 - [ ] Figma仕様に記載のない要素を追加していないか
 - [ ] **Figma仕様に存在する要素を省略していないか**
 - [ ] **システムUI要素（ステータスバー等）のスペースを確保しているか**
+- [ ] **コードの値とスクリーンショットの見た目が一致しているか**
 - [ ] 全ての値がFigma由来であることを証明できるか
 - [ ] 魔法の数字を使っていないか（計算式で表現しているか）
+
+#### コードとスクリーンショットの照合（重要）
+
+Figmaコードの値と、スクリーンショットの実際の見た目が異なる場合がある。
+
+**例**：
+```
+Figmaコード: pb-[24px]
+スクリーンショット: ボタン下のスペースがもっと大きい
+原因: growによってスペースが拡張されている
+```
+
+**対処法**：
+1. スクリーンショットからピクセル計測して検証
+2. 乖離がある場合は**実測値を優先**
+3. 固定値（例: `height(264.dp)`）で実装
 
 **不明な仕様がある場合**：
 ```
