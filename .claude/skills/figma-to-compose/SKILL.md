@@ -65,6 +65,40 @@ private object LayoutDimensions {
 }
 ```
 
+#### 4. Figma要素の省略禁止
+
+**省略**とは：Figmaに存在する要素を「不要」と判断して実装しないこと
+
+❌ **禁止される行為**：
+- Figmaに存在する要素を「不要」と判断して省略する
+- 「システムUIが描画する」という理由で空間を確保しない
+- 「見た目に影響しない」という理由でスペーサーを省略する
+
+✅ **正しい実装**：
+- Figmaの全ての要素に対応するCompose要素を作成
+- 描画しない要素でも、**スペースは確保**する
+- 不明な場合はユーザーに確認を求める
+
+**例：ステータスバーの扱い**：
+```kotlin
+// ステータスバー - 描画はシステムUIに任せるが、スペースは確保
+Spacer(modifier = Modifier.height(52.dp)) // Figma: status-bar height: 52px
+```
+
+**実際に発生した問題**：
+```kotlin
+❌ // ステータスバーを省略 → 後続コンテンツが上に詰まる
+Column(modifier = Modifier.fillMaxSize()) {
+    LockScreenClock(...) // 時計が画面上部に寄りすぎ
+}
+
+✅ // スペースを確保 → レイアウト維持
+Column(modifier = Modifier.fillMaxSize()) {
+    Spacer(modifier = Modifier.height(52.dp)) // Figma: status-bar
+    LockScreenClock(...) // 正しい位置に配置
+}
+```
+
 ## 実行フロー（必須順序）
 
 ### Phase 1: Figma仕様の抽出（効果測定の基盤）
@@ -142,6 +176,8 @@ private object LayoutDimensions {
 - [ ] `get_code` で全ての値を取得したか
 - [ ] 推測している箇所はないか（角丸、文字サイズ、色等）
 - [ ] Figma仕様に記載のない要素を追加していないか
+- [ ] **Figma仕様に存在する要素を省略していないか**
+- [ ] **システムUI要素（ステータスバー等）のスペースを確保しているか**
 - [ ] 全ての値がFigma由来であることを証明できるか
 - [ ] 魔法の数字を使っていないか（計算式で表現しているか）
 
@@ -156,6 +192,20 @@ private object LayoutDimensions {
 ```
 
 ### Phase 3: Compose生成
+
+#### 注意: システムUI要素の扱い
+
+Figmaデザインにはしばしばステータスバー、ナビゲーションバーなどのシステムUI要素が含まれます。これらは：
+
+1. **描画**: システムが行うため、Compose側での描画は不要
+2. **スペース**: **必ず確保する**（Spacer または padding）
+
+```kotlin
+// 例: ステータスバー 52px がFigmaにある場合
+Spacer(modifier = Modifier.height(52.dp)) // 描画せず、スペースのみ確保
+```
+
+この処理を省略すると、後続のコンテンツが上に詰まり、デザインとの不一致が発生します。
 
 #### Step 3-1: Color定数生成
 
@@ -416,6 +466,25 @@ A: Figmaの `get_image` (MCP Tool) とプレビューの並列表示で詳細比
 2. **フォールバック**: 直接API呼び出しに切り替え（詳細は `references/figma-api-patterns.md` 参照）
 
 **注意**: 基本的にはFigma MCP Toolsを使用してください。直接APIアクセスはMCP接続失敗時の代替手段です。
+
+### Q: ステータスバーやナビゲーションバーなどのシステムUI要素がある場合
+
+A: **描画は省略可能だが、スペースは必ず確保する**。
+
+Figmaで52pxのステータスバーがある場合：
+- ❌ 完全に省略 → レイアウトが崩れる（後続コンテンツが上に詰まる）
+- ✅ `Spacer(52.dp)` でスペース確保 → レイアウト維持
+
+```kotlin
+// 正しい実装例
+Column(modifier = Modifier.fillMaxSize()) {
+    // Figma: status-bar (52px) - 描画はシステムに任せ、スペースのみ確保
+    Spacer(modifier = Modifier.height(52.dp))
+
+    // メインコンテンツ
+    MainContent(...)
+}
+```
 
 ## 効果測定
 
