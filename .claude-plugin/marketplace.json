@@ -49,6 +49,15 @@
             "author": {
                 "name": "HINO, Yasushi"
             }
+        },
+        {
+            "name": "flutter-screen-spec-generator",
+            "source": "./flutter_screen_spec_generator",
+            "description": "Flutterプロジェクトの画面定義書を作成・管理するプラグイン",
+            "version": "0.1.0",
+            "author": {
+                "name": "katsume"
+            }
         }
     ]
 }
