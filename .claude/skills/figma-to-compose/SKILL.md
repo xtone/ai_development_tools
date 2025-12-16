@@ -402,6 +402,43 @@ private fun [ComponentName]Preview() {
 }
 ```
 
+#### Step 3-5: SVGアセットのインポート
+
+複雑なSVG（グラデーション、複数パス、クリップパス等）は**手動変換を避け**、Android Studioの機能を使用する。
+
+**推奨: Android Studio の New Vector Asset を使用**
+
+```
+手順:
+1. FigmaからSVGをエクスポート
+2. Android Studio → File → New → Vector Asset
+3. Local file → SVGを選択 → インポート
+```
+
+**理由**:
+- パス変換ミスを防止
+- グラデーション（`<aapt:attr>`）の自動生成
+- クリップパスの正確な変換
+- 座標系の自動調整
+
+**手動作成が許容されるケース**:
+- 単純な図形（矩形、円、単一パスの三角形など）
+- 動的に色を変更する必要がある場合
+
+❌ **禁止事項**:
+- 複雑なSVGパスを目視で手動変換する
+- 座標系の変換を推測で行う
+
+**実際に発生した問題**:
+```
+❌ 三角形のSVGパス M12 20L0 0H24L12 20Z を
+   誤って M12,0L24,20H0L12,0Z に変換
+   → 吹き出しのしっぽが上下逆になった
+
+✅ Android Studio の Vector Asset でインポート
+   → 正確なパス変換を保証
+```
+
 ### Phase 4: 準拠率レポート生成
 
 生成したComposeコードとFigma仕様を照合：
