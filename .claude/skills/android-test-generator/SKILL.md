@@ -1,3 +1,8 @@
+---
+name: android-test-generator
+description: "Android実装コードからテストケースを自動生成するスキル。UseCase / Repository / ViewModel の各層に対応。「テストを作って」「テストを生成して」「このクラスのテストケースを作成」等で起動。"
+---
+
 # Android Test Generator スキル
 
 ## Description
@@ -264,8 +269,26 @@ fun `should emit multiple values`() = runTest {
 
 ---
 
+## 互換性
+
+### Agent Skills (Open Standard)
+
+このスキルは [Agent Skills](https://agentskills.io) オープンスタンダードに準拠しています。
+
+**対応ツール**:
+- Claude Code ✅
+- GitHub Copilot ✅
+- VS Code ✅
+- Cursor (Nightly) ✅
+- OpenAI Codex ✅
+
+`.claude/skills/` ディレクトリに配置することで、上記すべてのツールで使用可能です。
+
+---
+
 ## 更新履歴
 
 | 日付 | 内容 |
 |------|------|
+| 2025-12-23 | Agent Skills対応（YAMLフロントマター追加、互換性セクション追加） |
 | 2025-12-02 | 初版作成（dmenu-news分析結果に基づく） |
