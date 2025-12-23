@@ -677,3 +677,29 @@ Column(modifier = Modifier.fillMaxSize()) {
 - **検証徹底**：実装後のビジュアル確認を怠らない
 
 これらのプラクティスに従うことで、Figmaデザインに正確に準拠した高品質なUI実装が可能になる。
+
+---
+
+## 互換性
+
+### Agent Skills (Open Standard)
+
+このスキルは [Agent Skills](https://agentskills.io) オープンスタンダードに準拠しています。
+
+**対応ツール**:
+- Claude Code ✅
+- GitHub Copilot ✅
+- VS Code ✅
+- Cursor (Nightly) ✅
+- OpenAI Codex ✅
+
+`.claude/skills/` ディレクトリに配置することで、上記すべてのツールで使用可能です。
+
+---
+
+## 更新履歴
+
+| 日付 | 内容 |
+|------|------|
+| 2025-12-23 | Agent Skills対応（互換性セクション追加） |
+| 2025-12-XX | 初版作成 |
