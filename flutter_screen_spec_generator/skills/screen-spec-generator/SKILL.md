@@ -183,7 +183,10 @@ description: |
 - docs/screen_specs/README.md
 
 これで `/screen-spec lib/ui/xxx/widgets/xxx_page.dart` で
-画面定義書を生成できるようになりました。」
+画面定義書を生成できるようになりました。
+
+是非、実際に1つ画面定義書を作成してみてください。
+作成後、修正点があったら教えてください。」
 ```
 
 ---
