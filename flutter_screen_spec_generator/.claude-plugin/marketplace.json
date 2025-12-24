@@ -3,15 +3,14 @@
     "description": "Flutterプロジェクトの画面定義書を作成・管理するプラグイン。プロジェクト構造を自動解析し、会話形式でテンプレートをカスタマイズ、カスタムコマンドを生成します。",
     "version": "0.1.0",
     "owner": {
-        "name": "katsume",
-        "email": ""
+        "name": "katsume"
     },
     "skills": [
         {
             "name": "screen-spec-generator",
             "source": "./skills/screen-spec-generator",
             "description": "Flutterプロジェクトの画面定義書を作成・管理するスキル。プロジェクト構造を自動解析し、会話形式でテンプレートをカスタマイズ、カスタムコマンドを生成します。",
-            "version": "1.0.0",
+            "version": "0.1.0",
             "author": {
                 "name": "katsume"
             },

@@ -107,6 +107,8 @@ description: |
    find lib -name "*api*.dart"
    ```
 
+   ※ Claude Codeの場合は、Bashコマンドではなく専用ツール（Glob, Grep等）を使用してください。
+
 3. 検出結果をすべてユーザーに確認：
    ```
    「画面定義書の作成をお手伝いします。

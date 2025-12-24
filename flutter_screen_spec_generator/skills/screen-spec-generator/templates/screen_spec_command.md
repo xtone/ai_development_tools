@@ -110,6 +110,8 @@ mkdir -p docs/screen_specs/{module}/documents
 mkdir -p docs/screen_specs/{module}/screenshots/{screen_name}
 ```
 
+※ Claude Codeの場合は、Bashコマンドではなく専用ツール（Write等）を使用してディレクトリを作成してください。
+
 ##### 3.2 Markdown生成
 
 `docs/screen_specs/template.md`の構造を**厳密に**従い、セクションを順次生成
