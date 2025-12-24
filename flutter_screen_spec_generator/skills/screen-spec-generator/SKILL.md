@@ -110,7 +110,7 @@ description:
    find lib -name "*api*.dart"
    ```
 
-   ※ Claude Codeの場合は、Bashコマンドではなく専用ツール（Glob, Grep等）を使用してください。
+   ※ Claude Codeの場合は、Bashコマンドではなく専用ツール（Glob, Grep等）の使用を推奨します。
 
 3. 検出結果をすべてユーザーに確認：
    ```
