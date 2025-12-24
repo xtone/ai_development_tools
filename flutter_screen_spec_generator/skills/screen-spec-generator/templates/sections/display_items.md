@@ -28,9 +28,11 @@
 - テキストの取得元を記載
 - パターン:
   - APIレスポンス: 「アプリ内保持: {API名} APIから取得した{説明}（{フィールドパス}から抽出）」
-    - 例: 「アプリ内保持: GetUserInfo APIから取得したユーザー名（output.user.nameから抽出）」
+    - **API名はPascalCase形式**（例: GetUserInfo, Login, RetrieveList）
+    - 単一フィールドの例: 「アプリ内保持: Login APIから取得したユーザー名（output.user.nameから抽出）」
+    - 配列フィールドの例: 「アプリ内保持: GetMonthlyList APIから取得した年度（output.list[].monthから抽出）」
   - 固定値: 「固定値」または「ハードコード」
-  - アイコンなど: 「-」
+  - アイコンなど辞書や外部リソースを使用しない場合: 「-」
 
 ### 備考
 - 補足情報を記載
