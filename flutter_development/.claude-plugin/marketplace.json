@@ -1,7 +1,7 @@
 {
     "name": "flutter-development",
-    "description": "Flutter開発向けのツール群。Widget実装の設計判断から実装までをサポート",
-    "version": "0.1.0",
+    "description": "Flutter開発向けのツール群。Figmaデザイン分析からWidget実装、ネイティブ連携までをサポート",
+    "version": "0.2.0",
     "owner": {
         "name": "HINO, Yasushi",
         "email": "y.hino@xtone.co.jp"
@@ -16,6 +16,26 @@
                 "name": "HINO, Yasushi"
             },
             "tags": ["flutter", "widget", "architecture", "state-management", "riverpod", "autoroute", "mvvm", "interview"]
+        },
+        {
+            "name": "figma-to-flutter",
+            "source": "./skills/figma-to-flutter",
+            "description": "FigmaデザインをFlutter向け設計仕様書に変換します。Figma MCPツールを使用してレイアウト、スペーシング、タイポグラフィを抽出し、Row/Column/Stackへのマッピング、EdgeInsetsへの変換、TextStyleの生成を行います。Atomic Designに基づくコンポーネント分類も実施します。",
+            "version": "1.0.0",
+            "author": {
+                "name": "HINO, Yasushi"
+            },
+            "tags": ["flutter", "figma", "design", "atomic-design", "layout", "typography", "specification"]
+        },
+        {
+            "name": "flutter-implementation",
+            "source": "./skills/flutter-implementation",
+            "description": "設計仕様書からFlutterコードを生成します。StatelessWidget/StatefulWidget/ConsumerWidgetの適切な選択、Riverpod状態管理の統合、Widget testの生成、ネイティブプラットフォーム連携（iOS/Android）のガイドを提供します。",
+            "version": "1.0.0",
+            "author": {
+                "name": "HINO, Yasushi"
+            },
+            "tags": ["flutter", "implementation", "riverpod", "testing", "native-integration", "ios", "android"]
         }
     ]
 }
