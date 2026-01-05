@@ -1,0 +1,71 @@
+{
+  "name": "ios-development-skills",
+  "version": "1.0.0",
+  "description": "iOS/SwiftUI開発用のClaude Codeスキル集。SwiftUIのコーディングガイドライン、コンポーネントカタログ、マイグレーションガイド、アクセシビリティ実装ガイドなどを提供します。",
+  "author": "AI Development Tools",
+  "homepage": "https://github.com/your-org/ai_development_tools",
+  "repository": "https://github.com/your-org/ai_development_tools",
+  "plugins": [
+    {
+      "id": "swift-ios-migration",
+      "name": "swift-ios-migration",
+      "description": "Migration guide for Swift and iOS. Use when migrating ObservableObject to @Observable (iOS 17), enabling Swift 6/6.2 Strict Concurrency, fixing @MainActor/Sendable warnings, adopting Approachable Concurrency (Swift 6.2), or handling iPadOS 26 windowing system changes (UIRequiresFullScreen deprecation). Covers breaking changes and version upgrade tasks.",
+      "version": "1.0.0",
+      "source": {
+        "type": "path",
+        "path": "skills/swift-ios-migration"
+      }
+    },
+    {
+      "id": "swiftui-accessibility",
+      "name": "swiftui-accessibility",
+      "description": "Accessibility implementation guide for SwiftUI apps. Use when implementing VoiceOver support, adding accessibilityLabel/Hint/Value, supporting Dynamic Type, ensuring color contrast, testing accessibility, or reviewing accessibility in PRs. Covers iOS accessibility APIs, WCAG guidelines, and testing tools.",
+      "version": "1.0.0",
+      "source": {
+        "type": "path",
+        "path": "skills/swiftui-accessibility"
+      }
+    },
+    {
+      "id": "swiftui-code-review-checklist",
+      "name": "swiftui-code-review-checklist",
+      "description": "Code review checklist for SwiftUI and Swift PRs. Use when reviewing pull requests, checking code quality, verifying Swift/SwiftUI implementations, or conducting PR reviews. Provides prioritized checklist covering state management, performance, component design, data flow, async handling, UI/UX, accessibility, security, and testing.",
+      "version": "1.0.0",
+      "source": {
+        "type": "path",
+        "path": "skills/swiftui-code-review-checklist"
+      }
+    },
+    {
+      "id": "swiftui-coding-guidelines",
+      "name": "swiftui-coding-guidelines",
+      "description": "Core coding guidelines for iOS, iPadOS, macOS, watchOS, tvOS, and visionOS app development using SwiftUI and Swift. Use when implementing Views, working with @State/@Binding/@Observable/@StateObject, using NavigationStack/List/LazyVStack, designing components, or asking about SwiftUI patterns (infinite scroll, pull-to-refresh, search). Covers best practices, implementation patterns, and anti-patterns to avoid.",
+      "version": "1.0.0",
+      "source": {
+        "type": "path",
+        "path": "skills/swiftui-coding-guidelines"
+      }
+    },
+    {
+      "id": "swiftui-components",
+      "name": "swiftui-components",
+      "description": "SwiftUI UI component catalog. Use when implementing NavigationStack, Swift Charts, PhotosPicker, TipKit, ScrollView enhancements, animations, layouts, WebView, Liquid Glass and other UI components. Organized by feature category with OS version compatibility info. Reference for discovering available components and implementation patterns.",
+      "version": "1.0.0",
+      "source": {
+        "type": "path",
+        "path": "skills/swiftui-components"
+      }
+    },
+    {
+      "id": "swiftui-ssot",
+      "name": "swiftui-ssot",
+      "description": "Single Source of Truth (SSOT) guidelines for SwiftUI state management. Use when designing state architecture, choosing between @State/@Binding/@StateObject/@ObservedObject/@EnvironmentObject, fixing state synchronization issues, refactoring duplicated state, or reviewing state management in PRs. Covers SSOT principles, property wrapper selection, state lifting, and common violations.",
+      "version": "1.0.0",
+      "source": {
+        "type": "path",
+        "path": "skills/swiftui-ssot"
+      }
+    }
+  ]
+}
+
