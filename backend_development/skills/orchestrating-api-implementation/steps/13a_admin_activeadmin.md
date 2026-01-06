@@ -1,5 +1,29 @@
 # ステップ13a: ActiveAdminで管理画面を実装する
 
+## サブエージェント実行情報
+
+| 項目 | 値 |
+|------|-----|
+| **入力ファイル** | `.artifacts/01_specification.json`, `.artifacts/02_tech_stack.json` |
+| **出力ファイル** | `app/admin/*.rb`, `config/initializers/active_admin.rb` |
+| **依存ステップ** | ステップ1, ステップ2, ステップ9 |
+
+### 生成されるファイル
+
+- `app/admin/{model_name}.rb`（各モデル）
+- `config/initializers/active_admin.rb`
+- `config/locales/active_admin.ja.yml`
+- `db/migrate/*_devise_create_admin_users.rb`（必要に応じて）
+
+### 完了報告に含める情報
+
+- 登録したリソース数
+- 管理画面URL
+- ログイン情報（開発環境）
+- 出力ファイルパス一覧
+
+---
+
 ## 目次
 
 - [概要](#概要)

@@ -1,5 +1,28 @@
 # ステップ13b: Administrateで管理画面を実装する
 
+## サブエージェント実行情報
+
+| 項目 | 値 |
+|------|-----|
+| **入力ファイル** | `.artifacts/01_specification.json`, `.artifacts/02_tech_stack.json` |
+| **出力ファイル** | `app/dashboards/*.rb`, `app/controllers/admin/*.rb` |
+| **依存ステップ** | ステップ1, ステップ2, ステップ9 |
+
+### 生成されるファイル
+
+- `app/dashboards/{model_name}_dashboard.rb`（各モデル）
+- `app/controllers/admin/application_controller.rb`
+- `app/controllers/admin/{model_name}s_controller.rb`（各モデル）
+- `app/views/admin/*`
+
+### 完了報告に含める情報
+
+- 登録したダッシュボード数
+- 管理画面URL
+- 出力ファイルパス一覧
+
+---
+
 ## 目次
 
 - [概要](#概要)

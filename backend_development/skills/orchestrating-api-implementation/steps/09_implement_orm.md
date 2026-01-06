@@ -1,5 +1,29 @@
 # ステップ9: ORマッピングを実装する
 
+## サブエージェント実行情報
+
+| 項目 | 値 |
+|------|-----|
+| **入力ファイル** | `.artifacts/01_specification.json`, `.artifacts/05_db_schema.json` |
+| **出力ファイル** | `app/models/*.rb` |
+| **依存ステップ** | ステップ1, ステップ5 |
+
+### 生成されるファイル
+
+- `app/models/application_record.rb`（更新）
+- `app/models/{model_name}.rb`（各モデル）
+- `app/models/concerns/*.rb`（共通ロジック）
+
+### 完了報告に含める情報
+
+- 作成したモデルファイル数
+- リレーション定義数
+- スコープ定義数
+- `rails console` での動作確認結果
+- 出力ファイルパス一覧
+
+---
+
 ## 目次
 
 - [目的](#目的)

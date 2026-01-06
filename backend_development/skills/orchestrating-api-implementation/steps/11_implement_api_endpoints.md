@@ -1,5 +1,30 @@
 # ステップ11: APIエンドポイントを実装する
 
+## サブエージェント実行情報
+
+| 項目 | 値 |
+|------|-----|
+| **入力ファイル** | `.artifacts/03_usecases.json`, `.artifacts/04_openapi.yaml` |
+| **出力ファイル** | `app/controllers/api/v1/*.rb`, `app/serializers/*.rb`, `config/routes.rb` |
+| **依存ステップ** | ステップ3, ステップ4 |
+
+### 生成されるファイル
+
+- `app/controllers/api/v1/base_controller.rb`（更新）
+- `app/controllers/api/v1/{model_name}s_controller.rb`（各モデル）
+- `app/serializers/{model_name}_serializer.rb`（各モデル）
+- `config/routes.rb`（更新）
+
+### 完了報告に含める情報
+
+- 作成したコントローラ数
+- 作成したシリアライザ数
+- エンドポイント総数
+- `rails routes` の結果サマリ
+- 出力ファイルパス一覧
+
+---
+
 ## 目次
 
 - [目的](#目的)

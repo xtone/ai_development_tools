@@ -1,5 +1,28 @@
 # ステップ14: API Playgroundを実装する（オプション）
 
+## サブエージェント実行情報
+
+| 項目 | 値 |
+|------|-----|
+| **入力ファイル** | `.artifacts/04_openapi.yaml` |
+| **出力ファイル** | `config/initializers/rswag*.rb`, Swagger UIファイル |
+| **依存ステップ** | ステップ4 |
+
+### 生成されるファイル
+
+- `config/initializers/rswag_ui.rb`
+- `config/initializers/rswag_api.rb`
+- `public/api-docs/v1/swagger.yaml`（またはシンボリックリンク）
+
+### 完了報告に含める情報
+
+- Playground URL
+- 認証方式
+- 動作確認結果
+- 出力ファイルパス一覧
+
+---
+
 ## 目次
 
 - [目的](#目的)

@@ -1,5 +1,87 @@
 # ステップ5: DBスキーマを設計する
 
+## サブエージェント実行情報
+
+| 項目 | 値 |
+|------|-----|
+| **入力ファイル** | `.artifacts/01_specification.json` |
+| **出力ファイル** | `.artifacts/05_db_schema.json` |
+| **依存ステップ** | ステップ1 |
+
+### 出力ファイル形式
+
+```json
+{
+  "version": "1.0",
+  "generatedAt": "2025-01-01T00:00:00Z",
+  "step": "05_db_schema",
+  "data": {
+    "tables": [
+      {
+        "name": "posts",
+        "primaryKey": {
+          "name": "id",
+          "type": "uuid",
+          "default": "gen_random_uuid()"
+        },
+        "columns": [
+          {
+            "name": "title",
+            "type": "string",
+            "limit": 255,
+            "null": false
+          },
+          {
+            "name": "content",
+            "type": "text",
+            "null": true
+          },
+          {
+            "name": "status",
+            "type": "string",
+            "limit": 50,
+            "null": false,
+            "default": "draft",
+            "enum": ["draft", "published", "archived"]
+          },
+          {
+            "name": "author_id",
+            "type": "uuid",
+            "null": false,
+            "foreignKey": {
+              "table": "users",
+              "column": "id"
+            }
+          }
+        ],
+        "timestamps": true,
+        "customTypeColumns": [
+          {
+            "prefix": "seo_settings",
+            "fields": ["title", "description"]
+          }
+        ]
+      }
+    ],
+    "enums": [
+      {
+        "name": "post_status",
+        "values": ["draft", "published", "archived"]
+      }
+    ]
+  }
+}
+```
+
+### 完了報告に含める情報
+
+- テーブル数
+- カラム総数
+- 外部キー数
+- 出力ファイルパス
+
+---
+
 ## 目次
 
 - [目的](#目的)

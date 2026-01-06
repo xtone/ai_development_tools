@@ -1,5 +1,86 @@
 # ステップ6: SQLとインデックスを定義する
 
+## サブエージェント実行情報
+
+| 項目 | 値 |
+|------|-----|
+| **入力ファイル** | `.artifacts/03_usecases.json`, `.artifacts/05_db_schema.json` |
+| **出力ファイル** | `.artifacts/06_indexes.json` |
+| **依存ステップ** | ステップ3, ステップ5 |
+
+### 出力ファイル形式
+
+```json
+{
+  "version": "1.0",
+  "generatedAt": "2025-01-01T00:00:00Z",
+  "step": "06_indexes",
+  "data": {
+    "indexes": [
+      {
+        "table": "posts",
+        "name": "index_posts_on_status",
+        "columns": ["status"],
+        "type": "btree",
+        "unique": false
+      },
+      {
+        "table": "posts",
+        "name": "index_posts_on_author_id",
+        "columns": ["author_id"],
+        "type": "btree",
+        "unique": false,
+        "foreignKey": true
+      },
+      {
+        "table": "posts",
+        "name": "index_posts_on_status_and_created_at",
+        "columns": ["status", "created_at"],
+        "type": "btree",
+        "unique": false,
+        "composite": true
+      },
+      {
+        "table": "posts",
+        "name": "index_posts_on_searchable",
+        "columns": ["searchable"],
+        "type": "gin",
+        "unique": false
+      }
+    ],
+    "fullTextSearch": [
+      {
+        "table": "posts",
+        "column": "searchable",
+        "type": "tsvector",
+        "sources": [
+          { "column": "title", "weight": "A" },
+          { "column": "content", "weight": "B" }
+        ],
+        "language": "japanese",
+        "trigger": "posts_searchable_trigger"
+      }
+    ],
+    "uniqueConstraints": [
+      {
+        "table": "users",
+        "name": "index_users_on_email",
+        "columns": ["email"]
+      }
+    ]
+  }
+}
+```
+
+### 完了報告に含める情報
+
+- 通常インデックス数
+- 全文検索インデックス数
+- ユニーク制約数
+- 出力ファイルパス
+
+---
+
 ## 目次
 
 - [目的](#目的)
