@@ -155,6 +155,84 @@ Surface(
 
 ## 実行フロー（必須順序）
 
+### Phase 0: 既存コードベースの確認（Figma確認前・必須）
+
+**重要**: Figmaデータを取得する**前**に、プロジェクトの既存実装を必ず確認する。
+この手順を省略すると、既存の共通コンポーネントや確立されたパターンを無視した実装になるリスクがある。
+
+#### Step 0-1: 類似コンポーネントの検索
+
+```bash
+# 類似の画面/コンポーネントを検索
+Grep: "AppScreen" or "Screen" in ui/
+Grep: "[ComponentName]" similar patterns
+
+# 例: AiChatAppScreenを実装する場合
+Grep: "AppScreen" → ImageBasedAppScreen, WebViewAppScreenなどを発見
+```
+
+#### Step 0-2: 共通コンポーネントの確認
+
+以下のシステムUI要素は、ほぼ確実に共通コンポーネントが存在する：
+
+| 要素 | 検索パターン | よくある場所 |
+|------|------------|-------------|
+| ステータスバー | `StatusBar` | `ui/components/` |
+| ナビゲーションバー | `NavigationBar`, `BottomBar` | `ui/components/` |
+| ツールバー | `Toolbar`, `TopBar` | `ui/components/` |
+| ローディング | `Loading`, `Progress` | `ui/components/` |
+
+```bash
+# 共通コンポーネントの確認
+Grep: "StatusBar" in ui/components/
+ls ui/components/
+
+# 発見したら必ずそれを使用
+# ❌ Spacer(modifier = Modifier.height(52.dp))
+# ✅ StatusBar(contentColor = StatusBarColors.ContentColorDark)
+```
+
+#### Step 0-3: 既存パターンの踏襲
+
+同種の画面（例：XxxAppScreen）が存在する場合、**必ずそのパターンを踏襲**する：
+
+```kotlin
+// 既存パターンを確認
+fun ExistingAppScreen(
+    onBack: () -> Unit,                    // ← 戻るアクション
+    onUserInteraction: () -> Unit = {},    // ← ユーザー操作コールバック
+    overlayMode: Boolean = false           // ← オーバーレイ表示モード
+)
+
+// 新規実装でも同じシグネチャを踏襲
+fun NewAppScreen(
+    onBack: () -> Unit,
+    onUserInteraction: () -> Unit = {},
+    overlayMode: Boolean = false
+)
+```
+
+#### Step 0-4: 動作仕様の確認（Figmaに表現されない仕様）
+
+Figmaはビジュアルのみを表現する。以下の動作仕様は**既存コードから確認**：
+
+| 仕様タイプ | 確認方法 | 例 |
+|-----------|---------|-----|
+| ナビゲーション | 類似画面のパラメータ確認 | `onBack`, `overlayMode` |
+| ジェスチャー | 類似画面の実装確認 | スワイプで戻る、ドラッグ操作 |
+| アニメーション | 遷移処理の確認 | フェードイン、スライド |
+| 状態管理 | ViewModel/StateHolderの確認 | UiState、イベント処理 |
+
+```kotlin
+// 例: スワイプジェスチャーの確認
+// 既存画面でスワイプで戻る動作がある場合、同様に実装
+SwipeToDismissBox(
+    state = dismissState,
+    onDismissed = onBack,  // ← 既存パターンから継承
+    ...
+)
+```
+
 ### Phase 1: Figma仕様の抽出（効果測定の基盤）
 
 #### Step 1-1: URL解析
@@ -245,6 +323,15 @@ Surface(
 実装前に以下を必ず確認：
 
 #### チェックリスト
+
+**Phase 0関連（既存コードベース確認）**
+- [ ] 既存の類似画面を検索・確認したか
+- [ ] 共通コンポーネント（StatusBar等）の有無を確認したか
+- [ ] 共通コンポーネントが存在する場合、それを使用しているか
+- [ ] 既存のナビゲーション/ジェスチャーパターンを踏襲しているか
+- [ ] フルスクリーンアプリの場合、`overlayMode`パラメータを実装しているか
+
+**Phase 1関連（Figma仕様）**
 - [ ] `get_code` で全ての値を取得したか
 - [ ] **親コンテナも確認したか**（gap、grow、shrinkの影響）
 - [ ] 推測している箇所はないか（角丸、文字サイズ、色等）
@@ -701,5 +788,6 @@ Column(modifier = Modifier.fillMaxSize()) {
 
 | 日付 | 内容 |
 |------|------|
+| 2026-01-06 | Phase 0（既存コードベース確認）追加、チェックリスト強化（docomo-home-ui-mock FB反映） |
 | 2025-12-23 | Agent Skills対応（互換性セクション追加） |
 | 2025-12-XX | 初版作成 |
