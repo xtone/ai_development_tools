@@ -1,5 +1,5 @@
 ---
-name: implementing-rails-api
+name: orchestrating-api-implementation
 description: JSONで定義されたAPI仕様を元にRuby on RailsでAPIと管理画面を実装するスキル。全体のオーケストレーションを行い、各ステップの詳細ガイドラインに従って実装を進めます。
 ---
 
@@ -96,8 +96,11 @@ Claudeは、選択した方式で管理画面を実装します。方式に応�
 
 - ActiveAdmin: @steps/13a_admin_activeadmin.md
 - Administrate: @steps/13b_admin_administrate.md
-- Hotwire: @steps/13c_admin_hotwire.md
+- **Hotwire: @/backend_development/skills/implementing-hotwire-admin/SKILL.md** （独立スキルを使用）
+  - 概要とクイックリファレンス: @steps/13c_admin_hotwire.md
 - 共通設定・トラブルシューティング: @steps/13d_admin_common.md
+
+> **Note**: Hotwire管理画面を実装する場合は、E2Eテスト設計・実装も含む包括的な `implementing-hotwire-admin` スキルを使用してください。
 
 ### 14. API Playgroundを実装する（オプション）
 詳細: @steps/14_implement_api_playground.md

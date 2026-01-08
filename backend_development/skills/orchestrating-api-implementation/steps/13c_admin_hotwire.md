@@ -1,8 +1,22 @@
 # ステップ13c: Hotwireで管理画面を自作する
 
+> **重要**: Hotwire管理画面の完全な実装ガイドは **implementing-hotwire-admin** スキルを参照してください。
+>
+> 詳細: @/backend_development/skills/implementing-hotwire-admin/SKILL.md
+>
+> このスキルには以下が含まれます：
+> - セットアップからCRUD画面の実装
+> - Turbo対応アクション（削除ボタン等）
+> - Stimulusコントローラ
+> - **E2Eテスト設計と実装（Playwright + Capybara）**
+> - トラブルシューティング
+
+---
+
 ## 目次
 
 - [概要](#概要)
+- [クイックリファレンス](#クイックリファレンス)
 - [コントローラを作成する](#コントローラを作成する)
 - [ルーティングを設定する](#ルーティングを設定する)
 - [レイアウトを作成する](#レイアウトを作成する)
@@ -18,6 +32,31 @@
 ## 概要
 
 HotwireはRails標準のフロントエンドフレームワークです。Claudeは、Turbo + Stimulusを使用して、完全にカスタマイズ可能な管理画面を構築します。
+
+## クイックリファレンス
+
+### Turbo対応の削除ボタン（重要）
+
+Rails 8 + Turbo環境では、`link_to`の`method:`オプションが**機能しません**。必ず`button_to`を使用してください：
+
+```erb
+<%# NG: Turbo環境では動作しない %>
+<%= link_to '削除', path, method: :delete, data: { confirm: '削除しますか？' } %>
+
+<%# OK: button_to を使用 %>
+<%= button_to '削除', path,
+    method: :delete,
+    class: 'text-red-600 hover:text-red-800',
+    form: { data: { turbo_confirm: '削除しますか？' } },
+    data: { testid: 'delete-button' } %>
+```
+
+### E2Eテストでの注意点
+
+- `button_to`を使用した場合、テストでは`click_button`を使用（`click_link`ではない）
+- Turbo確認ダイアログは`accept_confirm`ヘルパーで処理
+
+詳細は implementing-hotwire-admin スキルを参照してください。
 
 ## コントローラを作成する
 
