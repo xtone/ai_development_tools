@@ -1,6 +1,6 @@
 ---
 name: android-architecture
-description: "Androidプロジェクトのアーキテクチャ設計を支援。Clean Architecture + MVI パターンの導入、パッケージ構造の提案、既存プロジェクトの分析を行う。"
+description: "Androidプロジェクトのアーキテクチャ設計を支援。プロジェクト特性に応じてMVI/MVVM/シンプルComposeから最適なパターンを提案し、パッケージ構造の設計と既存プロジェクトの分析を行う。"
 ---
 
 # Android Architecture Skill
@@ -31,15 +31,26 @@ User: /android-architecture analyze
 ### `setup` - 新規プロジェクトへの導入
 
 ```
-User: このプロジェクトにMVIアーキテクチャを導入して
+User: このプロジェクトにアーキテクチャを導入して
 User: /android-architecture setup
+User: /android-architecture setup mvi    # パターン指定も可能
+User: /android-architecture setup mvvm
+User: /android-architecture setup simple
 ```
 
 **実行内容**:
-1. 推奨パッケージ構造を提案
-2. MVI基盤クラスを生成
-3. サンプル機能（Feature）を作成
-4. セットアップガイドを生成
+1. 要件ヒアリング（画面数、状態管理の複雑さ、チーム経験）
+2. 最適なパターンを提案（MVI/MVVM/シンプルCompose）
+3. 選択されたパターンの基盤クラスを生成
+4. サンプル機能（Feature）を作成
+5. セットアップガイドを生成
+
+**パターン別の生成物**:
+| パターン | 生成物 |
+|---------|-------|
+| MVI | StateManager, Reducer, Presenter, サンプル機能 |
+| MVVM | BaseViewModel, UiState, サンプル機能 |
+| Simple | ガイドラインのみ（基盤クラスなし） |
 
 ### `document` - ドキュメント生成のみ
 
@@ -55,24 +66,15 @@ User: /android-architecture document
 
 ## 推奨アーキテクチャ
 
-### Clean Architecture + MVI
+プロジェクトの特性に応じて3つのパターンから選択します。
 
-このスキルが推奨するアーキテクチャ構成:
-
-```
-app/                    # アプリケーションモジュール（DI統合）
-├── ui/                 # UI層（Compose + ViewModel + MVI）
-├── domain/             # ドメイン層（UseCase, Repository Interface）
-└── data/               # データ層（Repository実装, Room, Retrofit）
-```
-
-### MVIコンポーネント
+### パターン1: MVI（複雑な状態管理向け）
 
 ```
 Screen (Compose)
     │ Intent
     ▼
-ViewModel
+ ViewModel
     │ Action
     ▼
 StateManager ─────┬──────────────┐
@@ -81,7 +83,49 @@ StateManager ─────┬──────────────┐
           (純粋な状態変換)   (副作用実行)
 ```
 
-詳細は `knowledge/dmenunews-example.md` を参照。
+**適用例**: dメニューニュース（本番アプリ、複雑な状態遷移）
+詳細は `knowledge/mvi-pattern.md` を参照。
+
+### パターン2: MVVM（シンプルな画面向け）
+
+```
+Screen (Compose)
+    │ Event
+    ▼
+ ViewModel ────── UiState
+    │
+    ▼
+ UseCase / Repository
+```
+
+**適用例**: 設定画面、CRUD中心のアプリ
+詳細は `knowledge/mvvm-pattern.md` を参照。
+
+### パターン3: シンプルCompose（モック/展示会向け）
+
+```
+MainActivity
+    │
+    ▼
+AppNavigation (remember + mutableStateOf)
+    │
+    ▼
+Screen Composables
+```
+
+**適用例**: AI HOME（展示会デモ、状態管理が単純）
+詳細は `knowledge/simple-compose.md` を参照。
+
+### パッケージ構造
+
+```
+app/                    # アプリケーションモジュール（DI統合）
+├── ui/                 # UI層（Compose + ViewModel）
+├── domain/             # ドメイン層（UseCase, Repository Interface）
+└── data/               # データ層（Repository実装, Room, Retrofit）
+```
+
+※ シンプルComposeの場合はシングルモジュールも可
 
 ## 判断基準
 
@@ -91,6 +135,7 @@ StateManager ─────┬──────────────┐
 |------|-------------|
 | 複雑な状態管理が必要 | MVI |
 | シンプルなCRUD画面 | MVVM（軽量） |
+| 展示会デモ/モックアプリ | シンプルCompose |
 | レガシーコードとの共存 | MVP → 段階的にMVIへ |
 
 ### パッケージ構造の選択
@@ -162,13 +207,38 @@ MVIの場合、以下を確認:
 
 ユーザーに以下を確認:
 - プロジェクトの規模（画面数）
+- 状態管理の複雑さ（複数画面で共有する状態があるか）
 - 既存コードの有無
 - チームの経験レベル
 - 特別な要件（マルチモジュール等）
+- 用途（本番アプリ/モック/展示会デモ）
 
-#### ステップ2: 基盤クラス生成
+#### ステップ2: パターン推奨
 
-`ui/common/mvi/` に以下を作成:
+ヒアリング結果に基づいて最適なパターンを提案:
+
+| 条件 | 推奨パターン |
+|------|-------------|
+| 10+画面、複雑な状態遷移、チームにMVI経験者 | **MVI** |
+| 5-10画面、シンプルなCRUD、チーム初心者多め | **MVVM** |
+| モック/展示会、状態共有なし、短期開発 | **シンプルCompose** |
+
+**推奨フォーマット**:
+```
+プロジェクト特性の分析結果:
+- 画面数: XX画面
+- 状態管理: [複雑/シンプル]
+- 用途: [本番/モック]
+
+推奨パターン: [MVI/MVVM/シンプルCompose]
+理由: ...
+
+このパターンで進めてよいですか？
+```
+
+#### ステップ3: 基盤クラス生成（パターン別）
+
+**MVI選択時**: `ui/common/mvi/` に以下を作成
 - `MviIntent.kt`
 - `MviAction.kt`
 - `MviState.kt`
@@ -177,15 +247,39 @@ MVIの場合、以下を確認:
 - `StateReducer.kt`
 - `MviPresenter.kt`
 
-#### ステップ3: サンプル機能の作成
+**MVVM選択時**: `ui/common/` に以下を作成
+- `BaseViewModel.kt`
+- `UiState.kt`
+- `UiEvent.kt`
 
-`ui/feature/sample/` にサンプル実装を作成:
+**シンプルCompose選択時**: 基盤クラスは作成しない
+- `docs/ARCHITECTURE_GUIDELINES.md` のみ生成
+
+#### ステップ4: サンプル機能の作成（パターン別）
+
+**MVI選択時**: `ui/feature/sample/` に作成
 - `SampleScreen.kt`
 - `SampleViewModel.kt`
 - `SampleUiState.kt`
 - `SampleIntent.kt`
 - `mvi/SampleStateManager.kt`
 - `mvi/SampleReducer.kt`
+
+**MVVM選択時**: `ui/feature/sample/` に作成
+- `SampleScreen.kt`
+- `SampleViewModel.kt`
+- `SampleUiState.kt`
+
+**シンプルCompose選択時**: サンプルは作成しない
+- 既存の `aihome-example.md` を参照として案内
+
+#### ステップ5: セットアップガイド生成
+
+`docs/ARCHITECTURE_SETUP.md` を生成:
+- 選択したパターンの説明
+- ディレクトリ構造
+- 新機能追加の手順
+- テスト方針
 
 ### 3. エラーハンドリング
 
@@ -199,10 +293,18 @@ MVIの場合、以下を確認:
 - 拡張・改善の提案にとどめる
 - 破壊的変更は避ける
 
+**エラー3: パターン選択に迷う**
+- ヒアリング項目を追加で確認
+- 両方のメリット・デメリットを提示
+- 最終判断はユーザーに委ねる
+
 ## Knowledge Files
 
-- `knowledge/dmenunews-example.md` - dメニューニュースでの実装例
+- `knowledge/dmenunews-example.md` - dメニューニュースでの実装例（MVI）
+- `knowledge/aihome-example.md` - AI HOMEでの実装例（シンプルCompose）
 - `knowledge/mvi-pattern.md` - MVIパターンの詳細ガイド
+- `knowledge/mvvm-pattern.md` - MVVMパターンの詳細ガイド
+- `knowledge/simple-compose.md` - シンプルComposeの詳細ガイド
 - `knowledge/migration-guide.md` - 既存プロジェクトへの移行ガイド
 
 ## 関連スキル
@@ -216,10 +318,18 @@ MVIの場合、以下を確認:
 
 - プロジェクト構造が正確に分析されている
 - アーキテクチャパターンが正しく特定されている
+- **プロジェクト特性に適したパターンが提案されている**
 - 生成ドキュメントが新規メンバーの理解を助ける
 - 提案が既存コードを破壊しない
 
 ## バージョン
+
+### v1.1 - パターン選択対応 (2026-01-13)
+- `setup` コマンドにパターン選択機能を追加
+- MVVM、シンプルComposeのサポート追加
+- 要件ヒアリングステップの強化
+- `knowledge/mvvm-pattern.md` 追加
+- `knowledge/simple-compose.md` 追加
 
 ### v1.0 - 初版 (2026-01-08)
 - `analyze` コマンド実装
