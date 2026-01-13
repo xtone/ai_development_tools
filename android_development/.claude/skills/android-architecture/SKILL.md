@@ -306,6 +306,7 @@ MVIの場合、以下を確認:
 - `knowledge/mvvm-pattern.md` - MVVMパターンの詳細ガイド
 - `knowledge/simple-compose.md` - シンプルComposeの詳細ガイド
 - `knowledge/migration-guide.md` - 既存プロジェクトへの移行ガイド
+- `knowledge/skill-integration.md` - Androidスキル連携ガイド
 
 ## 関連スキル
 
