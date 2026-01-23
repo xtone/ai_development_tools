@@ -217,7 +217,7 @@ def extract_keyframes_distributed(video_path, output_dir, quality=50, max_frames
     if segment_size < 1:
         segment_size = 1
 
-    keyframe_paths = []
+    keyframes = []  # パスだけでなく詳細情報を格納
     keyframe_count = 0
 
     for segment_idx in range(max_frames):
@@ -259,9 +259,16 @@ def extract_keyframes_distributed(video_path, output_dir, quality=50, max_frames
         if max_diff_frame is not None and (max_diff >= threshold or segment_idx == 0):
             keyframe_count += 1
             output_path = save_frame(max_diff_frame, output_dir, keyframe_count, quality, resize_ratio)
-            keyframe_paths.append(output_path)
-
             timestamp = max_diff_frame_idx / fps if fps > 0 else 0
+
+            keyframes.append({
+                'path': output_path,
+                'filename': output_path.name,
+                'timestamp': timestamp,
+                'frame_number': max_diff_frame_idx,
+                'diff': max_diff
+            })
+
             print(f"[Frame {max_diff_frame_idx:4d} @ {timestamp:5.2f}s] "
                   f"Keyframe #{keyframe_count} (diff={max_diff:.2f}) -> {output_path.name}")
 
@@ -275,7 +282,7 @@ def extract_keyframes_distributed(video_path, output_dir, quality=50, max_frames
     print(f"  Coverage: {(keyframe_count / max_frames) * 100:.1f}% of target")
     print(f"  Output directory: {output_dir}")
 
-    return keyframe_paths
+    return keyframes
 
 
 def extract_keyframes_sequential(video_path, output_dir, threshold=30, quality=50, max_frames=20, resize_ratio=0.5):
@@ -317,7 +324,7 @@ def extract_keyframes_sequential(video_path, output_dir, threshold=30, quality=5
     print()
 
     prev_frame = None
-    keyframe_paths = []
+    keyframes = []  # パスだけでなく詳細情報を格納
     frame_count = 0
     keyframe_count = 0
 
@@ -332,8 +339,16 @@ def extract_keyframes_sequential(video_path, output_dir, threshold=30, quality=5
         if prev_frame is None:
             keyframe_count += 1
             output_path = save_frame(frame, output_dir, keyframe_count, quality, resize_ratio)
-            keyframe_paths.append(output_path)
             timestamp = frame_count / fps if fps > 0 else 0
+
+            keyframes.append({
+                'path': output_path,
+                'filename': output_path.name,
+                'timestamp': timestamp,
+                'frame_number': frame_count,
+                'diff': 0
+            })
+
             print(f"[Frame {frame_count:4d} @ {timestamp:5.2f}s] "
                   f"Keyframe #{keyframe_count} (first frame) -> {output_path.name}")
             prev_frame = frame
@@ -346,8 +361,16 @@ def extract_keyframes_sequential(video_path, output_dir, threshold=30, quality=5
         if diff > threshold:
             keyframe_count += 1
             output_path = save_frame(frame, output_dir, keyframe_count, quality, resize_ratio)
-            keyframe_paths.append(output_path)
             timestamp = frame_count / fps if fps > 0 else 0
+
+            keyframes.append({
+                'path': output_path,
+                'filename': output_path.name,
+                'timestamp': timestamp,
+                'frame_number': frame_count,
+                'diff': diff
+            })
+
             print(f"[Frame {frame_count:4d} @ {timestamp:5.2f}s] "
                   f"Keyframe #{keyframe_count} (diff={diff:.2f}) -> {output_path.name}")
             prev_frame = frame
@@ -361,7 +384,7 @@ def extract_keyframes_sequential(video_path, output_dir, threshold=30, quality=5
     print(f"  Reduction rate: {(1 - keyframe_count/frame_count) * 100:.1f}%")
     print(f"  Output directory: {output_dir}")
 
-    return keyframe_paths
+    return keyframes
 
 
 def save_frame(frame, output_dir, frame_number, quality, resize_ratio):
@@ -382,6 +405,140 @@ def save_frame(frame, output_dir, frame_number, quality, resize_ratio):
     img.save(output_path, "JPEG", quality=quality, optimize=True)
 
     return output_path
+
+
+def transcribe_audio_with_whisper(video_path, model_name="base"):
+    """
+    Whisperを使用して動画の音声を文字起こし
+
+    Args:
+        video_path: 動画ファイルのパス
+        model_name: Whisperモデル名 (tiny/base/small/medium/large)
+
+    Returns:
+        dict: Whisperの文字起こし結果
+    """
+    try:
+        import whisper
+    except ImportError:
+        print("Error: openai-whisper not installed")
+        print("Install with: pip install openai-whisper")
+        return None
+
+    print(f"\nTranscribing audio with Whisper ({model_name} model)...")
+    print("Note: First run will download the model (~74MB for 'base')")
+
+    model = whisper.load_model(model_name)
+    result = model.transcribe(video_path, language="ja", verbose=False)
+
+    print(f"Transcription complete!")
+    print(f"  Detected language: {result.get('language', 'unknown')}")
+    print(f"  Segments: {len(result['segments'])}")
+
+    return result
+
+
+def map_speech_to_keyframes(keyframes, transcription):
+    """
+    キーフレームと音声セグメントをマッピング
+
+    Args:
+        keyframes: キーフレーム情報のリスト
+        transcription: Whisperの文字起こし結果
+
+    Returns:
+        list: 音声情報が追加されたキーフレームリスト
+    """
+    if not transcription or 'segments' not in transcription:
+        return keyframes
+
+    segments = transcription['segments']
+
+    for frame in keyframes:
+        frame_time = frame['timestamp']
+
+        # このフレームの前後100ms以内の音声を検索
+        nearby_speech = []
+        for seg in segments:
+            seg_start = seg['start']
+            seg_end = seg['end']
+
+            # フレーム時間がセグメント内、またはセグメント開始の直後（500ms以内）
+            if (seg_start <= frame_time <= seg_end) or \
+               (abs(frame_time - seg_start) < 0.5):
+                nearby_speech.append({
+                    'text': seg['text'].strip(),
+                    'start': seg_start,
+                    'end': seg_end
+                })
+
+        frame['speech'] = nearby_speech if nearby_speech else None
+
+    return keyframes
+
+
+def save_analysis_markdown(keyframes, transcription, output_dir, video_duration=0):
+    """
+    キーフレームと音声分析結果をマークダウンで保存
+
+    Args:
+        keyframes: キーフレーム情報のリスト
+        transcription: Whisperの文字起こし結果
+        output_dir: 出力ディレクトリ
+        video_duration: 動画の長さ（秒）
+    """
+    output_dir = Path(output_dir)
+    md_path = output_dir / "video_analysis.md"
+
+    with open(md_path, 'w', encoding='utf-8') as f:
+        f.write("# Video Analysis Report\n\n")
+        f.write("このレポートは video-keyframe-analyzer スキルによって自動生成されました。\n\n")
+
+        # Overview
+        f.write("## 概要\n\n")
+        f.write(f"- 動画時間: {video_duration:.2f}秒\n")
+        if transcription:
+            f.write(f"- 言語: {transcription.get('language', '不明')}\n")
+        f.write(f"- 抽出キーフレーム数: {len(keyframes)}\n")
+        if transcription:
+            f.write(f"- 音声セグメント数: {len(transcription.get('segments', []))}\n")
+        f.write("\n")
+
+        # Timeline
+        f.write("## タイムライン分析\n\n")
+        f.write("各キーフレームと、その時点での音声内容:\n\n")
+
+        for i, frame in enumerate(keyframes, 1):
+            f.write(f"### [{frame['timestamp']:.2f}s] Frame {i}\n\n")
+            f.write(f"**視覚情報:**\n")
+            f.write(f"- 画像: `{frame.get('filename', 'N/A')}`\n")
+            if 'diff' in frame:
+                f.write(f"- 差分値: {frame['diff']:.2f}\n")
+            f.write("\n")
+
+            f.write(f"**音声情報:**\n")
+            if frame.get('speech'):
+                for speech in frame['speech']:
+                    f.write(f"> 「{speech['text']}」\n")
+                    f.write(f"> （{speech['start']:.2f}s - {speech['end']:.2f}s）\n\n")
+            else:
+                f.write("> （無音または音声なし）\n\n")
+
+        # Full transcription
+        if transcription and 'segments' in transcription:
+            f.write("---\n\n")
+            f.write("## 全文文字起こし\n\n")
+            for seg in transcription['segments']:
+                start = seg['start']
+                end = seg['end']
+                text = seg['text'].strip()
+                f.write(f"**{start:.2f}s - {end:.2f}s**  \n")
+                f.write(f"{text}\n\n")
+
+    print(f"\n📄 Analysis report saved: {md_path}")
+    print(f"   Claude Codeで確認: cat {md_path}")
+
+    return md_path
 
 
 def main():
@@ -439,6 +596,12 @@ def main():
     parser.add_argument("--mode", choices=["distributed", "sequential"], default="distributed",
                         help="抽出モード: distributed（均等分割、推奨）/ sequential（順次）")
 
+    # 音声認識（オプション）
+    parser.add_argument("--with-speech", action="store_true",
+                        help="音声認識を実行（Whisperを使用、初回のみモデルダウンロード ~74MB）")
+    parser.add_argument("--speech-model", choices=["tiny", "base", "small", "medium"], default="base",
+                        help="Whisperモデルサイズ（デフォルト: base）")
+
     args = parser.parse_args()
 
     # 動画ファイルの存在確認
@@ -494,7 +657,7 @@ def main():
     try:
         if args.mode == "distributed":
             # 均等分割モード
-            keyframe_paths = extract_keyframes_distributed(
+            keyframes = extract_keyframes_distributed(
                 video_path=args.video_path,
                 output_dir=args.output_dir,
                 quality=params["quality"],
@@ -504,7 +667,7 @@ def main():
             )
         else:
             # 順次モード
-            keyframe_paths = extract_keyframes_sequential(
+            keyframes = extract_keyframes_sequential(
                 video_path=args.video_path,
                 output_dir=args.output_dir,
                 threshold=params["threshold"],
@@ -513,15 +676,42 @@ def main():
                 resize_ratio=params["resize_ratio"]
             )
 
+        # 音声認識（オプション）
+        transcription = None
+        if args.with_speech:
+            transcription = transcribe_audio_with_whisper(
+                args.video_path,
+                model_name=args.speech_model
+            )
+
+            if transcription:
+                # マッピング（keyframesには既にタイムスタンプ情報が含まれている）
+                keyframes_with_speech = map_speech_to_keyframes(keyframes, transcription)
+
+                # 動画の長さを取得
+                cap = cv2.VideoCapture(args.video_path)
+                fps = cap.get(cv2.CAP_PROP_FPS)
+                total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+                duration = total_frames / fps if fps > 0 else 0
+                cap.release()
+
+                # マークダウン保存
+                save_analysis_markdown(keyframes_with_speech, transcription, args.output_dir, duration)
+
         print()
         print("次のステップ:")
-        print("  1. Claude Codeで以下のコマンドを実行して画像を確認:")
-        print(f"     ls -lh {args.output_dir}")
-        print("  2. 各キーフレームを読み込んで分析:")
-        for i, path in enumerate(keyframe_paths[:5], 1):
-            print(f"     Read: {path}")
-        if len(keyframe_paths) > 5:
-            print(f"     ... (and {len(keyframe_paths) - 5} more)")
+        if args.with_speech and transcription:
+            print("  1. 音声付き分析レポートを確認:")
+            print(f"     cat {args.output_dir}/video_analysis.md")
+            print("  2. 各キーフレームを読み込んで分析:")
+        else:
+            print("  1. Claude Codeで以下のコマンドを実行して画像を確認:")
+            print(f"     ls -lh {args.output_dir}")
+            print("  2. 各キーフレームを読み込んで分析:")
+        for i, kf in enumerate(keyframes[:5], 1):
+            print(f"     Read: {kf['path']}")
+        if len(keyframes) > 5:
+            print(f"     ... (and {len(keyframes) - 5} more)")
 
     except Exception as e:
         print(f"Error: {e}")

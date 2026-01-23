@@ -65,6 +65,80 @@ python extract_keyframes.py video.mp4 \
 | `--max-frames` | 20 | 最大抽出フレーム数 |
 | `--resize-ratio` | 0.5 | リサイズ比率（0.5で半分のサイズ） |
 | `--output-dir` | /tmp/claude-code-video | 出力ディレクトリ |
+| `--with-speech` | False | 音声認識を実行（Whisperを使用） |
+| `--speech-model` | base | Whisperモデルサイズ（tiny/base/small/medium） |
+
+## 音声認識機能（オプション）
+
+`--with-speech` オプションで、動画の音声も文字起こしして分析できます。
+
+### 基本的な使い方
+
+```bash
+# 音声認識を有効化（baseモデル）
+python extract_keyframes.py video.mp4 --with-speech
+
+# より高精度なモデルを使用
+python extract_keyframes.py video.mp4 --with-speech --speech-model small
+
+# autoモードと組み合わせ
+python extract_keyframes.py video.mp4 --with-speech --auto
+```
+
+### 初回のみ: モデルダウンロード
+
+初回実行時のみ、Whisperモデルがダウンロードされます：
+- `tiny`: 約39MB
+- `base`: 約74MB（デフォルト）
+- `small`: 約244MB
+- `medium`: 約769MB
+
+### 推奨される用途
+
+✅ **有効なケース**:
+- ナレーション付きデモ動画
+- プレゼンテーション録画
+- チュートリアル動画
+- 口頭コメント付きUIテスト録画
+- デザイナーからの参考動画（音声解説付き）
+
+⚠️ **限界**:
+- 一人称視点の動画では、撮影者と話者の特定が困難
+- 音声品質に依存（雑音、早口、方言は認識精度が下がる）
+- キーフレーム+音声だけでは、人物関係の推測には限界がある
+
+### 出力フォーマット
+
+音声認識を有効にすると、`video_analysis.md`が生成されます：
+
+```markdown
+# Video Analysis Report
+
+## 概要
+- 動画時間: 36.00秒
+- 言語: ja
+- 抽出キーフレーム数: 20
+- 音声セグメント数: 7
+
+## タイムライン分析
+各キーフレームと、その時点での音声内容:
+
+### [1.47s] Frame 1
+**視覚情報:**
+- 画像: `keyframe_001.jpg`
+- 差分値: 305.94
+
+**音声情報:**
+> 「おくちみして」
+> （0.00s - 2.00s）
+
+## 全文文字起こし
+**0.00s - 2.00s**
+おくちみして
+...
+```
+
+Claude Codeで`Read: /tmp/claude-code-video/video_analysis.md`を実行すれば、視覚+音声の統合分析が可能になります。
 
 ## 動画の長さ制限
 
