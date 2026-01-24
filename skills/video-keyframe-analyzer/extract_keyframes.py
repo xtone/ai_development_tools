@@ -165,7 +165,7 @@ def detect_video_type(video_path, sample_count=30):
         return "transition"
 
 
-def extract_keyframes_distributed(video_path, output_dir, quality=50, max_frames=20, resize_ratio=0.5, threshold=None):
+def extract_keyframes_distributed(video_path, output_dir, quality=50, max_frames=20, resize_ratio=0.5, threshold=None, ensure_coverage=False):
     """
     動画を時間軸で均等に分割し、各区間から差分が最大のフレームを抽出
 
@@ -176,6 +176,7 @@ def extract_keyframes_distributed(video_path, output_dir, quality=50, max_frames
         max_frames: 最大抽出フレーム数
         resize_ratio: リサイズ比率
         threshold: 最小差分閾値（None なら自動）
+        ensure_coverage: 全体カバレッジを保証（各セグメントから必ず1フレーム抽出、閾値無視）
 
     Returns:
         抽出されたキーフレームのパスリスト
@@ -223,7 +224,11 @@ def extract_keyframes_distributed(video_path, output_dir, quality=50, max_frames
     for segment_idx in range(max_frames):
         # 区間の開始・終了フレーム
         start_frame = segment_idx * segment_size
-        end_frame = min(start_frame + segment_size, total_frames)
+        # 最後のセグメントは残り全てを処理
+        if segment_idx == max_frames - 1:
+            end_frame = total_frames
+        else:
+            end_frame = min(start_frame + segment_size, total_frames)
 
         if start_frame >= total_frames:
             break
@@ -255,8 +260,8 @@ def extract_keyframes_distributed(video_path, output_dir, quality=50, max_frames
 
             prev_frame = frame
 
-        # 閾値を超えていれば保存
-        if max_diff_frame is not None and (max_diff >= threshold or segment_idx == 0):
+        # 閾値を超えていれば保存（ensure_coverageの場合は閾値無視）
+        if max_diff_frame is not None and (ensure_coverage or max_diff >= threshold or segment_idx == 0):
             keyframe_count += 1
             output_path = save_frame(max_diff_frame, output_dir, keyframe_count, quality, resize_ratio)
             timestamp = max_diff_frame_idx / fps if fps > 0 else 0
@@ -274,12 +279,24 @@ def extract_keyframes_distributed(video_path, output_dir, quality=50, max_frames
 
     cap.release()
 
+    # 時間軸カバレッジを計算
+    if keyframes:
+        last_timestamp = keyframes[-1]['timestamp']
+        time_coverage = (last_timestamp / duration * 100) if duration > 0 else 0
+    else:
+        last_timestamp = 0
+        time_coverage = 0
+
     print()
     print(f"Extraction complete!")
     print(f"  Total frames: {total_frames}")
     print(f"  Keyframes extracted: {keyframe_count}")
     print(f"  Reduction rate: {(1 - keyframe_count/total_frames) * 100:.1f}%")
     print(f"  Coverage: {(keyframe_count / max_frames) * 100:.1f}% of target")
+    print(f"  Time coverage: {time_coverage:.1f}% (0.00s-{last_timestamp:.2f}s / {duration:.2f}s)")
+    if time_coverage < 95 and not ensure_coverage:
+        print(f"  ⚠️  Warning: Last {duration - last_timestamp:.2f}s ({100 - time_coverage:.1f}%) not covered")
+        print(f"      Try: --ensure-full-coverage or lower --threshold")
     print(f"  Output directory: {output_dir}")
 
     return keyframes
@@ -382,6 +399,96 @@ def extract_keyframes_sequential(video_path, output_dir, threshold=30, quality=5
     print(f"  Total frames processed: {frame_count}")
     print(f"  Keyframes extracted: {keyframe_count}")
     print(f"  Reduction rate: {(1 - keyframe_count/frame_count) * 100:.1f}%")
+    print(f"  Output directory: {output_dir}")
+
+    return keyframes
+
+
+def extract_keyframes_by_timestamps(video_path, output_dir, timestamps, quality=50, resize_ratio=0.5):
+    """
+    指定されたタイムスタンプでフレームを抽出
+
+    Args:
+        video_path: 動画ファイルのパス
+        output_dir: 出力ディレクトリ
+        timestamps: タイムスタンプのリスト（秒単位）
+        quality: JPEG品質（0-100）
+        resize_ratio: リサイズ比率
+
+    Returns:
+        抽出されたキーフレーム情報のリスト
+    """
+    # 動画を開く
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        raise ValueError(f"Failed to open video: {video_path}")
+
+    # 出力ディレクトリ作成
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # 動画情報取得
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    duration = total_frames / fps if fps > 0 else 0
+
+    print(f"\nVideo info:")
+    print(f"  Duration: {duration:.2f}s")
+    print(f"  FPS: {fps:.2f}")
+    print(f"  Total frames: {total_frames}")
+    print(f"  Timestamps: {len(timestamps)}")
+    print(f"  Extraction mode: Timestamp-based")
+    print()
+
+    keyframes = []
+    keyframe_count = 0
+
+    # タイムスタンプを時系列順にソート
+    sorted_timestamps = sorted(timestamps)
+
+    for time_s in sorted_timestamps:
+        # タイムスタンプをフレーム番号に変換
+        frame_num = int(time_s * fps)
+
+        # 動画の範囲外チェック
+        if frame_num >= total_frames:
+            print(f"⚠️  Warning: Timestamp {time_s:.2f}s exceeds video duration ({duration:.2f}s), using last frame")
+            frame_num = total_frames - 1
+        elif frame_num < 0:
+            print(f"⚠️  Warning: Timestamp {time_s:.2f}s is negative, using first frame")
+            frame_num = 0
+
+        # フレームを取得
+        cap.set(cv2.CAP_PROP_POS_FRAMES, frame_num)
+        ret, frame = cap.read()
+
+        if not ret:
+            print(f"❌ Error: Failed to read frame at {time_s:.2f}s (frame {frame_num})")
+            continue
+
+        # フレーム保存
+        keyframe_count += 1
+        output_path = save_frame(frame, output_dir, keyframe_count, quality, resize_ratio)
+
+        keyframes.append({
+            'path': output_path,
+            'filename': output_path.name,
+            'timestamp': time_s,
+            'frame_number': frame_num,
+            'diff': 0  # タイムスタンプ指定なので差分は計算しない
+        })
+
+        print(f"[Frame {frame_num:4d} @ {time_s:5.2f}s] "
+              f"Keyframe #{keyframe_count} -> {output_path.name}")
+
+    cap.release()
+
+    print()
+    print(f"Extraction complete!")
+    print(f"  Total frames: {total_frames}")
+    print(f"  Keyframes extracted: {keyframe_count}")
+    print(f"  Reduction rate: {(1 - keyframe_count/total_frames) * 100:.1f}%")
+    print(f"  Time coverage: {sorted_timestamps[0]:.2f}s - {sorted_timestamps[-1]:.2f}s")
     print(f"  Output directory: {output_dir}")
 
     return keyframes
@@ -596,6 +703,14 @@ def main():
     parser.add_argument("--mode", choices=["distributed", "sequential"], default="distributed",
                         help="抽出モード: distributed（均等分割、推奨）/ sequential（順次）")
 
+    # 全体カバレッジ保証
+    parser.add_argument("--ensure-full-coverage", action="store_true",
+                        help="動画全体のカバレッジを保証（各セグメントから必ず1フレーム抽出、閾値無視）")
+
+    # タイムスタンプ指定
+    parser.add_argument("--timestamps", type=str,
+                        help="特定のタイムスタンプでフレームを抽出（カンマ区切り、例: \"0.0,0.5,1.0\"）")
+
     # 音声認識（オプション）
     parser.add_argument("--with-speech", action="store_true",
                         help="音声認識を実行（Whisperを使用、初回のみモデルダウンロード ~74MB）")
@@ -655,7 +770,24 @@ def main():
 
     # キーフレーム抽出
     try:
-        if args.mode == "distributed":
+        # タイムスタンプモードの判定
+        if args.timestamps:
+            # タイムスタンプをパース
+            try:
+                timestamps = [float(t.strip()) for t in args.timestamps.split(',')]
+            except ValueError:
+                print("Error: Invalid timestamp format. Use comma-separated numbers (e.g., '0.0,0.5,1.0')")
+                sys.exit(1)
+
+            # タイムスタンプモードでキーフレーム抽出
+            keyframes = extract_keyframes_by_timestamps(
+                video_path=args.video_path,
+                output_dir=args.output_dir,
+                timestamps=timestamps,
+                quality=params["quality"],
+                resize_ratio=params["resize_ratio"]
+            )
+        elif args.mode == "distributed":
             # 均等分割モード
             keyframes = extract_keyframes_distributed(
                 video_path=args.video_path,
@@ -663,7 +795,8 @@ def main():
                 quality=params["quality"],
                 max_frames=params["max_frames"],
                 resize_ratio=params["resize_ratio"],
-                threshold=params["threshold"] if not args.auto else None
+                threshold=params["threshold"] if not args.auto else None,
+                ensure_coverage=args.ensure_full_coverage
             )
         else:
             # 順次モード

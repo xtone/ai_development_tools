@@ -65,8 +65,67 @@ python extract_keyframes.py video.mp4 \
 | `--max-frames` | 20 | 最大抽出フレーム数 |
 | `--resize-ratio` | 0.5 | リサイズ比率（0.5で半分のサイズ） |
 | `--output-dir` | /tmp/claude-code-video | 出力ディレクトリ |
+| `--timestamps` | - | 特定のタイムスタンプでフレームを抽出（カンマ区切り、例: "0.0,0.5,1.0"） |
+| `--ensure-full-coverage` | False | 動画全体のカバレッジを保証（各セグメントから必ず1フレーム抽出） |
 | `--with-speech` | False | 音声認識を実行（Whisperを使用） |
 | `--speech-model` | base | Whisperモデルサイズ（tiny/base/small/medium） |
+
+## タイムスタンプ指定による抽出
+
+`--timestamps` オプションで、特定のタイミングのフレームを正確に抽出できます。
+
+### 基本的な使い方
+
+```bash
+# 特定のタイムスタンプでフレームを抽出
+python extract_keyframes.py video.mp4 --timestamps "0.0,0.5,1.0,1.5"
+
+# 画質を上げる
+python extract_keyframes.py video.mp4 --timestamps "0.0,1.0,2.0" --quality 70
+```
+
+### 推奨される用途
+
+✅ **有効なケース**:
+- アニメーション仕様書に記載されたタイミング（例: 0.37秒でワナビー出現）を検証
+- 特定のアニメーションポイントを確認
+- 仕様動画と実装動画を同じタイミングで比較
+- バグが発生する正確なタイミングを確認
+
+### 使用例
+
+```bash
+# アニメーション仕様の検証
+python extract_keyframes.py spec_video.mp4 --timestamps "0.0,0.37,0.57,0.83"
+
+# 実装動画と仕様動画を同じタイミングで比較
+python extract_keyframes.py spec.mp4 --timestamps "0.0,0.5,1.0" --output-dir spec_frames/
+python extract_keyframes.py impl.mp4 --timestamps "0.0,0.5,1.0" --output-dir impl_frames/
+
+# ロック画面アニメーションの状態遷移を確認
+python extract_keyframes.py lock_screen.mp4 --timestamps "0.0,1.69,2.67,4.92,11.7"
+```
+
+## 動画全体のカバレッジ保証
+
+`--ensure-full-coverage` オプションで、動画全体から均等にフレームを抽出できます。
+
+### 基本的な使い方
+
+```bash
+# 差分閾値に関係なく動画全体からフレームを抽出
+python extract_keyframes.py video.mp4 --ensure-full-coverage --max-frames 30
+
+# distributedモードと組み合わせ
+python extract_keyframes.py video.mp4 --mode distributed --ensure-full-coverage
+```
+
+### 推奨される用途
+
+✅ **有効なケース**:
+- フェードイン/フェードアウトなど緩やかな変化のアニメーション
+- 変化が小さいUI仕様動画
+- 動画の後半部分がスキップされる場合
 
 ## 音声認識機能（オプション）
 
