@@ -264,6 +264,35 @@ Claude Codeで`Read: /tmp/claude-code-video/video_analysis.md`を実行すれば
 実装動画: ~/recordings/current_implementation.mp4
 ```
 
+### 4. 「ログでは分からない問題」の発見
+
+**実案件での成功事例（DOCOMO AI HOME Issue #303）**
+
+```bash
+python extract_keyframes.py ~/Desktop/screen_recording.mp4 \
+  --threshold 20 \
+  --quality 60 \
+  --max-frames 25
+```
+
+**課題**:
+ユーザーから「カード切り替え時に2回フェードアウトが走る」という報告。
+ログでは「Skipping fade-out」と正しく出力されているのに、UIでは問題が再現。
+
+**発見した根本原因**:
+動画分析により、以下の問題を視覚的に特定：
+1. Frame 9-10: AIメッセージがフェードアウト（意図通り）
+2. Frame 11: AIメッセージが消えた状態（修正が効いている）
+3. **Frame 12-13: ContentRecommendが再びスケール表示**（これが問題！）
+4. Frame 14-15: Ticketカードに収束
+
+→ 「別のコンポーネント（ContentRecommendExpandedContent内のAIメッセージ領域）が原因」と判明
+
+**成果**:
+- ログだけでは絶対に分からなかった問題を30分で解決
+- 手作業での試行錯誤なら2-3時間かかっていた可能性
+- ユーザーの主観的なフィードバック（「違和感がある」）を客観的に分析
+
 ## 出力例
 
 ```
@@ -289,9 +318,25 @@ Extraction complete!
 
 ## トラブルシューティング
 
+### エラー: python: command not found
+
+macOSやLinuxの一部環境では、`python`コマンドではなく`python3`を使用する必要があります。
+
+```bash
+# エラーが出る場合
+python extract_keyframes.py video.mp4
+
+# python3を使用
+python3 extract_keyframes.py video.mp4
+```
+
 ### エラー: Required package not found
 
 ```bash
+# Python 3を使用している場合
+pip3 install opencv-python pillow numpy
+
+# または
 pip install opencv-python pillow numpy
 ```
 
