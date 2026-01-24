@@ -95,19 +95,21 @@ def analyze_video_samples(video_path, sample_count=30):
     prev_frame = None
     count = 0
 
-    while cap.isOpened() and count < sample_count:
-        ret, frame = cap.read()
-        if not ret:
-            break
+    try:
+        while cap.isOpened() and count < sample_count:
+            ret, frame = cap.read()
+            if not ret:
+                break
 
-        if prev_frame is not None:
-            diff = calculate_frame_difference(prev_frame, frame)
-            diffs.append(diff)
+            if prev_frame is not None:
+                diff = calculate_frame_difference(prev_frame, frame)
+                diffs.append(diff)
 
-        prev_frame = frame
-        count += 1
+            prev_frame = frame
+            count += 1
+    finally:
+        cap.release()
 
-    cap.release()
     return diffs
 
 
@@ -186,120 +188,121 @@ def extract_keyframes_distributed(video_path, output_dir, quality=50, max_frames
     if not cap.isOpened():
         raise ValueError(f"Failed to open video: {video_path}")
 
-    # 出力ディレクトリ作成
-    output_dir = Path(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        # 出力ディレクトリ作成
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
 
-    # 動画情報
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    duration = total_frames / fps if fps > 0 else 0
+        # 動画情報
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        duration = total_frames / fps if fps > 0 else 0
 
-    # 閾値の自動調整
-    if threshold is None:
-        threshold = auto_adjust_threshold(video_path)
-        print(f"Auto-adjusted threshold: {threshold:.2f}")
+        # 閾値の自動調整
+        if threshold is None:
+            threshold = auto_adjust_threshold(video_path)
+            print(f"Auto-adjusted threshold: {threshold:.2f}")
 
-    # 動画タイプの自動判定
-    video_type = detect_video_type(video_path)
-    print(f"Detected video type: {video_type}")
+        # 動画タイプの自動判定
+        video_type = detect_video_type(video_path)
+        print(f"Detected video type: {video_type}")
 
-    print(f"\nVideo info:")
-    print(f"  Duration: {duration:.2f}s")
-    print(f"  FPS: {fps:.2f}")
-    print(f"  Total frames: {total_frames}")
-    print(f"  Threshold: {threshold:.2f}")
-    print(f"  Max frames: {max_frames}")
-    print(f"  Extraction mode: Distributed (均等分割)")
-    print()
+        print(f"\nVideo info:")
+        print(f"  Duration: {duration:.2f}s")
+        print(f"  FPS: {fps:.2f}")
+        print(f"  Total frames: {total_frames}")
+        print(f"  Threshold: {threshold:.2f}")
+        print(f"  Max frames: {max_frames}")
+        print(f"  Extraction mode: Distributed (均等分割)")
+        print()
 
-    # 動画を max_frames 個の区間に分割
-    segment_size = total_frames // max_frames
-    if segment_size < 1:
-        segment_size = 1
+        # 動画を max_frames 個の区間に分割
+        segment_size = total_frames // max_frames
+        if segment_size < 1:
+            segment_size = 1
 
-    keyframes = []  # パスだけでなく詳細情報を格納
-    keyframe_count = 0
+        keyframes = []  # パスだけでなく詳細情報を格納
+        keyframe_count = 0
 
-    for segment_idx in range(max_frames):
-        # 区間の開始・終了フレーム
-        start_frame = segment_idx * segment_size
-        # 最後のセグメントは残り全てを処理
-        if segment_idx == max_frames - 1:
-            end_frame = total_frames
-        else:
-            end_frame = min(start_frame + segment_size, total_frames)
+        for segment_idx in range(max_frames):
+            # 区間の開始・終了フレーム
+            start_frame = segment_idx * segment_size
+            # 最後のセグメントは残り全てを処理
+            if segment_idx == max_frames - 1:
+                end_frame = total_frames
+            else:
+                end_frame = min(start_frame + segment_size, total_frames)
 
-        if start_frame >= total_frames:
-            break
-
-        # 区間内で差分が最大のフレームを探す
-        cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
-
-        max_diff = -1
-        max_diff_frame = None
-        max_diff_frame_idx = start_frame
-        prev_frame = None
-
-        for frame_idx in range(start_frame, end_frame):
-            ret, frame = cap.read()
-            if not ret:
+            if start_frame >= total_frames:
                 break
 
-            if prev_frame is not None:
-                diff = calculate_frame_difference(prev_frame, frame)
-                if diff > max_diff:
-                    max_diff = diff
+            # 区間内で差分が最大のフレームを探す
+            cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
+
+            max_diff = -1
+            max_diff_frame = None
+            max_diff_frame_idx = start_frame
+            prev_frame = None
+
+            for frame_idx in range(start_frame, end_frame):
+                ret, frame = cap.read()
+                if not ret:
+                    break
+
+                if prev_frame is not None:
+                    diff = calculate_frame_difference(prev_frame, frame)
+                    if diff > max_diff:
+                        max_diff = diff
+                        max_diff_frame = frame.copy()
+                        max_diff_frame_idx = frame_idx
+                else:
+                    # 最初のフレーム
                     max_diff_frame = frame.copy()
                     max_diff_frame_idx = frame_idx
-            else:
-                # 最初のフレーム
-                max_diff_frame = frame.copy()
-                max_diff_frame_idx = frame_idx
-                max_diff = 0
+                    max_diff = 0
 
-            prev_frame = frame
+                prev_frame = frame
 
-        # 閾値を超えていれば保存（ensure_coverageの場合は閾値無視）
-        if max_diff_frame is not None and (ensure_coverage or max_diff >= threshold or segment_idx == 0):
-            keyframe_count += 1
-            output_path = save_frame(max_diff_frame, output_dir, keyframe_count, quality, resize_ratio)
-            timestamp = max_diff_frame_idx / fps if fps > 0 else 0
+            # 閾値を超えていれば保存（ensure_coverageの場合は閾値無視）
+            if max_diff_frame is not None and (ensure_coverage or max_diff >= threshold or segment_idx == 0):
+                keyframe_count += 1
+                output_path = save_frame(max_diff_frame, output_dir, keyframe_count, quality, resize_ratio)
+                timestamp = max_diff_frame_idx / fps if fps > 0 else 0
 
-            keyframes.append({
-                'path': output_path,
-                'filename': output_path.name,
-                'timestamp': timestamp,
-                'frame_number': max_diff_frame_idx,
-                'diff': max_diff
-            })
+                keyframes.append({
+                    'path': output_path,
+                    'filename': output_path.name,
+                    'timestamp': timestamp,
+                    'frame_number': max_diff_frame_idx,
+                    'diff': max_diff
+                })
 
-            print(f"[Frame {max_diff_frame_idx:4d} @ {timestamp:5.2f}s] "
-                  f"Keyframe #{keyframe_count} (diff={max_diff:.2f}) -> {output_path.name}")
+                print(f"[Frame {max_diff_frame_idx:4d} @ {timestamp:5.2f}s] "
+                      f"Keyframe #{keyframe_count} (diff={max_diff:.2f}) -> {output_path.name}")
 
-    cap.release()
+        # 時間軸カバレッジを計算
+        if keyframes:
+            last_timestamp = keyframes[-1]['timestamp']
+            time_coverage = (last_timestamp / duration * 100) if duration > 0 else 0
+        else:
+            last_timestamp = 0
+            time_coverage = 0
 
-    # 時間軸カバレッジを計算
-    if keyframes:
-        last_timestamp = keyframes[-1]['timestamp']
-        time_coverage = (last_timestamp / duration * 100) if duration > 0 else 0
-    else:
-        last_timestamp = 0
-        time_coverage = 0
+        print()
+        print(f"Extraction complete!")
+        print(f"  Total frames: {total_frames}")
+        print(f"  Keyframes extracted: {keyframe_count}")
+        print(f"  Reduction rate: {(1 - keyframe_count/total_frames) * 100:.1f}%")
+        print(f"  Coverage: {(keyframe_count / max_frames) * 100:.1f}% of target")
+        print(f"  Time coverage: {time_coverage:.1f}% (0.00s-{last_timestamp:.2f}s / {duration:.2f}s)")
+        if time_coverage < 95 and not ensure_coverage:
+            print(f"  ⚠️  Warning: Last {duration - last_timestamp:.2f}s ({100 - time_coverage:.1f}%) not covered")
+            print(f"      Try: --ensure-full-coverage or lower --threshold")
+        print(f"  Output directory: {output_dir}")
 
-    print()
-    print(f"Extraction complete!")
-    print(f"  Total frames: {total_frames}")
-    print(f"  Keyframes extracted: {keyframe_count}")
-    print(f"  Reduction rate: {(1 - keyframe_count/total_frames) * 100:.1f}%")
-    print(f"  Coverage: {(keyframe_count / max_frames) * 100:.1f}% of target")
-    print(f"  Time coverage: {time_coverage:.1f}% (0.00s-{last_timestamp:.2f}s / {duration:.2f}s)")
-    if time_coverage < 95 and not ensure_coverage:
-        print(f"  ⚠️  Warning: Last {duration - last_timestamp:.2f}s ({100 - time_coverage:.1f}%) not covered")
-        print(f"      Try: --ensure-full-coverage or lower --threshold")
-    print(f"  Output directory: {output_dir}")
-
-    return keyframes
+        return keyframes
+    finally:
+        cap.release()
 
 
 def extract_keyframes_sequential(video_path, output_dir, threshold=30, quality=50, max_frames=20, resize_ratio=0.5):
@@ -322,86 +325,87 @@ def extract_keyframes_sequential(video_path, output_dir, threshold=30, quality=5
     if not cap.isOpened():
         raise ValueError(f"Failed to open video: {video_path}")
 
-    # 出力ディレクトリ作成
-    output_dir = Path(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        # 出力ディレクトリ作成
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
 
-    # 動画情報
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    duration = total_frames / fps if fps > 0 else 0
+        # 動画情報
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        duration = total_frames / fps if fps > 0 else 0
 
-    print(f"Video info:")
-    print(f"  Duration: {duration:.2f}s")
-    print(f"  FPS: {fps:.2f}")
-    print(f"  Total frames: {total_frames}")
-    print(f"  Threshold: {threshold}")
-    print(f"  Max frames: {max_frames}")
-    print(f"  Extraction mode: Sequential (順次)")
-    print()
+        print(f"Video info:")
+        print(f"  Duration: {duration:.2f}s")
+        print(f"  FPS: {fps:.2f}")
+        print(f"  Total frames: {total_frames}")
+        print(f"  Threshold: {threshold}")
+        print(f"  Max frames: {max_frames}")
+        print(f"  Extraction mode: Sequential (順次)")
+        print()
 
-    prev_frame = None
-    keyframes = []  # パスだけでなく詳細情報を格納
-    frame_count = 0
-    keyframe_count = 0
+        prev_frame = None
+        keyframes = []  # パスだけでなく詳細情報を格納
+        frame_count = 0
+        keyframe_count = 0
 
-    while cap.isOpened() and keyframe_count < max_frames:
-        ret, frame = cap.read()
-        if not ret:
-            break
+        while cap.isOpened() and keyframe_count < max_frames:
+            ret, frame = cap.read()
+            if not ret:
+                break
 
-        frame_count += 1
+            frame_count += 1
 
-        # 最初のフレームは必ず保存
-        if prev_frame is None:
-            keyframe_count += 1
-            output_path = save_frame(frame, output_dir, keyframe_count, quality, resize_ratio)
-            timestamp = frame_count / fps if fps > 0 else 0
+            # 最初のフレームは必ず保存
+            if prev_frame is None:
+                keyframe_count += 1
+                output_path = save_frame(frame, output_dir, keyframe_count, quality, resize_ratio)
+                timestamp = frame_count / fps if fps > 0 else 0
 
-            keyframes.append({
-                'path': output_path,
-                'filename': output_path.name,
-                'timestamp': timestamp,
-                'frame_number': frame_count,
-                'diff': 0
-            })
+                keyframes.append({
+                    'path': output_path,
+                    'filename': output_path.name,
+                    'timestamp': timestamp,
+                    'frame_number': frame_count,
+                    'diff': 0
+                })
 
-            print(f"[Frame {frame_count:4d} @ {timestamp:5.2f}s] "
-                  f"Keyframe #{keyframe_count} (first frame) -> {output_path.name}")
-            prev_frame = frame
-            continue
+                print(f"[Frame {frame_count:4d} @ {timestamp:5.2f}s] "
+                      f"Keyframe #{keyframe_count} (first frame) -> {output_path.name}")
+                prev_frame = frame
+                continue
 
-        # 前フレームとの差分を計算
-        diff = calculate_frame_difference(prev_frame, frame)
+            # 前フレームとの差分を計算
+            diff = calculate_frame_difference(prev_frame, frame)
 
-        # 閾値を超えたらキーフレームとして保存
-        if diff > threshold:
-            keyframe_count += 1
-            output_path = save_frame(frame, output_dir, keyframe_count, quality, resize_ratio)
-            timestamp = frame_count / fps if fps > 0 else 0
+            # 閾値を超えたらキーフレームとして保存
+            if diff > threshold:
+                keyframe_count += 1
+                output_path = save_frame(frame, output_dir, keyframe_count, quality, resize_ratio)
+                timestamp = frame_count / fps if fps > 0 else 0
 
-            keyframes.append({
-                'path': output_path,
-                'filename': output_path.name,
-                'timestamp': timestamp,
-                'frame_number': frame_count,
-                'diff': diff
-            })
+                keyframes.append({
+                    'path': output_path,
+                    'filename': output_path.name,
+                    'timestamp': timestamp,
+                    'frame_number': frame_count,
+                    'diff': diff
+                })
 
-            print(f"[Frame {frame_count:4d} @ {timestamp:5.2f}s] "
-                  f"Keyframe #{keyframe_count} (diff={diff:.2f}) -> {output_path.name}")
-            prev_frame = frame
+                print(f"[Frame {frame_count:4d} @ {timestamp:5.2f}s] "
+                      f"Keyframe #{keyframe_count} (diff={diff:.2f}) -> {output_path.name}")
+                prev_frame = frame
 
-    cap.release()
+        print()
+        print(f"Extraction complete!")
+        print(f"  Total frames processed: {frame_count}")
+        print(f"  Keyframes extracted: {keyframe_count}")
+        print(f"  Reduction rate: {(1 - keyframe_count/frame_count) * 100:.1f}%")
+        print(f"  Output directory: {output_dir}")
 
-    print()
-    print(f"Extraction complete!")
-    print(f"  Total frames processed: {frame_count}")
-    print(f"  Keyframes extracted: {keyframe_count}")
-    print(f"  Reduction rate: {(1 - keyframe_count/frame_count) * 100:.1f}%")
-    print(f"  Output directory: {output_dir}")
-
-    return keyframes
+        return keyframes
+    finally:
+        cap.release()
 
 
 def extract_keyframes_by_timestamps(video_path, output_dir, timestamps, quality=50, resize_ratio=0.5):
@@ -423,75 +427,76 @@ def extract_keyframes_by_timestamps(video_path, output_dir, timestamps, quality=
     if not cap.isOpened():
         raise ValueError(f"Failed to open video: {video_path}")
 
-    # 出力ディレクトリ作成
-    output_dir = Path(output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        # 出力ディレクトリ作成
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
 
-    # 動画情報取得
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    duration = total_frames / fps if fps > 0 else 0
+        # 動画情報取得
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        duration = total_frames / fps if fps > 0 else 0
 
-    print(f"\nVideo info:")
-    print(f"  Duration: {duration:.2f}s")
-    print(f"  FPS: {fps:.2f}")
-    print(f"  Total frames: {total_frames}")
-    print(f"  Timestamps: {len(timestamps)}")
-    print(f"  Extraction mode: Timestamp-based")
-    print()
+        print(f"\nVideo info:")
+        print(f"  Duration: {duration:.2f}s")
+        print(f"  FPS: {fps:.2f}")
+        print(f"  Total frames: {total_frames}")
+        print(f"  Timestamps: {len(timestamps)}")
+        print(f"  Extraction mode: Timestamp-based")
+        print()
 
-    keyframes = []
-    keyframe_count = 0
+        keyframes = []
+        keyframe_count = 0
 
-    # タイムスタンプを時系列順にソート
-    sorted_timestamps = sorted(timestamps)
+        # タイムスタンプを時系列順にソート
+        sorted_timestamps = sorted(timestamps)
 
-    for time_s in sorted_timestamps:
-        # タイムスタンプをフレーム番号に変換
-        frame_num = int(time_s * fps)
+        for time_s in sorted_timestamps:
+            # タイムスタンプをフレーム番号に変換
+            frame_num = int(time_s * fps)
 
-        # 動画の範囲外チェック
-        if frame_num >= total_frames:
-            print(f"⚠️  Warning: Timestamp {time_s:.2f}s exceeds video duration ({duration:.2f}s), using last frame")
-            frame_num = total_frames - 1
-        elif frame_num < 0:
-            print(f"⚠️  Warning: Timestamp {time_s:.2f}s is negative, using first frame")
-            frame_num = 0
+            # 動画の範囲外チェック
+            if frame_num >= total_frames:
+                print(f"⚠️  Warning: Timestamp {time_s:.2f}s exceeds video duration ({duration:.2f}s), using last frame")
+                frame_num = total_frames - 1
+            elif frame_num < 0:
+                print(f"⚠️  Warning: Timestamp {time_s:.2f}s is negative, using first frame")
+                frame_num = 0
 
-        # フレームを取得
-        cap.set(cv2.CAP_PROP_POS_FRAMES, frame_num)
-        ret, frame = cap.read()
+            # フレームを取得
+            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_num)
+            ret, frame = cap.read()
 
-        if not ret:
-            print(f"❌ Error: Failed to read frame at {time_s:.2f}s (frame {frame_num})")
-            continue
+            if not ret:
+                print(f"❌ Error: Failed to read frame at {time_s:.2f}s (frame {frame_num})")
+                continue
 
-        # フレーム保存
-        keyframe_count += 1
-        output_path = save_frame(frame, output_dir, keyframe_count, quality, resize_ratio)
+            # フレーム保存
+            keyframe_count += 1
+            output_path = save_frame(frame, output_dir, keyframe_count, quality, resize_ratio)
 
-        keyframes.append({
-            'path': output_path,
-            'filename': output_path.name,
-            'timestamp': time_s,
-            'frame_number': frame_num,
-            'diff': 0  # タイムスタンプ指定なので差分は計算しない
-        })
+            keyframes.append({
+                'path': output_path,
+                'filename': output_path.name,
+                'timestamp': time_s,
+                'frame_number': frame_num,
+                'diff': 0  # タイムスタンプ指定なので差分は計算しない
+            })
 
-        print(f"[Frame {frame_num:4d} @ {time_s:5.2f}s] "
-              f"Keyframe #{keyframe_count} -> {output_path.name}")
+            print(f"[Frame {frame_num:4d} @ {time_s:5.2f}s] "
+                  f"Keyframe #{keyframe_count} -> {output_path.name}")
 
-    cap.release()
+        print()
+        print(f"Extraction complete!")
+        print(f"  Total frames: {total_frames}")
+        print(f"  Keyframes extracted: {keyframe_count}")
+        print(f"  Reduction rate: {(1 - keyframe_count/total_frames) * 100:.1f}%")
+        print(f"  Time coverage: {sorted_timestamps[0]:.2f}s - {sorted_timestamps[-1]:.2f}s")
+        print(f"  Output directory: {output_dir}")
 
-    print()
-    print(f"Extraction complete!")
-    print(f"  Total frames: {total_frames}")
-    print(f"  Keyframes extracted: {keyframe_count}")
-    print(f"  Reduction rate: {(1 - keyframe_count/total_frames) * 100:.1f}%")
-    print(f"  Time coverage: {sorted_timestamps[0]:.2f}s - {sorted_timestamps[-1]:.2f}s")
-    print(f"  Output directory: {output_dir}")
-
-    return keyframes
+        return keyframes
+    finally:
+        cap.release()
 
 
 def save_frame(frame, output_dir, frame_number, quality, resize_ratio):
@@ -689,14 +694,39 @@ def main():
     parser.add_argument("--preset", "-p", choices=list(PRESETS.keys()),
                         help="パラメータプリセット")
 
+    # パラメータバリデーション関数
+    def validate_threshold(value):
+        fvalue = float(value)
+        if fvalue < 0 or fvalue > 255:
+            raise argparse.ArgumentTypeError(f"threshold must be between 0 and 255, got {fvalue}")
+        return fvalue
+
+    def validate_quality(value):
+        ivalue = int(value)
+        if ivalue < 0 or ivalue > 100:
+            raise argparse.ArgumentTypeError(f"quality must be between 0 and 100, got {ivalue}")
+        return ivalue
+
+    def validate_max_frames(value):
+        ivalue = int(value)
+        if ivalue < 1:
+            raise argparse.ArgumentTypeError(f"max_frames must be at least 1, got {ivalue}")
+        return ivalue
+
+    def validate_resize_ratio(value):
+        fvalue = float(value)
+        if fvalue <= 0 or fvalue > 2.0:
+            raise argparse.ArgumentTypeError(f"resize_ratio must be between 0 and 2.0, got {fvalue}")
+        return fvalue
+
     # 手動設定
-    parser.add_argument("--threshold", "-t", type=float,
+    parser.add_argument("--threshold", "-t", type=validate_threshold,
                         help="差分閾値（範囲: 0-255、autoモードでは無視）")
-    parser.add_argument("--quality", "-q", type=int,
+    parser.add_argument("--quality", "-q", type=validate_quality,
                         help="JPEG品質（範囲: 0-100）")
-    parser.add_argument("--max-frames", "-m", type=int,
+    parser.add_argument("--max-frames", "-m", type=validate_max_frames,
                         help="最大抽出フレーム数")
-    parser.add_argument("--resize-ratio", "-r", type=float,
+    parser.add_argument("--resize-ratio", "-r", type=validate_resize_ratio,
                         help="リサイズ比率（1.0で元サイズ）")
 
     # 抽出モード
@@ -719,10 +749,26 @@ def main():
 
     args = parser.parse_args()
 
-    # 動画ファイルの存在確認
-    if not os.path.exists(args.video_path):
-        print(f"Error: Video file not found: {args.video_path}")
+    # 動画ファイルの存在確認と検証
+    video_path = Path(args.video_path).resolve()
+
+    if not video_path.exists():
+        print(f"Error: Video file not found: {video_path}")
         sys.exit(1)
+
+    if not video_path.is_file():
+        print(f"Error: Path is not a file: {video_path}")
+        sys.exit(1)
+
+    # サポートされている拡張子を確認
+    supported_extensions = {'.mp4', '.mov', '.avi', '.mkv', '.webm', '.m4v', '.flv', '.wmv'}
+    if video_path.suffix.lower() not in supported_extensions:
+        print(f"Warning: File extension '{video_path.suffix}' may not be supported.")
+        print(f"Supported formats: {', '.join(sorted(supported_extensions))}")
+        print("Attempting to process anyway...")
+
+    # 以降はstr型のパスを使用
+    args.video_path = str(video_path)
 
     # パラメータ決定
     params = {

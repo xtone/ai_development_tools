@@ -28,7 +28,8 @@ pip install -r requirements.txt
 ### 2. スキルの登録
 
 ```bash
-ln -s /Users/m.ishihara/WS/ai_development_tools/skills/video-keyframe-analyzer \
+# プロジェクトディレクトリから実行
+ln -s $(pwd)/skills/video-keyframe-analyzer \
       ~/.claude/skills/video-keyframe-analyzer
 ```
 
@@ -316,8 +317,8 @@ pip install opencv-python pillow numpy
 
 ## 関連ドキュメント
 
-- プロジェクト概要: `/Users/m.ishihara/.config/claude-code/project-knowledge/ai_development_tools/CONTEXT.md`
-- スキル登録ガイド: `/Users/m.ishihara/.config/claude-code/project-knowledge/ai_development_tools/skills/SKILL_REGISTRATION_GUIDE.md`
+- プロジェクト概要: `~/.config/claude-code/project-knowledge/ai_development_tools/CONTEXT.md`
+- スキル登録ガイド: `~/.config/claude-code/project-knowledge/ai_development_tools/skills/SKILL_REGISTRATION_GUIDE.md`
 
 ## ライセンス
 
