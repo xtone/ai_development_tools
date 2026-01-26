@@ -124,6 +124,33 @@ function testHookFilesExist() {
 }
 
 /**
+ * Test: Hook scripts are executable
+ */
+function testHookScriptsExecutable() {
+  console.log('Test: Hook scripts are executable...');
+  const config = loadHooksConfig();
+  const hooks = getAllHooks(config);
+
+  let allPassed = true;
+  for (const hook of hooks) {
+    const command = hook.command.replace('${CLAUDE_PLUGIN_ROOT}/hooks/', '');
+    const filePath = path.join(__dirname, command);
+
+    try {
+      fs.accessSync(filePath, fs.constants.X_OK);
+    } catch {
+      console.error(`  FAIL: Hook file not executable: ${command}`);
+      allPassed = false;
+    }
+  }
+
+  if (allPassed) {
+    console.log(`  PASS: All ${hooks.length} hook scripts are executable`);
+  }
+  return allPassed;
+}
+
+/**
  * Run all tests
  */
 function runTests() {
@@ -134,6 +161,7 @@ function runTests() {
     testAsyncEnabled(),
     testRequiredHookTypes(),
     testHookFilesExist(),
+    testHookScriptsExecutable(),
   ];
 
   const passed = results.filter(r => r).length;
