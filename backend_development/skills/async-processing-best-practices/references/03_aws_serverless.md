@@ -884,7 +884,7 @@ resource "aws_cloudwatch_metric_alarm" "lambda_errors" {
 
 ### SQS制限
 
-- **メッセージサイズ**: 最大1MiB（2025年8月に256KBから引き上げ。さらに大きいデータはS3に保存してURLを渡す）
+- **メッセージサイズ**: 最大1MiB（2025年8月にAWSにより256KBから1MiBに拡張されました。大きなデータはS3に保存してURLを渡すことを推奨）
 - **メッセージ保持期間**: 最大14日
 
 ### DynamoDB制限

@@ -395,6 +395,8 @@ export function useSSE<T>({
   }, [reconnectAttempts])
 
   // コールバックをrefに保存してstale closure問題を回避
+  // useEffectの依存配列に関数を含めると無限ループになるため、
+  // 常に最新の関数を参照できるようrefパターンを使用
   const callbacksRef = useRef({ onMessage, onError, onOpen })
   useEffect(() => {
     callbacksRef.current = { onMessage, onError, onOpen }
@@ -505,6 +507,8 @@ export function useWebSocket<T>({
   const heartbeatRef = useRef<NodeJS.Timeout | null>(null)
 
   // コールバックをrefに保存してstale closure問題を回避
+  // useEffectの依存配列に関数を含めると無限ループになるため、
+  // 常に最新の関数を参照できるようrefパターンを使用
   const callbacksRef = useRef({ onMessage, onError, onOpen, onClose })
   useEffect(() => {
     callbacksRef.current = { onMessage, onError, onOpen, onClose }
