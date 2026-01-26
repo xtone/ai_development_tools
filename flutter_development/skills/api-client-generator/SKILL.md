@@ -223,6 +223,18 @@ try {
 }
 ```
 
+## Complete Examples
+
+`examples/`ディレクトリに完全な入出力例があります。few-shot promptingの参考として使用してください。
+
+### 入力例
+@import examples/sample_api.yaml
+
+### 出力例
+@import examples/output/
+
+詳細は `examples/README.md` を参照してください。
+
 ## Notes
 
 - 生成されるコードは`build_runner`による追加コード生成が必要です
