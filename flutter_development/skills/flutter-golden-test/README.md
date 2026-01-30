@@ -20,12 +20,17 @@ Golden Test環境がないプロジェクトに以下を自動生成：
 
 - `test/flutter_test_config.dart` - グローバルテスト設定
 - `test/helpers/golden_test_helper.dart` - テストヘルパー
+- `test/golden_test_issues.md` - 問題解決ログ
+- CLAUDE.mdへの設定追記
 
 対話で以下を確認：
+- Golden Testの説明（初心者向け）
 - 使用フォント
 - Riverpod使用有無
 - テーマ設定
 - 画面サイズプリセット
+- 画像アセット使用有無
+- テスト作成粒度（コンポーネント/画面/都度確認）
 
 ### 2. テスト生成モード
 
@@ -35,6 +40,8 @@ Golden Test環境がないプロジェクトに以下を自動生成：
 - 画面テスト（Screen、Page）
 - 各状態のテストケース自動生成
 - 全状態比較テスト（all_states）
+- ネットワーク画像の検出と対応案内
+- 日本語フォントフォールバック問題の警告
 
 ### 3. テスト実行・更新モード
 
@@ -47,6 +54,15 @@ flutter test --update-goldens path/to/test.dart
 # テストを実行（検証）
 flutter test path/to/test.dart
 ```
+
+### 4. トラブルシューティングモード
+
+テスト画像がうまく生成されない場合の対応：
+
+- 問題の特定と原因分析
+- 解決策の提案
+- `test/golden_test_issues.md` への記録
+- CLAUDE.mdへの注意点追記（プロジェクト固有の知見として蓄積）
 
 ## ファイル構造
 
@@ -63,7 +79,8 @@ flutter-golden-test/
     ├── golden_test_helper.dart.md        # ヘルパー
     ├── golden_test_helper_riverpod.dart.md  # Riverpod対応
     ├── component_golden_test.dart.md     # コンポーネントテスト
-    └── screen_golden_test.dart.md        # 画面テスト
+    ├── screen_golden_test.dart.md        # 画面テスト
+    └── golden_test_issues.md             # 問題解決ログ
 ```
 
 ## 生成されるファイル例
@@ -115,6 +132,11 @@ testWidgets('有効状態', (tester) async {
 - [x] 画面テスト
 - [x] レスポンシブテスト（複数画面サイズ）
 - [x] 全状態比較テスト
+- [x] 画像・アイコンのプリロード設定
+- [x] ネットワーク画像の検出と対応案内
+- [x] フォントフォールバック問題の警告
+- [x] 問題解決ログの自動記録
+- [x] テスト作成粒度の設定
 
 ## 参考情報
 

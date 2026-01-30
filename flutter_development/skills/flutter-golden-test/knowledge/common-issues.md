@@ -214,13 +214,211 @@ await tester.pumpGoldenWidget(
 アセットがテスト環境で読み込めることを確認。
 
 2. **ネットワーク画像の場合**:
-モックを使用:
-```dart
-// HttpClientをモック
-```
+モックを使用（詳細は「11. ネットワーク画像の対応」を参照）
 
 3. **プレースホルダーを使用**:
 テスト用にプレースホルダー画像を表示。
+
+## 11. ネットワーク画像の対応
+
+### 症状
+
+`Image.network()` や `CachedNetworkImage` を使用しているウィジェットで、画像が表示されない、またはエラーになる。
+
+### 原因
+
+Golden Testはネットワーク通信を行わないため、ネットワーク画像は取得できない。
+
+### 解決策
+
+#### 方法1: ダミー画像ウィジェットで置き換え（推奨）
+
+テスト用のラッパーウィジェットを作成し、テスト時はダミー画像を表示:
+
+```dart
+// lib/ui/core/widgets/network_image_wrapper.dart
+import 'package:flutter/material.dart';
+
+class NetworkImageWrapper extends StatelessWidget {
+  final String imageUrl;
+  final double? width;
+  final double? height;
+  final BoxFit? fit;
+
+  const NetworkImageWrapper({
+    super.key,
+    required this.imageUrl,
+    this.width,
+    this.height,
+    this.fit,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Image.network(
+      imageUrl,
+      width: width,
+      height: height,
+      fit: fit,
+      // エラー時のフォールバック
+      errorBuilder: (context, error, stackTrace) {
+        return _buildPlaceholder();
+      },
+      // ロード中の表示
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return _buildPlaceholder();
+      },
+    );
+  }
+
+  Widget _buildPlaceholder() {
+    return Container(
+      width: width,
+      height: height,
+      color: Colors.grey[300],
+      child: const Icon(Icons.image, color: Colors.grey),
+    );
+  }
+}
+```
+
+#### 方法2: mocktail/mockitoでHttpClientをモック
+
+```dart
+// test/mocks/mock_http_client.dart
+import 'dart:io';
+import 'package:mocktail/mocktail.dart';
+
+class MockHttpClient extends Mock implements HttpClient {}
+class MockHttpClientRequest extends Mock implements HttpClientRequest {}
+class MockHttpClientResponse extends Mock implements HttpClientResponse {}
+
+// テストで使用
+void main() {
+  setUpAll(() {
+    // HttpClientをモック
+    HttpOverrides.global = MockHttpOverrides();
+  });
+}
+
+class MockHttpOverrides extends HttpOverrides {
+  @override
+  HttpClient createHttpClient(SecurityContext? context) {
+    return MockHttpClient();
+  }
+}
+```
+
+#### 方法3: CachedNetworkImageの場合
+
+`cached_network_image` パッケージを使用している場合:
+
+```dart
+// テスト用のモックプロバイダー
+testWidgets('画像表示テスト', (tester) async {
+  await tester.pumpGoldenWidgetWithRiverpod(
+    MyWidget(),
+    overrides: [
+      // 画像URLをローカルアセットに置き換え
+      imageUrlProvider.overrideWithValue('assets/test/dummy_image.png'),
+    ],
+  );
+});
+```
+
+### ベストプラクティス
+
+1. **本番コードの変更を最小限に**: テスト用のモックを使用し、本番コードには影響を与えない
+2. **プレースホルダーの一貫性**: ダミー画像は常に同じ見た目にする（Goldenの安定性のため）
+3. **サイズを固定**: 画像のサイズは明示的に指定する
+
+## 12. 日本語フォントの問題（フォールバック）
+
+### 症状
+
+- 日本語テキストが「□□□」や空白で表示される
+- 実機では正しく表示されるが、Golden Testでは文字化けする
+
+### 原因
+
+プロジェクトのデフォルトフォント（例: Roboto）が日本語に対応していない場合、
+実機ではOSが自動的に日本語フォントにフォールバックするが、
+テスト環境ではこのフォールバックが機能しない。
+
+### 解決策
+
+#### Step 1: 日本語対応フォントを追加
+
+```yaml
+# pubspec.yaml
+flutter:
+  fonts:
+    - family: NotoSansJP
+      fonts:
+        - asset: assets/fonts/NotoSansJP-Regular.ttf
+        - asset: assets/fonts/NotoSansJP-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/NotoSansJP-Bold.ttf
+          weight: 700
+```
+
+#### Step 2: flutter_test_config.dartでフォントをロード
+
+```dart
+Future<void> _loadFonts() async {
+  final notoSansJp = FontLoader('NotoSansJP')
+    ..addFont(_loadFontData('assets/fonts/NotoSansJP-Regular.ttf'))
+    ..addFont(_loadFontData('assets/fonts/NotoSansJP-Medium.ttf'))
+    ..addFont(_loadFontData('assets/fonts/NotoSansJP-Bold.ttf'));
+  await notoSansJp.load();
+}
+```
+
+#### Step 3: テーマでフォントを指定
+
+```dart
+// テスト用のテーマ
+ThemeData testTheme = ThemeData(
+  fontFamily: 'NotoSansJP',
+  // ...
+);
+
+// golden_test_helper.dart で使用
+await tester.pumpGoldenWidget(
+  widget,
+  theme: testTheme,
+);
+```
+
+### 日本語非対応フォントの例
+
+以下のフォントは日本語に対応していないため注意:
+
+| フォント | 対応言語 | 備考 |
+|---------|---------|------|
+| Roboto | ラテン文字 | Material Designデフォルト |
+| Open Sans | ラテン文字 | |
+| Lato | ラテン文字 | |
+| Montserrat | ラテン文字 | |
+
+### 日本語対応フォントの例
+
+| フォント | 特徴 | 推奨用途 |
+|---------|------|---------|
+| Noto Sans JP | Google製、可読性高い | 一般的なUI |
+| BIZ UDGothic | 視認性重視 | 業務アプリ |
+| M PLUS 1p | モダンなデザイン | デザイン重視 |
+| Kosugi Maru | 丸ゴシック | カジュアルなアプリ |
+
+### フォント設定のチェック方法
+
+テスト実行前に、フォント設定が正しいか確認:
+
+```dart
+// デバッグ用: 現在ロードされているフォントを確認
+debugPrint('Loaded fonts: ${fontLoader.fontFamily}');
+```
 
 ## トラブルシューティングチェックリスト
 
@@ -230,3 +428,6 @@ await tester.pumpGoldenWidget(
 4. [ ] テスト後に `cleanUpGoldenTest()` を呼んでいるか
 5. [ ] 適切なサイズを設定しているか
 6. [ ] CIとローカルで同じ環境を使用しているか
+7. [ ] 日本語テキストに対応したフォントを使用しているか
+8. [ ] ネットワーク画像をモックまたはダミーに置き換えているか
+9. [ ] 問題が発生したら `test/golden_test_issues.md` に記録しているか

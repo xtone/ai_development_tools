@@ -11,6 +11,8 @@
 |-----------------|------|-----|
 | `{FONT_FAMILY}` | フォントファミリー名 | `Noto Sans JP` |
 | `{FONT_LOADERS}` | フォントローダーの列挙 | 下記参照 |
+| `{USE_IMAGES}` | 画像アセットを使用するか | `true` / `false` |
+| `{IMAGE_LOADERS}` | 画像アセットローダー（画像使用時） | 下記参照 |
 
 ### FONT_LOADERS の例
 
@@ -95,8 +97,63 @@ Future<void> _loadFonts() async {
 }
 ```
 
+## 画像アセットを使用する場合
+
+画像アセットとアイコンフォントをテスト環境でロードする設定：
+
+```dart
+import 'dart:async';
+import 'dart:io';
+
+import 'package:flutter/services.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+/// グローバルテスト設定
+Future<void> testExecutable(FutureOr<void> Function() testMain) async {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  // フォントをロード
+  await _loadFonts();
+
+  // テスト実行
+  await testMain();
+}
+
+Future<void> _loadFonts() async {
+  // カスタムフォント
+  final customFont = FontLoader('{FONT_FAMILY}')
+    {FONT_LOADERS};
+
+  // Material Icons（アイコンフォント）
+  // Flutter SDKからMaterialIconsを取得
+  final materialIconsFont = FontLoader('MaterialIcons');
+
+  await Future.wait([
+    customFont.load(),
+    materialIconsFont.load(),
+  ]);
+}
+
+/// フォントファイルをByteDataとして読み込む
+Future<ByteData> _loadFontData(String path) async {
+  final file = File(path);
+  final bytes = await file.readAsBytes();
+  return ByteData.view(bytes.buffer);
+}
+```
+
+### MaterialIconsのロードについて
+
+MaterialIconsはFlutter SDKに含まれているため、特別な設定なしでもテスト環境で使用できることが多いですが、
+アイコンが表示されない場合は上記のように明示的にロードしてください。
+
+アイコンが空白で表示される場合、以下を確認：
+1. `pubspec.yaml` に `uses-material-design: true` が設定されているか
+2. アイコンフォントが正しくロードされているか
+
 ## 注意事項
 
 - このファイルは必ず `test/` ディレクトリ直下に配置する
 - ファイル名は必ず `flutter_test_config.dart` にする
 - `testExecutable` 関数名は変更しない（Flutterが自動的に呼び出す）
+- 画像アセットは `rootBundle` 経由でロードする必要がある場合がある
