@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-02-03
+
+### Added
+
+- **Notion データベース同期機能**: 会社の開発ユーザー全体の使用状況を集計・可視化できるように
+  - `/skill-stats setup`: Notion データベースの初期セットアップ
+  - `/skill-stats sync`: 未同期イベントを Notion に同期
+
+### New Files
+
+- `~/.claude/hooks/logs/sync_state.json`: 同期状態管理ファイル
+- `~/.claude/hooks/logs/notion_config.json`: Notion 設定ファイル
+
+### Notion Database Schema
+
+2つのデータベースを作成:
+
+1. **Skill Usage Events**: スキル使用イベント
+   - Skill (title), Timestamp (date), User Name, User Email, System User, Project, Branch, Remote, Hostname
+
+2. **Slash Command Events**: スラッシュコマンドイベント
+   - Command (title), Full Command, Source (select), Timestamp (date), User Name, User Email, System User, Project, Branch, Remote, Hostname
+
+### File Changes
+
+| ファイル | 変更内容 |
+|---------|---------|
+| `commands/skill-stats.md` | sync/setup サブコマンドの説明を追加 |
+| `bin/skill-stats.js` | sync/setup オプションで同期状態を出力 |
+| `plugin.json` | バージョンを 0.3.0 に更新 |
+
+### Usage
+
+```bash
+# 初回セットアップ
+/skill-stats setup
+
+# Notion に同期
+/skill-stats sync
+```
+
 ## [0.2.0] - 2026-02-03
 
 ### Changed
