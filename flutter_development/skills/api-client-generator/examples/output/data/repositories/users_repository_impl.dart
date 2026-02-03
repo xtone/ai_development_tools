@@ -61,14 +61,7 @@ class UsersRepositoryImpl implements UsersRepository {
     final message = data is Map ? data['message'] as String? : null;
     switch (statusCode) {
       case 400:
-        return Failure.validation(
-          message: message ?? 'リクエストが不正です',
-          errors: data is Map
-              ? (data['errors'] as Map<String, dynamic>?)?.map(
-                  (k, v) => MapEntry(k, (v as List).cast<String>()),
-                )
-              : null,
-        );
+        return _validationError(message ?? 'リクエストが不正です', data);
       case 401:
         return Failure.unauthorized(message: message);
       case 403:
@@ -76,14 +69,7 @@ class UsersRepositoryImpl implements UsersRepository {
       case 404:
         return Failure.notFound(message: message);
       case 422:
-        return Failure.validation(
-          message: message ?? 'バリデーションエラー',
-          errors: data is Map
-              ? (data['errors'] as Map<String, dynamic>?)?.map(
-                  (k, v) => MapEntry(k, (v as List).cast<String>()),
-                )
-              : null,
-        );
+        return _validationError(message ?? 'バリデーションエラー', data);
       case 500:
       case 502:
       case 503:
@@ -93,5 +79,20 @@ class UsersRepositoryImpl implements UsersRepository {
           statusCode: statusCode,
         );
     }
+  }
+
+  /// バリデーションエラーを生成（型安全な変換）
+  Failure _validationError(String message, dynamic data) {
+    return Failure.validation(
+      message: message,
+      errors: data is Map && data['errors'] is Map<String, dynamic>
+          ? (data['errors'] as Map<String, dynamic>).map(
+              (k, v) => MapEntry(
+                k,
+                v is List ? v.map((e) => e.toString()).toList() : <String>[],
+              ),
+            )
+          : null,
+    );
   }
 }

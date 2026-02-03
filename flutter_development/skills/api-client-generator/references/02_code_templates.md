@@ -363,14 +363,13 @@ class {Tag}RepositoryImpl implements {Tag}Repository {
     final message = data is Map ? data['message'] as String? : null;
     switch (statusCode) {
       case 400:
-        return Failure.validation(
-          message: message ?? 'Bad request',
-          errors: data is Map ? data['errors'] as Map<String, List<String>>? : null,
-        );
+        return _validationError(message ?? 'Bad request', data);
       case 401:
         return Failure.unauthorized(message: message);
       case 404:
         return Failure.notFound(message: message);
+      case 422:
+        return _validationError(message ?? 'Validation error', data);
       case 500:
       default:
         return Failure.server(
@@ -378,6 +377,21 @@ class {Tag}RepositoryImpl implements {Tag}Repository {
           statusCode: statusCode,
         );
     }
+  }
+
+  /// バリデーションエラーを生成（型安全な変換）
+  Failure _validationError(String message, dynamic data) {
+    return Failure.validation(
+      message: message,
+      errors: data is Map && data['errors'] is Map<String, dynamic>
+          ? (data['errors'] as Map<String, dynamic>).map(
+              (k, v) => MapEntry(
+                k,
+                v is List ? v.map((e) => e.toString()).toList() : <String>[],
+              ),
+            )
+          : null,
+    );
   }
 ```
 

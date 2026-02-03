@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 /// Dioクライアントの設定
 class DioClient {
@@ -9,6 +10,7 @@ class DioClient {
     Map<String, dynamic>? headers,
     Duration? connectTimeout,
     Duration? receiveTimeout,
+    bool enableLogging = true,
   }) {
     _dio = Dio(
       BaseOptions(
@@ -19,13 +21,16 @@ class DioClient {
       ),
     );
 
-    _dio.interceptors.addAll([
-      LogInterceptor(
-        requestBody: true,
-        responseBody: true,
-        logPrint: (obj) => print('[DIO] $obj'),
-      ),
-    ]);
+    // デバッグモードでのみログを出力
+    if (kDebugMode && enableLogging) {
+      _dio.interceptors.add(
+        LogInterceptor(
+          requestBody: true,
+          responseBody: true,
+          logPrint: (obj) => debugPrint('[DIO] $obj'),
+        ),
+      );
+    }
   }
 
   Dio get dio => _dio;

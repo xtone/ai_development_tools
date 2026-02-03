@@ -67,6 +67,8 @@ lib/
 
 ## Dependencies (pubspec.yaml)
 
+> **Note**: 以下のバージョンは参考値です。プロジェクトの要件に合わせて最新の安定版を使用してください。
+
 ```yaml
 dependencies:
   dio: ^5.4.0
