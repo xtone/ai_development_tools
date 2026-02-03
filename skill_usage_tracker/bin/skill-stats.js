@@ -5,9 +5,10 @@
  *
  * スキル使用状況のサマリーを表示し、Notionデータベースへの同期をサポートするコマンド
  * 使用方法:
- *   skill-stats.js         - 統計を表示
- *   skill-stats.js reset   - ローカルデータをリセット
- *   skill-stats.js sync    - Notionへの同期情報を出力
+ *   skill-stats.js                              - 統計を表示
+ *   skill-stats.js reset                        - ローカルデータをリセット
+ *   skill-stats.js sync                         - Notionへの同期情報を出力
+ *   skill-stats.js setup <skill_db> <cmd_db>   - Notion設定ファイルを作成
  *
  * Reads data from ~/.claude/hooks/logs/
  */
@@ -70,6 +71,77 @@ function loadNotionConfig() {
     // Ignore parse errors
   }
   return null;
+}
+
+/**
+ * Ensure logs directory exists
+ */
+function ensureLogsDirectory() {
+  if (!fs.existsSync(LOGS_DIR)) {
+    fs.mkdirSync(LOGS_DIR, { recursive: true });
+  }
+}
+
+/**
+ * Setup Notion config file
+ */
+function setupNotionConfig(args) {
+  // Parse arguments: setup <skill_db_id> <command_db_id>
+  const setupIndex = args.indexOf('setup');
+  const skillDbId = args[setupIndex + 1];
+  const commandDbId = args[setupIndex + 2];
+
+  console.log('\n🔧 Notion Sync Setup');
+  console.log('═'.repeat(60));
+
+  // Check existing config
+  const existingConfig = loadNotionConfig();
+  if (existingConfig) {
+    console.log('\n現在の設定:');
+    console.log(`  設定ファイル: ${NOTION_CONFIG_FILE}`);
+    console.log(`  Skill Usage DB: ${existingConfig.skill_usage_db_id || '未設定'}`);
+    console.log(`  Slash Command DB: ${existingConfig.slash_command_db_id || '未設定'}`);
+  }
+
+  if (!skillDbId || !commandDbId) {
+    console.log('\n使用方法:');
+    console.log('  skill-stats.js setup <skill_usage_db_id> <slash_command_db_id>');
+    console.log('\n例:');
+    console.log('  skill-stats.js setup b787567d-9565-49ac-89d4-fd2569497d15 a24187ec-c81b-4853-a6ae-d8139abffc0b');
+    console.log('\ndata_source_id は Notion MCP の mcp__notion__notion-fetch で取得できます。');
+    return;
+  }
+
+  // Validate UUID format (simple check)
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(skillDbId)) {
+    console.error(`\n⚠ 無効な skill_usage_db_id: ${skillDbId}`);
+    console.error('UUID形式 (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx) で指定してください。');
+    return;
+  }
+  if (!uuidRegex.test(commandDbId)) {
+    console.error(`\n⚠ 無効な slash_command_db_id: ${commandDbId}`);
+    console.error('UUID形式 (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx) で指定してください。');
+    return;
+  }
+
+  // Create config
+  const config = {
+    skill_usage_db_id: skillDbId,
+    slash_command_db_id: commandDbId
+  };
+
+  try {
+    ensureLogsDirectory();
+    fs.writeFileSync(NOTION_CONFIG_FILE, JSON.stringify(config, null, 2), 'utf8');
+    console.log('\n✓ 設定ファイルを作成しました');
+    console.log(`  ファイル: ${NOTION_CONFIG_FILE}`);
+    console.log(`  Skill Usage DB: ${skillDbId}`);
+    console.log(`  Slash Command DB: ${commandDbId}`);
+    console.log('\n/skill-stats sync で同期を開始できます。');
+  } catch (error) {
+    console.error(`\n⚠ 設定ファイルの作成に失敗しました: ${error.message}`);
+  }
 }
 
 /**
@@ -274,6 +346,11 @@ function displayStats() {
 
 function main() {
   const args = process.argv.slice(2);
+
+  if (args.includes('setup')) {
+    setupNotionConfig(args);
+    return;
+  }
 
   if (args.includes('reset')) {
     resetEventsData();

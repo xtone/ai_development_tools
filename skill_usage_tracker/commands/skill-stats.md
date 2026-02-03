@@ -18,21 +18,16 @@ ${CLAUDE_PLUGIN_ROOT}/bin/skill-stats.js
 ${CLAUDE_PLUGIN_ROOT}/bin/skill-stats.js reset
 ```
 
-### Notionへの同期
+### Notion同期の初期設定
+`setup` 引数で Notion 設定ファイルを作成します。
 
-#### 初期設定
-同期を使用する前に、`~/.claude/hooks/logs/notion_config.json` を作成してください：
-
-```json
-{
-  "skill_usage_db_id": "your-skill-usage-data-source-id",
-  "slash_command_db_id": "your-slash-command-data-source-id"
-}
+```bash
+${CLAUDE_PLUGIN_ROOT}/bin/skill-stats.js setup <skill_usage_db_id> <slash_command_db_id>
 ```
 
 data_source_id は Notion MCP の `mcp__notion__notion-fetch` で取得できます。
 
-#### 同期の実行
+### Notionへの同期
 `sync` 引数で未同期のイベントを Notion データベースに同期します。
 
 以下の手順で同期を実行してください：
