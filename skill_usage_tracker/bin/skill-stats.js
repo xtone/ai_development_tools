@@ -5,44 +5,48 @@
  *
  * スキル使用状況のサマリーを表示するコマンド
  * 使用方法: skill-stats.js [reset]
+ *
+ * Reads data from ~/.claude/hooks/logs/
  */
 
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
 
-const STATE_DIR = path.join(os.homedir(), '.claude', 'hooks', 'state');
-const SKILL_EVENTS_FILE = path.join(STATE_DIR, 'skill_usage_events.json');
-const COMMAND_EVENTS_FILE = path.join(STATE_DIR, 'slash_command_events.json');
+const LOGS_DIR = path.join(os.homedir(), '.claude', 'hooks', 'logs');
+const SKILL_EVENTS_FILE = path.join(LOGS_DIR, 'skill_usage.jsonl');
+const COMMAND_EVENTS_FILE = path.join(LOGS_DIR, 'slash_command.jsonl');
 
 /**
- * Load events data from file
+ * Load events from JSONL file
  */
-function loadEventsData(filePath) {
+function loadEvents(filePath) {
   try {
     if (fs.existsSync(filePath)) {
       const content = fs.readFileSync(filePath, 'utf8');
-      return JSON.parse(content);
+      return content
+        .trim()
+        .split('\n')
+        .filter(line => line)
+        .map(line => JSON.parse(line));
     }
   } catch {
     // Ignore parse errors
   }
-  return { events: [], summary: {} };
+  return [];
 }
 
 /**
- * Reset events data
+ * Reset events data by emptying JSONL files
  */
 function resetEventsData() {
-  const emptyData = { events: [], summary: {}, pending_sync: false };
-
   try {
     if (fs.existsSync(SKILL_EVENTS_FILE)) {
-      fs.writeFileSync(SKILL_EVENTS_FILE, JSON.stringify(emptyData, null, 2), 'utf8');
+      fs.writeFileSync(SKILL_EVENTS_FILE, '', 'utf8');
       console.log('✓ Skill usage data reset');
     }
     if (fs.existsSync(COMMAND_EVENTS_FILE)) {
-      fs.writeFileSync(COMMAND_EVENTS_FILE, JSON.stringify(emptyData, null, 2), 'utf8');
+      fs.writeFileSync(COMMAND_EVENTS_FILE, '', 'utf8');
       console.log('✓ Command usage data reset');
     }
     console.log('\nAll usage statistics have been reset.');
@@ -55,11 +59,11 @@ function resetEventsData() {
  * Display usage statistics
  */
 function displayStats() {
-  const skillData = loadEventsData(SKILL_EVENTS_FILE);
-  const commandData = loadEventsData(COMMAND_EVENTS_FILE);
+  const skillEvents = loadEvents(SKILL_EVENTS_FILE);
+  const commandEvents = loadEvents(COMMAND_EVENTS_FILE);
 
-  const hasSkillEvents = skillData.events && skillData.events.length > 0;
-  const hasCommandEvents = commandData.events && commandData.events.length > 0;
+  const hasSkillEvents = skillEvents.length > 0;
+  const hasCommandEvents = commandEvents.length > 0;
 
   if (!hasSkillEvents && !hasCommandEvents) {
     console.log('使用データがありません');
@@ -69,7 +73,7 @@ function displayStats() {
   // Skill usage summary
   if (hasSkillEvents) {
     const skills = {};
-    for (const event of skillData.events) {
+    for (const event of skillEvents) {
       skills[event.skill] = (skills[event.skill] || 0) + 1;
     }
 
@@ -82,14 +86,14 @@ function displayStats() {
     }
 
     console.log('─'.repeat(40));
-    console.log(`  Total: ${skillData.events.length} invocations`);
+    console.log(`  Total: ${skillEvents.length} invocations`);
     console.log(`  Data: ${SKILL_EVENTS_FILE}`);
   }
 
   // Command usage summary
   if (hasCommandEvents) {
     const commands = {};
-    for (const event of commandData.events) {
+    for (const event of commandEvents) {
       commands[event.command] = (commands[event.command] || 0) + 1;
     }
 
@@ -102,7 +106,7 @@ function displayStats() {
     }
 
     console.log('─'.repeat(40));
-    console.log(`  Total: ${commandData.events.length} invocations`);
+    console.log(`  Total: ${commandEvents.length} invocations`);
     console.log(`  Data: ${COMMAND_EVENTS_FILE}`);
   }
 }

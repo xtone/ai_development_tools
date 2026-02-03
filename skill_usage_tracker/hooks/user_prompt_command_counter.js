@@ -6,7 +6,7 @@
  * This hook detects when users directly type slash commands in their prompts.
  * It records these invocations to complement the SlashCommand tool tracking.
  *
- * Data is stored in ~/.claude/hooks/state/slash_command_events.json
+ * Data is stored in ~/.claude/hooks/logs/slash_command.jsonl
  */
 
 const fs = require('fs');
@@ -16,15 +16,15 @@ const os = require('os');
 const { execSync } = require('child_process');
 
 // Configuration
-const STATE_DIR = path.join(os.homedir(), '.claude', 'hooks', 'state');
-const EVENTS_FILE = path.join(STATE_DIR, 'slash_command_events.json');
+const LOGS_DIR = path.join(os.homedir(), '.claude', 'hooks', 'logs');
+const EVENTS_FILE = path.join(LOGS_DIR, 'slash_command.jsonl');
 
 /**
- * Ensure state directory exists
+ * Ensure logs directory exists
  */
-function ensureStateDirectory() {
-  if (!fs.existsSync(STATE_DIR)) {
-    fs.mkdirSync(STATE_DIR, { recursive: true });
+function ensureLogsDirectory() {
+  if (!fs.existsSync(LOGS_DIR)) {
+    fs.mkdirSync(LOGS_DIR, { recursive: true });
   }
 }
 
@@ -64,34 +64,6 @@ function getContextInfo() {
 }
 
 /**
- * Load existing events data
- */
-function loadEventsData() {
-  try {
-    if (fs.existsSync(EVENTS_FILE)) {
-      const data = fs.readFileSync(EVENTS_FILE, 'utf8');
-      return JSON.parse(data);
-    }
-  } catch {
-    // Ignore errors, return default
-  }
-  return { events: [], summary: {}, pending_sync: true };
-}
-
-/**
- * Save events data (async)
- */
-async function saveEventsData(data) {
-  try {
-    ensureStateDirectory();
-    await fsPromises.writeFile(EVENTS_FILE, JSON.stringify(data, null, 2), 'utf8');
-  } catch (error) {
-    console.error('Error: Failed to save events');
-    throw error;
-  }
-}
-
-/**
  * Parse slash command from user prompt
  * Returns command name if prompt starts with /command, null otherwise
  */
@@ -105,10 +77,10 @@ function parseSlashCommand(prompt) {
 }
 
 /**
- * Record a slash command usage event (async)
+ * Append a slash command usage event to JSONL file (async)
  */
-async function recordCommandEvent(commandName, fullPrompt, source) {
-  const data = loadEventsData();
+async function appendCommandEvent(commandName, fullPrompt, source) {
+  ensureLogsDirectory();
 
   // Create new event
   const event = {
@@ -120,16 +92,8 @@ async function recordCommandEvent(commandName, fullPrompt, source) {
     context: getContextInfo(),
   };
 
-  // Add event to list
-  data.events.push(event);
-
-  // Update summary counts
-  data.summary[commandName] = (data.summary[commandName] || 0) + 1;
-
-  // Mark as pending sync
-  data.pending_sync = true;
-
-  await saveEventsData(data);
+  // Append to JSONL file
+  await fsPromises.appendFile(EVENTS_FILE, JSON.stringify(event) + '\n', 'utf8');
 }
 
 /**
@@ -162,7 +126,7 @@ async function main() {
     }
 
     // Record the command usage event
-    await recordCommandEvent(commandName, prompt, 'user_prompt');
+    await appendCommandEvent(commandName, prompt, 'user_prompt');
 
   } catch (error) {
     // Exit silently on errors to not disrupt user experience

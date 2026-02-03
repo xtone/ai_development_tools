@@ -4,9 +4,9 @@
  * Slash Command Usage Counter Hook (PostToolUse)
  *
  * This hook records slash command invocations via the "SlashCommand" tool with detailed metadata.
- * It stores events with timestamps, user info, and context for later aggregation.
+ * It stores events as JSONL (one JSON object per line) for efficient append-only logging.
  *
- * Data is stored in ~/.claude/hooks/state/slash_command_events.json
+ * Data is stored in ~/.claude/hooks/logs/slash_command.jsonl
  */
 
 const fs = require('fs');
@@ -16,15 +16,15 @@ const os = require('os');
 const { execSync } = require('child_process');
 
 // Configuration
-const STATE_DIR = path.join(os.homedir(), '.claude', 'hooks', 'state');
-const EVENTS_FILE = path.join(STATE_DIR, 'slash_command_events.json');
+const LOGS_DIR = path.join(os.homedir(), '.claude', 'hooks', 'logs');
+const EVENTS_FILE = path.join(LOGS_DIR, 'slash_command.jsonl');
 
 /**
- * Ensure state directory exists
+ * Ensure logs directory exists
  */
-function ensureStateDirectory() {
-  if (!fs.existsSync(STATE_DIR)) {
-    fs.mkdirSync(STATE_DIR, { recursive: true });
+function ensureLogsDirectory() {
+  if (!fs.existsSync(LOGS_DIR)) {
+    fs.mkdirSync(LOGS_DIR, { recursive: true });
   }
 }
 
@@ -64,34 +64,6 @@ function getContextInfo() {
 }
 
 /**
- * Load existing events data
- */
-function loadEventsData() {
-  try {
-    if (fs.existsSync(EVENTS_FILE)) {
-      const data = fs.readFileSync(EVENTS_FILE, 'utf8');
-      return JSON.parse(data);
-    }
-  } catch {
-    console.error('Warning: Failed to load events file');
-  }
-  return { events: [], summary: {}, pending_sync: true };
-}
-
-/**
- * Save events data (async)
- */
-async function saveEventsData(data) {
-  try {
-    ensureStateDirectory();
-    await fsPromises.writeFile(EVENTS_FILE, JSON.stringify(data, null, 2), 'utf8');
-  } catch (error) {
-    console.error('Error: Failed to save events');
-    throw error;
-  }
-}
-
-/**
  * Parse command string to extract command name
  * e.g., "/skill-usage-tracker:skill-stats help" -> "skill-usage-tracker:skill-stats"
  */
@@ -103,10 +75,10 @@ function parseCommandName(commandStr) {
 }
 
 /**
- * Record a slash command usage event (async)
+ * Append a slash command usage event to JSONL file (async)
  */
-async function recordCommandEvent(commandName, fullCommand) {
-  const data = loadEventsData();
+async function appendCommandEvent(commandName, fullCommand) {
+  ensureLogsDirectory();
 
   // Create new event
   const event = {
@@ -117,18 +89,10 @@ async function recordCommandEvent(commandName, fullCommand) {
     context: getContextInfo(),
   };
 
-  // Add event to list
-  data.events.push(event);
+  // Append to JSONL file
+  await fsPromises.appendFile(EVENTS_FILE, JSON.stringify(event) + '\n', 'utf8');
 
-  // Update summary counts
-  data.summary[commandName] = (data.summary[commandName] || 0) + 1;
-
-  // Mark as pending sync
-  data.pending_sync = true;
-
-  await saveEventsData(data);
-
-  console.log(`Recorded: ${commandName} (total: ${data.summary[commandName]})`);
+  console.log(`Recorded: ${commandName}`);
 }
 
 /**
@@ -161,7 +125,7 @@ async function main() {
     }
 
     // Record the command usage event
-    await recordCommandEvent(commandName, fullCommand);
+    await appendCommandEvent(commandName, fullCommand);
 
   } catch (error) {
     console.error(`Error: ${error.message}`);

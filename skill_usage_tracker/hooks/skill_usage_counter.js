@@ -4,9 +4,9 @@
  * Skill Usage Counter Hook (PostToolUse)
  *
  * This hook records skill invocations via the "Skill" tool with detailed metadata.
- * It stores events with timestamps, user info, and context for later aggregation.
+ * It stores events as JSONL (one JSON object per line) for efficient append-only logging.
  *
- * Data is stored in ~/.claude/hooks/state/skill_usage_events.json
+ * Data is stored in ~/.claude/hooks/logs/skill_usage.jsonl
  */
 
 const fs = require('fs');
@@ -16,15 +16,15 @@ const os = require('os');
 const { execSync } = require('child_process');
 
 // Configuration
-const STATE_DIR = path.join(os.homedir(), '.claude', 'hooks', 'state');
-const EVENTS_FILE = path.join(STATE_DIR, 'skill_usage_events.json');
+const LOGS_DIR = path.join(os.homedir(), '.claude', 'hooks', 'logs');
+const EVENTS_FILE = path.join(LOGS_DIR, 'skill_usage.jsonl');
 
 /**
- * Ensure state directory exists
+ * Ensure logs directory exists
  */
-function ensureStateDirectory() {
-  if (!fs.existsSync(STATE_DIR)) {
-    fs.mkdirSync(STATE_DIR, { recursive: true });
+function ensureLogsDirectory() {
+  if (!fs.existsSync(LOGS_DIR)) {
+    fs.mkdirSync(LOGS_DIR, { recursive: true });
   }
 }
 
@@ -64,38 +64,10 @@ function getContextInfo() {
 }
 
 /**
- * Load existing events data
+ * Append a skill usage event to JSONL file (async)
  */
-function loadEventsData() {
-  try {
-    if (fs.existsSync(EVENTS_FILE)) {
-      const data = fs.readFileSync(EVENTS_FILE, 'utf8');
-      return JSON.parse(data);
-    }
-  } catch {
-    console.error('Warning: Failed to load events file');
-  }
-  return { events: [], summary: {}, pending_sync: true };
-}
-
-/**
- * Save events data (async)
- */
-async function saveEventsData(data) {
-  try {
-    ensureStateDirectory();
-    await fsPromises.writeFile(EVENTS_FILE, JSON.stringify(data, null, 2), 'utf8');
-  } catch (error) {
-    console.error('Error: Failed to save events');
-    throw error;
-  }
-}
-
-/**
- * Record a skill usage event (async)
- */
-async function recordSkillEvent(skillName) {
-  const data = loadEventsData();
+async function appendSkillEvent(skillName) {
+  ensureLogsDirectory();
 
   // Create new event
   const event = {
@@ -105,18 +77,10 @@ async function recordSkillEvent(skillName) {
     context: getContextInfo(),
   };
 
-  // Add event to list
-  data.events.push(event);
+  // Append to JSONL file
+  await fsPromises.appendFile(EVENTS_FILE, JSON.stringify(event) + '\n', 'utf8');
 
-  // Update summary counts
-  data.summary[skillName] = (data.summary[skillName] || 0) + 1;
-
-  // Mark as pending sync
-  data.pending_sync = true;
-
-  await saveEventsData(data);
-
-  console.log(`Recorded: ${skillName} (total: ${data.summary[skillName]})`);
+  console.log(`Recorded: ${skillName}`);
 }
 
 /**
@@ -148,7 +112,7 @@ async function main() {
     }
 
     // Record the skill usage event
-    await recordSkillEvent(skillName);
+    await appendSkillEvent(skillName);
 
   } catch (error) {
     console.error(`Error: ${error.message}`);
