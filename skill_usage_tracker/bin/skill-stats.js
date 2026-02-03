@@ -20,6 +20,7 @@ const LOGS_DIR = path.join(os.homedir(), '.claude', 'hooks', 'logs');
 const SKILL_EVENTS_FILE = path.join(LOGS_DIR, 'skill_usage.jsonl');
 const COMMAND_EVENTS_FILE = path.join(LOGS_DIR, 'slash_command.jsonl');
 const SYNC_STATE_FILE = path.join(LOGS_DIR, 'sync_state.json');
+const NOTION_CONFIG_FILE = path.join(LOGS_DIR, 'notion_config.json');
 
 /**
  * Load events from JSONL file
@@ -55,6 +56,20 @@ function loadSyncState() {
     skill_usage: { last_synced_line: 0 },
     slash_command: { last_synced_line: 0 }
   };
+}
+
+/**
+ * Load Notion config
+ */
+function loadNotionConfig() {
+  try {
+    if (fs.existsSync(NOTION_CONFIG_FILE)) {
+      return JSON.parse(fs.readFileSync(NOTION_CONFIG_FILE, 'utf8'));
+    }
+  } catch {
+    // Ignore parse errors
+  }
+  return null;
 }
 
 /**
@@ -118,10 +133,29 @@ function convertCommandEventToNotionFormat(event) {
  * Output sync information for Notion
  */
 function outputSyncInfo() {
+  const config = loadNotionConfig();
   const syncState = loadSyncState();
 
   console.log('\n🔄 Notion Sync Status');
   console.log('═'.repeat(60));
+
+  if (!config) {
+    console.log('\n⚠ Notion設定が見つかりません。');
+    console.log(`\n設定ファイルを作成してください: ${NOTION_CONFIG_FILE}`);
+    console.log('\n例:');
+    console.log(JSON.stringify({
+      skill_usage_db_id: 'your-skill-usage-data-source-id',
+      slash_command_db_id: 'your-slash-command-data-source-id'
+    }, null, 2));
+    return;
+  }
+
+  if (!config.skill_usage_db_id || !config.slash_command_db_id) {
+    console.log('\n⚠ データベースIDが設定されていません。');
+    console.log(`notion_config.json に skill_usage_db_id と slash_command_db_id を設定してください。`);
+    console.log(`設定ファイル: ${NOTION_CONFIG_FILE}`);
+    return;
+  }
 
   // Load events
   const skillEvents = loadEvents(SKILL_EVENTS_FILE);
@@ -150,6 +184,10 @@ function outputSyncInfo() {
   console.log('\n--- Sync Data ---');
   console.log(JSON.stringify({
     action: 'sync',
+    config: {
+      skill_usage_db_id: config.skill_usage_db_id,
+      slash_command_db_id: config.slash_command_db_id
+    },
     sync_state_file: SYNC_STATE_FILE,
     current_sync_state: syncState,
     skill_usage_events: unsyncedSkillEvents.map(e => {

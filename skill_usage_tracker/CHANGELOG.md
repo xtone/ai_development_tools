@@ -5,21 +5,49 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] - 2026-02-03
+
+### Security
+
+- **データベースIDを設定ファイル管理に変更** (Issue #71)
+  - ハードコードされていた Notion データベース ID を `notion_config.json` で管理するように変更
+  - 公開リポジトリでの機密情報露出を防止
+  - 他のユーザー/チームが独自のデータベースを使用可能に
+
+### Changed
+
+- `loadNotionConfig()` 関数を復活
+- sync コマンドで設定ファイルがない場合、設定方法を案内するメッセージを表示
+
+### File Changes
+
+| ファイル | 変更内容 |
+|---------|---------|
+| `commands/skill-stats.md` | DB ID をプレースホルダーに変更、設定手順を追加 |
+| `bin/skill-stats.js` | notion_config.json からDB IDを読み込むように変更 |
+
+### Configuration
+
+`~/.claude/hooks/logs/notion_config.json` を作成して設定：
+
+```json
+{
+  "skill_usage_db_id": "your-skill-usage-data-source-id",
+  "slash_command_db_id": "your-slash-command-data-source-id"
+}
+```
+
 ## [0.4.0] - 2026-02-03
 
 ### Changed
 
 - **Notion MCP 直接呼び出しに変更**: `/skill-stats sync` を実行すると Claude が自動的に Notion MCP を呼び出してデータを同期するように
-  - データベース ID を skill ファイルに埋め込み、設定ファイル不要に
-  - `notion_config.json` への依存を削除
   - `/skill-stats setup` コマンドを削除（不要になったため）
 
 ### Removed
 
 - `/skill-stats setup` コマンド
-- `loadNotionConfig()` 関数
 - `outputSetupInfo()` 関数
-- `notion_config.json` 設定ファイルの読み込み
 
 ### Technical Changes
 
@@ -27,18 +55,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Before: `{ "Skill": { "title": [{ "text": { "content": "..." } }] } }`
   - After: `{ "Skill": "...", "date:Timestamp:start": "...", "date:Timestamp:is_datetime": 1 }`
 
-### Notion Database IDs (埋め込み済み)
-
-| データベース | Data Source ID |
-|-------------|----------------|
-| Skill Usage Events | `b787567d-9565-49ac-89d4-fd2569497d15` |
-| Slash Command Events | `a24187ec-c81b-4853-a6ae-d8139abffc0b` |
-
 ### File Changes
 
 | ファイル | 変更内容 |
 |---------|---------|
-| `commands/skill-stats.md` | Claude への直接指示形式に書き換え、DB ID 埋め込み |
+| `commands/skill-stats.md` | Claude への直接指示形式に書き換え |
 | `bin/skill-stats.js` | setup 削除、sync 出力形式を SQLite 風に変更 |
 
 ## [0.3.0] - 2026-02-03

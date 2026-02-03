@@ -19,6 +19,20 @@ ${CLAUDE_PLUGIN_ROOT}/bin/skill-stats.js reset
 ```
 
 ### Notionへの同期
+
+#### 初期設定
+同期を使用する前に、`~/.claude/hooks/logs/notion_config.json` を作成してください：
+
+```json
+{
+  "skill_usage_db_id": "your-skill-usage-data-source-id",
+  "slash_command_db_id": "your-slash-command-data-source-id"
+}
+```
+
+data_source_id は Notion MCP の `mcp__notion__notion-fetch` で取得できます。
+
+#### 同期の実行
 `sync` 引数で未同期のイベントを Notion データベースに同期します。
 
 以下の手順で同期を実行してください：
@@ -26,16 +40,16 @@ ${CLAUDE_PLUGIN_ROOT}/bin/skill-stats.js reset
 1. Bash で `${CLAUDE_PLUGIN_ROOT}/bin/skill-stats.js sync` を実行して未同期データを取得
 
 2. 出力されたJSONの `skill_usage_events` を `mcp__notion__notion-create-pages` で
-   data_source_id: `b787567d-9565-49ac-89d4-fd2569497d15` に書き込み
+   `config.skill_usage_db_id` に書き込み
 
 3. 出力されたJSONの `slash_command_events` を `mcp__notion__notion-create-pages` で
-   data_source_id: `a24187ec-c81b-4853-a6ae-d8139abffc0b` に書き込み
+   `config.slash_command_db_id` に書き込み
 
 4. 書き込み完了後、sync_state.json を new_sync_state の内容で更新
 
 #### Notion データベースのスキーマ
 
-**Skill Usage Events** (data_source_id: `b787567d-9565-49ac-89d4-fd2569497d15`):
+**Skill Usage Events**:
 | プロパティ名 | 型 | 説明 |
 |------------|---|------|
 | Skill | title | スキル名 |
@@ -48,7 +62,7 @@ ${CLAUDE_PLUGIN_ROOT}/bin/skill-stats.js reset
 | Remote | url | リモートリポジトリURL |
 | Hostname | rich_text | ホスト名 |
 
-**Slash Command Events** (data_source_id: `a24187ec-c81b-4853-a6ae-d8139abffc0b`):
+**Slash Command Events**:
 | プロパティ名 | 型 | 説明 |
 |------------|---|------|
 | Command | title | コマンド名 |
