@@ -5,6 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-02-03
+
+### Changed
+
+- **Notion MCP 直接呼び出しに変更**: `/skill-stats sync` を実行すると Claude が自動的に Notion MCP を呼び出してデータを同期するように
+  - データベース ID を skill ファイルに埋め込み、設定ファイル不要に
+  - `notion_config.json` への依存を削除
+  - `/skill-stats setup` コマンドを削除（不要になったため）
+
+### Removed
+
+- `/skill-stats setup` コマンド
+- `loadNotionConfig()` 関数
+- `outputSetupInfo()` 関数
+- `notion_config.json` 設定ファイルの読み込み
+
+### Technical Changes
+
+- sync 出力形式を Notion MCP (`mcp__notion__notion-create-pages`) が受け取れる SQLite 風形式に変更
+  - Before: `{ "Skill": { "title": [{ "text": { "content": "..." } }] } }`
+  - After: `{ "Skill": "...", "date:Timestamp:start": "...", "date:Timestamp:is_datetime": 1 }`
+
+### Notion Database IDs (埋め込み済み)
+
+| データベース | Data Source ID |
+|-------------|----------------|
+| Skill Usage Events | `b787567d-9565-49ac-89d4-fd2569497d15` |
+| Slash Command Events | `a24187ec-c81b-4853-a6ae-d8139abffc0b` |
+
+### File Changes
+
+| ファイル | 変更内容 |
+|---------|---------|
+| `commands/skill-stats.md` | Claude への直接指示形式に書き換え、DB ID 埋め込み |
+| `bin/skill-stats.js` | setup 削除、sync 出力形式を SQLite 風に変更 |
+
 ## [0.3.0] - 2026-02-03
 
 ### Added
