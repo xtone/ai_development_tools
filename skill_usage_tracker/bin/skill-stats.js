@@ -6,7 +6,7 @@
  * スキル使用状況のサマリーを表示し、Notionデータベースへの同期をサポートするコマンド
  * 使用方法:
  *   skill-stats.js                              - 統計を表示
- *   skill-stats.js reset                        - ローカルデータをリセット
+ *   skill-stats.js reset --force               - ローカルデータをリセット（バックアップ作成）
  *   skill-stats.js sync                         - Notionへの同期情報を出力
  *   skill-stats.js setup <skill_db> <cmd_db>   - Notion設定ファイルを作成
  *
@@ -23,8 +23,11 @@ const COMMAND_EVENTS_FILE = path.join(LOGS_DIR, 'slash_command.jsonl');
 const SYNC_STATE_FILE = path.join(LOGS_DIR, 'sync_state.json');
 const NOTION_CONFIG_FILE = path.join(LOGS_DIR, 'notion_config.json');
 
+// Warning threshold for large data sets
+const MAX_EVENTS_WARNING = 1000;
+
 /**
- * Load events from JSONL file
+ * Load events from JSONL file with improved error handling
  */
 function loadEvents(filePath) {
   try {
@@ -34,10 +37,18 @@ function loadEvents(filePath) {
         .trim()
         .split('\n')
         .filter(line => line)
-        .map((line, index) => ({ ...JSON.parse(line), _lineNumber: index + 1 }));
+        .map((line, index) => {
+          try {
+            return { ...JSON.parse(line), _lineNumber: index + 1 };
+          } catch (error) {
+            console.error(`Warning: Failed to parse line ${index + 1} in ${filePath}: ${error.message}`);
+            return null;
+          }
+        })
+        .filter(event => event !== null);
     }
-  } catch {
-    // Ignore parse errors
+  } catch (error) {
+    console.error(`Error loading ${filePath}: ${error.message}`);
   }
   return [];
 }
@@ -145,19 +156,54 @@ function setupNotionConfig(args) {
 }
 
 /**
- * Reset events data by emptying JSONL files
+ * Reset events data by emptying JSONL files (with backup)
  */
-function resetEventsData() {
+function resetEventsData(options = {}) {
+  if (!options.force) {
+    console.log('\n⚠ Warning: This will delete all usage data.');
+    console.log('Use --force to confirm: /skill-stats reset --force');
+    console.log('\nA backup will be created before deletion.');
+    return;
+  }
+
+  // Create backup before reset
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const backupDir = path.join(LOGS_DIR, 'backups');
+
   try {
+    // Ensure backup directory exists
+    if (!fs.existsSync(backupDir)) {
+      fs.mkdirSync(backupDir, { recursive: true });
+    }
+
+    // Backup and reset skill events
     if (fs.existsSync(SKILL_EVENTS_FILE)) {
-      fs.writeFileSync(SKILL_EVENTS_FILE, '', 'utf8');
-      console.log('✓ Skill usage data reset');
+      const stat = fs.statSync(SKILL_EVENTS_FILE);
+      if (stat.size > 0) {
+        const backupFile = path.join(backupDir, `skill_usage_${timestamp}.jsonl`);
+        fs.copyFileSync(SKILL_EVENTS_FILE, backupFile);
+        fs.writeFileSync(SKILL_EVENTS_FILE, '', 'utf8');
+        console.log(`✓ Skill usage data reset (backup: ${backupFile})`);
+      } else {
+        console.log('✓ Skill usage data already empty');
+      }
     }
+
+    // Backup and reset command events
     if (fs.existsSync(COMMAND_EVENTS_FILE)) {
-      fs.writeFileSync(COMMAND_EVENTS_FILE, '', 'utf8');
-      console.log('✓ Command usage data reset');
+      const stat = fs.statSync(COMMAND_EVENTS_FILE);
+      if (stat.size > 0) {
+        const backupFile = path.join(backupDir, `slash_command_${timestamp}.jsonl`);
+        fs.copyFileSync(COMMAND_EVENTS_FILE, backupFile);
+        fs.writeFileSync(COMMAND_EVENTS_FILE, '', 'utf8');
+        console.log(`✓ Command usage data reset (backup: ${backupFile})`);
+      } else {
+        console.log('✓ Command usage data already empty');
+      }
     }
+
     console.log('\nAll usage statistics have been reset.');
+    console.log(`Backups saved to: ${backupDir}`);
   } catch (error) {
     console.error('Error resetting data:', error.message);
   }
@@ -246,6 +292,14 @@ function outputSyncInfo() {
   console.log(`    (Total: ${skillEvents.length}, Synced: ${syncState.skill_usage.last_synced_line})`);
   console.log(`  Command Events: ${unsyncedCommandEvents.length} 件の未同期イベント`);
   console.log(`    (Total: ${commandEvents.length}, Synced: ${syncState.slash_command.last_synced_line})`);
+
+  // Warning for large data sets
+  const totalUnsyncedEvents = unsyncedSkillEvents.length + unsyncedCommandEvents.length;
+  if (totalUnsyncedEvents > MAX_EVENTS_WARNING) {
+    console.log(`\n⚠ 警告: ${totalUnsyncedEvents} 件の未同期イベントがあります。`);
+    console.log(`  大量のデータを同期すると時間がかかる場合があります。`);
+    console.log(`  Notion APIのレート制限により、バッチ処理が必要になることがあります。`);
+  }
 
   if (unsyncedSkillEvents.length === 0 && unsyncedCommandEvents.length === 0) {
     console.log('\n✓ すべてのイベントが同期済みです。');
@@ -353,7 +407,7 @@ function main() {
   }
 
   if (args.includes('reset')) {
-    resetEventsData();
+    resetEventsData({ force: args.includes('--force') });
     return;
   }
 

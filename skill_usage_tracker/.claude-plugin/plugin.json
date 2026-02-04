@@ -1,5 +1,5 @@
 {
   "name": "skill-usage-tracker",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Track skill usage and sync to Notion database for team analytics"
 }

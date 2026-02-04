@@ -18,6 +18,9 @@ const { execSync } = require('child_process');
 // Configuration
 const LOGS_DIR = path.join(os.homedir(), '.claude', 'hooks', 'logs');
 const EVENTS_FILE = path.join(LOGS_DIR, 'slash_command.jsonl');
+const LOCK_FILE = path.join(LOGS_DIR, 'slash_command.lock');
+const LOCK_TIMEOUT = 5000; // 5 seconds
+const LOCK_RETRY_INTERVAL = 50; // 50ms
 
 /**
  * Ensure logs directory exists
@@ -25,6 +28,57 @@ const EVENTS_FILE = path.join(LOGS_DIR, 'slash_command.jsonl');
 function ensureLogsDirectory() {
   if (!fs.existsSync(LOGS_DIR)) {
     fs.mkdirSync(LOGS_DIR, { recursive: true });
+  }
+}
+
+/**
+ * Acquire a file lock with timeout
+ * Uses exclusive file creation to prevent race conditions
+ */
+async function acquireLock() {
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < LOCK_TIMEOUT) {
+    try {
+      // Try to create lock file exclusively (fails if exists)
+      const fd = fs.openSync(LOCK_FILE, 'wx');
+      fs.writeSync(fd, String(process.pid));
+      fs.closeSync(fd);
+      return true;
+    } catch (error) {
+      if (error.code === 'EEXIST') {
+        // Lock file exists, check if stale
+        try {
+          const stat = fs.statSync(LOCK_FILE);
+          const age = Date.now() - stat.mtimeMs;
+          // If lock is older than timeout, consider it stale and remove
+          if (age > LOCK_TIMEOUT) {
+            fs.unlinkSync(LOCK_FILE);
+            continue;
+          }
+        } catch {
+          // Lock file was removed, retry
+          continue;
+        }
+        // Wait and retry
+        await new Promise(resolve => setTimeout(resolve, LOCK_RETRY_INTERVAL));
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  throw new Error('Failed to acquire lock: timeout');
+}
+
+/**
+ * Release the file lock
+ */
+function releaseLock() {
+  try {
+    fs.unlinkSync(LOCK_FILE);
+  } catch {
+    // Ignore errors when releasing lock
   }
 }
 
@@ -77,7 +131,7 @@ function parseSlashCommand(prompt) {
 }
 
 /**
- * Append a slash command usage event to JSONL file (async)
+ * Append a slash command usage event to JSONL file (async) with file locking
  */
 async function appendCommandEvent(commandName, fullPrompt, source) {
   ensureLogsDirectory();
@@ -92,8 +146,15 @@ async function appendCommandEvent(commandName, fullPrompt, source) {
     context: getContextInfo(),
   };
 
-  // Append to JSONL file
-  await fsPromises.appendFile(EVENTS_FILE, JSON.stringify(event) + '\n', 'utf8');
+  // Acquire lock before writing
+  try {
+    await acquireLock();
+
+    // Append to JSONL file
+    await fsPromises.appendFile(EVENTS_FILE, JSON.stringify(event) + '\n', 'utf8');
+  } finally {
+    releaseLock();
+  }
 }
 
 /**

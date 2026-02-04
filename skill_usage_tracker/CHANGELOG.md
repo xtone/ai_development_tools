@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.2] - 2026-02-04
+
+### Changed
+
+- **reset コマンドに `--force` フラグを追加**: 誤操作防止のため、削除前に確認を要求
+  - バックアップを自動作成してから削除
+  - バックアップは `~/.claude/hooks/logs/backups/` に保存
+
+### Improved
+
+- **エラーハンドリングの強化**: JSONL 読み込み時に行ごとのエラーハンドリングを追加
+  - 破損した行があっても他のデータは正常に読み込み
+  - 警告メッセージで問題のある行を通知
+
+- **大量データ警告の追加**: 同期時に 1000 件を超えるイベントがある場合に警告を表示
+  - Notion API のレート制限に関する注意喚起
+
+### Security
+
+- **ファイル書き込みの原子性を保証**: 排他的ファイルロック機構を実装
+  - 複数プロセスからの同時書き込みによるデータ破損を防止
+  - スタルロックの自動検出と回復
+
+### File Changes
+
+| ファイル | 変更内容 |
+|---------|---------|
+| `bin/skill-stats.js` | reset に --force 追加、エラーハンドリング強化、大量データ警告 |
+| `hooks/skill_usage_counter.js` | ファイルロック機構を追加 |
+| `hooks/slash_command_counter.js` | ファイルロック機構を追加 |
+| `hooks/user_prompt_command_counter.js` | ファイルロック機構を追加 |
+
 ## [0.4.1] - 2026-02-03
 
 ### Security
