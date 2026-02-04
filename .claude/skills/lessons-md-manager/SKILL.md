@@ -1,5 +1,5 @@
 ---
-name: lessons-md-manager
+name: lessons
 description: "CLAUDE.mdの「Lessons Learned」セクションを管理するスキル。`/lessons` で学びを追記、`/lessons review` で既存ルールのレビュー・整理を行う。セッション中の修正・失敗・発見を構造的に蓄積し、チーム全体の知見として共有する。「CLAUDE.mdを更新して」「学びを記録して」等の自然言語でも起動可能。"
 ---
 
