@@ -1,0 +1,41 @@
+{
+    "name": "backend-development",
+    "description": "Ruby on Rails/PostgreSQL バックエンド開発向けのツール群。JSON仕様からAPI・管理画面の実装、非同期処理のベストプラクティスまでをサポート",
+    "version": "0.1.0",
+    "owner": {
+        "name": "TOYOTA, Yoichi",
+        "email": "y.toyota@xtone.co.jp"
+    },
+    "skills": [
+        {
+            "name": "orchestrating-api-implementation",
+            "source": "./skills/orchestrating-api-implementation",
+            "description": "JSONで定義されたAPI仕様を元にRuby on RailsでAPIと管理画面を実装するスキル。全体のオーケストレーションを行い、各ステップの詳細ガイドラインに従って実装を進めます。",
+            "version": "1.0.0",
+            "author": {
+                "name": "TOYOTA, Yoichi"
+            },
+            "tags": ["ruby-on-rails", "api", "postgresql", "activerecord", "admin", "json-specification"]
+        },
+        {
+            "name": "implementing-hotwire-admin",
+            "source": "./skills/implementing-hotwire-admin",
+            "description": "Hotwire（Turbo + Stimulus）を使用してRuby on Railsの管理画面を実装し、PlaywrightによるE2Eテストを含めた完全な実装を行うスキル",
+            "version": "1.0.0",
+            "author": {
+                "name": "TOYOTA, Yoichi"
+            },
+            "tags": ["ruby-on-rails", "hotwire", "turbo", "stimulus", "admin", "playwright", "e2e-testing"]
+        },
+        {
+            "name": "async-processing-best-practices",
+            "source": "./skills/async-processing-best-practices",
+            "description": "非同期処理のバックエンドとフロントエンドを実装する際のベストプラクティスをまとめたスキルです。非同期処理が必要なWebサービスのフロントエンドおよびバックエンドを実装する際に利用されます。",
+            "version": "1.0.0",
+            "author": {
+                "name": "TOYOTA, Yoichi"
+            },
+            "tags": ["async", "background-jobs", "sidekiq", "solid-queue", "bullmq", "aws", "gcp", "hotwire", "nextjs", "vuejs"]
+        }
+    ]
+}
