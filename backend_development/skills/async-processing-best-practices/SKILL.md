@@ -145,3 +145,77 @@ HTTPレスポンを返す際に処理が完了している必要がないもの�
 | Rails Hotwire (Turbo + Stimulus + ActionCable) | @references/09_frontend_hotwire.md |
 | Next.js (React / App Router) | @references/10_frontend_nextjs.md |
 | Vue.js 3 (Composition API) | @references/11_frontend_vuejs.md |
+| React (Webpacker/Shakapacker) | @references/12_frontend_react.md |
+
+### 本番環境へのデプロイ
+
+本番環境にデプロイする際の設定やベストプラクティスは以下を参照してください。
+
+- **本番環境デプロイガイド**: @references/13_deployment.md
+  - Pumaプラグイン設定
+  - ECS/Fargate環境
+  - Kubernetes環境
+  - CI/CD設定
+
+### Solid Cable（ActionCableの代替）
+
+Redis不要でActionCableを使用したい場合は、Solid Cableを利用できます。
+
+- **Solid Cableリファレンス**: @references/14_solid_cable.md
+  - セットアップ方法
+  - ActionCableとの違い
+  - 設定オプション
+
+### トラブルシューティング
+
+問題が発生した場合は以下を参照してください。
+
+- **トラブルシューティングガイド**: @references/15_troubleshooting.md
+  - ジョブが実行されない場合
+  - ステータスが更新されない場合
+  - WebSocket接続の問題
+  - デバッグ方法
+
+### 環境分離（DB共有時の注意）
+
+ステージング環境と本番環境で同じデータベースを共有している場合、以下の設定が必要です。
+
+#### Solid Queueのキュー名分離
+
+```yaml
+# config/solid_queue.yml
+staging:
+  workers:
+    - queues:
+        - <%= ENV.fetch('QUEUE_PREFIX', 'staging') %>_default
+
+production:
+  workers:
+    - queues:
+        - <%= ENV.fetch('QUEUE_PREFIX', 'production') %>_default
+```
+
+```ruby
+# app/jobs/application_job.rb
+class ApplicationJob < ActiveJob::Base
+  queue_as do
+    prefix = ENV.fetch('QUEUE_PREFIX', Rails.env)
+    "#{prefix}_default"
+  end
+end
+```
+
+#### Solid Cableのチャンネル分離
+
+```yaml
+# config/cable.yml
+staging:
+  adapter: solid_cable
+  channel_prefix: <%= ENV.fetch('CABLE_PREFIX', 'staging') %>
+
+production:
+  adapter: solid_cable
+  channel_prefix: <%= ENV.fetch('CABLE_PREFIX', 'production') %>
+```
+
+詳細は @references/13_deployment.md の「環境分離設定」を参照してください。
