@@ -15,15 +15,6 @@
             }
         },
         {
-            "name": "frontend-nextjs-development",
-            "source": "./frontend_nextjs_development",
-            "description": "Next.js開発向けのツール群（Figmaデザイン抽出、コンポーネント生成など）",
-            "version": "0.1.0",
-            "author": {
-                "name": "TOYOTA, Yoichi"
-            }
-        },
-        {
             "name": "backend-development",
             "source": "./backend_development",
             "description": "Ruby on Rails/PostgreSQL バックエンド開発向けのツール群。JSON仕様からAPI・管理画面の実装までをサポート",
