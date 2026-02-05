@@ -48,6 +48,9 @@ jobs:
           prompt: |
             このPull Requestを包括的にレビューしてください。
 
+            **重要**: このリポジトリはClaude Codeのスキル（プラグイン）マーケットプレイスです。
+            スキルファイル（SKILL.md）の品質と構造を重点的にレビューしてください。
+
             **PR情報**:
             - リポジトリ: ${{ github.repository }}
             - PR番号: ${{ github.event.pull_request.number }}
@@ -77,7 +80,17 @@ jobs:
 
             ### ステップ2: コード分析
 
-            以下の観点から包括的にコードを分析してください：
+            以下の観点から包括的にコードを分析してください。
+
+            #### 📦 スキル品質 (Skill Quality) - SKILL.mdが含まれる場合のみ
+
+            **重要**: PRにSKILL.mdファイルが含まれている場合は、`/claude-skill-review` スキルを使用してスキル品質をレビューしてください。
+
+            ```
+            /claude-skill-review
+            ```
+
+            スキルを実行し、出力された評価結果をレビューコメントに含めてください。
 
             #### 🔧 コード品質 (Code Quality)
 
@@ -191,6 +204,8 @@ jobs:
 
             **スコアリング**: 各カテゴリーを10点満点で評価し、検出された問題の重要度に応じて減点してください。
 
+            **スキル品質のスコアリング**: SKILL.mdが含まれる場合は、`/claude-skill-review`スキルの出力に従ってスコアリングしてください。
+
             **インラインコメントの投稿**:
 
             具体的なファイルと行番号が特定できる問題については、`mcp__github_inline_comment__create_inline_comment`ツールを使用してインラインコメントを投稿してください。
@@ -248,19 +263,23 @@ jobs:
 
             ### 分析結果
 
-            #### Code Quality: X/10
+            #### 📦 Skill Quality: X/10（SKILL.mdが含まれる場合のみ）
             - 良い点: [概要]
             - 改善点: [件数]件の指摘（インラインコメント参照）
 
-            #### Security: X/10
+            #### 🔧 Code Quality: X/10
             - 良い点: [概要]
             - 改善点: [件数]件の指摘（インラインコメント参照）
 
-            #### Testing: X/10
+            #### 🔒 Security: X/10
             - 良い点: [概要]
             - 改善点: [件数]件の指摘（インラインコメント参照）
 
-            #### Performance: X/10
+            #### 🧪 Testing: X/10
+            - 良い点: [概要]
+            - 改善点: [件数]件の指摘（インラインコメント参照）
+
+            #### ⚡ Performance: X/10
             - 良い点: [概要]
             - 改善点: [件数]件の指摘（インラインコメント参照）
 
@@ -277,35 +296,33 @@ jobs:
 
             ```bash
             gh issue create \
-              --title "🔒 [MAJOR] 入力検証が不十分 (src/api/handler.ts)" \
+              --title "[絵文字] [重要度] [問題の概要] (ファイルパス)" \
               --body "## 概要
-            PR #${{ github.event.pull_request.number }} のレビューで検出されたセキュリティ上の改善点です。
+            PR #${{ github.event.pull_request.number }} のレビューで検出された改善点です。
 
             **関連PR**: #${{ github.event.pull_request.number }}
 
             ## 詳細
-            **カテゴリー**: security
-            **重要度**: major
-            **ファイル**: \`src/api/handler.ts\`
+            **カテゴリー**: [カテゴリー]
+            **重要度**: [major/minor]
+            **ファイル**: \`[ファイルパス]\`
 
             ### 問題
-            ユーザー入力の検証が不十分で、インジェクション攻撃のリスクがあります。
+            [問題の説明]
 
             ### 推奨される対応
-            1. すべてのユーザー入力に対してバリデーションを追加
-            2. ホワイトリスト方式での検証を実装
-            3. サニタイゼーション処理を追加
+            [対応方法]
 
             ## チェックリスト
             - [ ] 問題を確認
             - [ ] 修正を実装
-            - [ ] テストを追加/更新
-            - [ ] セキュリティレビューを実施" \
+            - [ ] テストを追加/更新" \
               --assignee "${{ github.event.pull_request.user.login }}" \
-              --label "priority:high,security"
+              --label "priority:high,[カテゴリー]"
             ```
 
             **絵文字の対応**:
+            - 📦 skill-quality（スキル品質）
             - 🔧 code-quality
             - 🔒 security
             - 🧪 testing
@@ -328,21 +345,27 @@ jobs:
 
             ### 分析結果
 
-            #### Code Quality: 10/10
+            #### 📦 Skill Quality: 10/10（SKILL.mdが含まれる場合のみ）
+            ✅ フロントマターが正しく設定されています
+            ✅ descriptionにトリガー条件が明記されています
+            ✅ ディレクトリ構造が適切です
+            ✅ 参照ファイルがすべて存在します
+
+            #### 🔧 Code Quality: 10/10
             ✅ すべての基準を満たしています
 
-            #### Security: 10/10
+            #### 🔒 Security: 10/10
             ✅ セキュリティ上の問題は検出されませんでした
 
-            #### Testing: 10/10
+            #### 🧪 Testing: 10/10
             ✅ 適切なテストカバレッジがあります
 
-            #### Performance: 10/10
+            #### ⚡ Performance: 10/10
             ✅ パフォーマンス上の問題は見つかりませんでした
 
             ### Summary
 
-            素晴らしいコードです！マージして問題ありません。"
+            マージして問題ありません。"
             ```
 
             ### ステップ5: 除外パターン
