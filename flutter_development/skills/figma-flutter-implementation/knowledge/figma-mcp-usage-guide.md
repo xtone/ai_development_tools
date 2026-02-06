@@ -6,38 +6,62 @@ Figma MCP (Model Context Protocol) を使用して、FigmaデザインからFlut
 
 ## MCP Server Setup
 
-### claude_desktop_config.json
+Figma公式のMCPサーバーを使用します。2つの接続方法があります。
 
-Claude DesktopまたはClaude CodeでFigma MCPを使用するには、以下の設定が必要です。
+### 方法1: リモートMCPサーバー（推奨）
 
-**設定ファイルの場所:**
-- macOS: `~/.claude/claude_desktop_config.json`
-- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+Figma公式のリモートMCPサーバーに接続します。
 
-**設定例:**
+**Claude Code の場合:**
+
+ターミナルで以下のコマンドを実行:
+
+```bash
+claude mcp add --transport http figma https://mcp.figma.com/mcp
+```
+
+実行後、ブラウザでFigmaの認証画面が開きます。認証を完了すると設定が完了します。
+
+**VS Code / Cursor の場合:**
+
+`.vscode/mcp.json` または `~/.cursor/mcp.json` に以下を追加:
+
 ```json
 {
-  "mcpServers": {
-    "figma-dev-mode-mcp-server": {
-      "command": "npx",
-      "args": ["-y", "figma-dev-mode-mcp-server"],
-      "env": {
-        "FIGMA_ACCESS_TOKEN": "figd_xxxxxxxxxxxxxxxxxxxxxxxxxx"
-      }
+  "servers": {
+    "figma": {
+      "url": "https://mcp.figma.com/mcp"
     }
   }
 }
 ```
 
-### Figma Access Token の取得
+### 方法2: デスクトップMCPサーバー
 
-1. Figmaにログイン
-2. 右上のプロフィールアイコン → Settings
-3. Personal access tokens セクション
-4. "Generate new token" をクリック
-5. 生成されたトークンをコピー
+Figmaデスクトップアプリを使用してローカルサーバーを起動します。
 
-**注意:** トークンは一度しか表示されません。安全な場所に保存してください。
+1. Figmaデスクトップアプリを開く
+2. Dev Modeに切り替え
+3. 検査パネルで「Enable desktop MCP server」をクリック
+4. ローカルサーバーが `http://127.0.0.1:3845/mcp` で起動
+
+**Claude Desktop の場合 (`~/.claude/claude_desktop_config.json`):**
+
+```json
+{
+  "mcpServers": {
+    "figma": {
+      "url": "http://127.0.0.1:3845/mcp"
+    }
+  }
+}
+```
+
+## 公式ドキュメント
+
+詳細は以下の公式ドキュメントを参照:
+- [Figma MCP Server Guide](https://help.figma.com/hc/en-us/articles/32132100833559-Guide-to-the-Figma-MCP-server)
+- [Figma MCP Server Developer Documentation](https://developers.figma.com/docs/figma-mcp-server)
 
 ## URL → node-id 変換
 
@@ -66,24 +90,16 @@ https://www.figma.com/design/6nSnL8VRmxHmbMj0nwCUtq/三井のカーシェアー�
 
 ## Available Tools
 
-### 1. get_design_context
+Figma MCPサーバーでは以下のツールが提供されています。
 
-デザインの詳細情報を取得するメインツール。
+### 1. get_design_context（メイン）
 
-**パラメータ:**
-```json
-{
-  "nodeId": "18364:916699",
-  "clientLanguages": "dart",
-  "clientFrameworks": "flutter"
-}
-```
+デザインの詳細情報とコード生成を行うメインツール。
 
-| パラメータ | 必須 | 説明 |
-|-----------|------|------|
-| nodeId | Yes | FigmaノードID（コロン形式） |
-| clientLanguages | No | 対象言語（dart, typescript, swift等） |
-| clientFrameworks | No | 対象フレームワーク（flutter, react, swiftui等） |
+**機能:**
+- デザイン層の変換機能を提供
+- デフォルトはReact + Tailwindだが、フレームワーク指定で他言語にも対応
+- 「generate my Figma selection in Flutter」のように指定可能
 
 **返却される情報:**
 - **Layout**: Auto Layout設定、方向、配置
@@ -94,22 +110,9 @@ https://www.figma.com/design/6nSnL8VRmxHmbMj0nwCUtq/三井のカーシェアー�
 - **Effects**: shadow、blur
 - **Corner Radius**: 角丸設定
 
-**Flutter/Dart指定の利点:**
-- FlutterのWidget構造に近い形式で情報が返される
-- Dartの型に合わせた値の形式
-
 ### 2. get_screenshot
 
-指定ノードのスクリーンショット画像を取得。
-
-**パラメータ:**
-```json
-{
-  "nodeId": "18364:916699",
-  "clientLanguages": "dart",
-  "clientFrameworks": "flutter"
-}
-```
+選択範囲のスクリーンショットを撮影。レイアウト忠実度向上に推奨。
 
 **用途:**
 - デザインの視覚的確認
@@ -117,22 +120,49 @@ https://www.figma.com/design/6nSnL8VRmxHmbMj0nwCUtq/三井のカーシェアー�
 - 細かい要素の識別
 - 実装結果との比較
 
-### 3. get_node
+### 3. get_metadata
 
-ノードのメタデータを取得。
-
-**パラメータ:**
-```json
-{
-  "nodeId": "18364:916699"
-}
-```
+選択範囲の基本プロパティを含む簡略化されたXML表現を返却。
 
 **返却される情報:**
-- ノード名
-- ノードタイプ（FRAME, COMPONENT, INSTANCE等）
-- 親子関係
-- コンポーネントの場合はvariant情報
+- 層ID
+- 名前
+- タイプ
+- 位置
+- サイズ
+
+**用途:** 大規模デザインの処理に有効
+
+### 4. get_variable_defs
+
+Figma選択範囲で使用されている変数とスタイルを返却。
+
+**返却される情報:**
+- 色の変数
+- スペーシングの変数
+- タイポグラフィの変数
+
+**用途:** デザイントークン一覧の取得
+
+### 5. get_code_connect_map / add_code_connect_map
+
+FigmaノードIDとコードコンポーネント間のマッピング管理。
+
+**用途:** 設計とコード実装の連携を強化
+
+### 6. create_design_system_rules
+
+デザインシステムの規則ファイルを生成。
+
+**用途:** エージェントが設計をコード化する際のコンテキスト提供
+
+### 7. その他のツール
+
+- `whoami`: 現在のユーザー情報（リモート専用）
+- `get_code_connect_suggestions`: Code Connect提案の取得
+- `send_code_connect_mappings`: Code Connectマッピングの送信
+- `get_figjam`: FigJam図表の処理
+- `generate_diagram`: Mermaid構文からの図生成
 
 ## Best Practices
 
@@ -219,26 +249,40 @@ nodeId = "18364:916699"
 
 ## Troubleshooting
 
-### MCP Serverが起動しない
+### MCPサーバーに接続できない
 
-1. Node.jsがインストールされているか確認
-2. npxが使用可能か確認: `npx --version`
-3. 設定ファイルのJSON形式が正しいか確認
+**リモートMCPサーバーの場合:**
+1. `claude mcp add` コマンドを再実行
+2. ブラウザでFigma認証を完了しているか確認
+3. ネットワーク接続を確認
 
-### トークンエラー
+**デスクトップMCPサーバーの場合:**
+1. Figmaデスクトップアプリが起動しているか確認
+2. Dev Modeが有効か確認
+3. 「Enable desktop MCP server」がクリックされているか確認
+4. `http://127.0.0.1:3845/mcp` にアクセス可能か確認
 
-1. トークンの有効期限を確認
-2. トークンのスコープを確認（read accessが必要）
-3. 新しいトークンを生成して再設定
+### 認証エラー
+
+1. Figmaアカウントへのログイン状態を確認
+2. `claude mcp add` コマンドを再実行して再認証
+3. ブラウザのCookieをクリアして再試行
 
 ### 取得情報が不完全
 
-1. ノードIDが正しいか確認
+1. ノードIDが正しいか確認（ハイフン → コロン変換）
 2. 対象ノードがFrameまたはComponentか確認
-3. clientLanguages/clientFrameworksを指定してみる
+3. Figmaでノードが選択されているか確認
+
+### MCP設定の確認
+
+Claude Codeの場合、以下のコマンドで設定を確認:
+```bash
+claude mcp list
+```
 
 ## Reference
 
-- [Figma Dev Mode MCP Server](https://github.com/nicholasoxford/figma-dev-mode-mcp-server)
-- [Figma API Documentation](https://www.figma.com/developers/api)
+- [Figma MCP Server Guide](https://help.figma.com/hc/en-us/articles/32132100833559-Guide-to-the-Figma-MCP-server)
+- [Figma MCP Server Developer Documentation](https://developers.figma.com/docs/figma-mcp-server)
 - [Model Context Protocol](https://modelcontextprotocol.io/)

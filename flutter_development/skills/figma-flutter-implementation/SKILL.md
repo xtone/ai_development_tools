@@ -160,9 +160,13 @@ Read templates/implementation-plan.md
 | clientLanguages | 対象言語 | "dart" |
 | clientFrameworks | 対象フレームワーク | "flutter" |
 
-### get_node
+### get_metadata
 
-ノードの詳細メタデータを取得（必要に応じて使用）。
+ノードの基本プロパティ（ID、名前、タイプ、位置、サイズ）を含む簡略化されたXML表現を取得。大規模デザインの処理に有効。
+
+### get_variable_defs
+
+Figma選択範囲で使用されている変数とスタイル（色、スペーシング、タイポグラフィ）を取得。デザイントークンの抽出に有効。
 
 ## Flutter Mapping Guide
 
@@ -351,24 +355,27 @@ https://www.figma.com/design/6nSnL8VRmxHmbMj0nwCUtq/三井のカーシェアー�
 
 ### Figma MCPツールが見つからない
 
-MCP設定を確認してください:
-```json
-{
-  "mcpServers": {
-    "figma-dev-mode-mcp-server": {
-      "command": "npx",
-      "args": ["-y", "figma-dev-mode-mcp-server"],
-      "env": {
-        "FIGMA_ACCESS_TOKEN": "your-figma-access-token"
-      }
-    }
-  }
-}
+**Claude Codeの場合:**
+
+ターミナルで以下のコマンドを実行してFigma MCPを追加:
+```bash
+claude mcp add --transport http figma https://mcp.figma.com/mcp
 ```
+
+設定確認:
+```bash
+claude mcp list
+```
+
+**デスクトップMCPサーバーの場合:**
+1. Figmaデスクトップアプリを起動
+2. Dev Modeに切り替え
+3. 「Enable desktop MCP server」をクリック
+4. `http://127.0.0.1:3845/mcp` でサーバーが起動
 
 ### デザイン情報が取得できない
 
-- Figma Access Tokenが有効か確認
+- Figma認証が完了しているか確認
 - node-idの形式が正しいか確認（ハイフン → コロン）
 - 対象ノードへのアクセス権限があるか確認
 
@@ -377,3 +384,9 @@ MCP設定を確認してください:
 - HEXコードの大文字/小文字を確認
 - 透明度の計算が正しいか確認
 - `0x` プレフィックスが付いているか確認
+
+### 詳細な設定方法
+
+詳しくは公式ドキュメントを参照:
+- [Figma MCP Server Guide](https://help.figma.com/hc/en-us/articles/32132100833559-Guide-to-the-Figma-MCP-server)
+- [Figma MCP Developer Docs](https://developers.figma.com/docs/figma-mcp-server)

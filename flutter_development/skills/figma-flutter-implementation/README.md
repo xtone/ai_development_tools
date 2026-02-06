@@ -57,40 +57,48 @@ https://www.figma.com/design/xxxxx/FileName?node-id=789-012&m=dev
 
 ### Figma MCP Server の設定
 
-このスキルを使用するには、Figma MCP Serverの設定が必要です。
+このスキルを使用するには、Figma公式MCPサーバーの設定が必要です。
 
-**1. 設定ファイルを開く**
+#### 方法1: リモートMCPサーバー（推奨）
+
+**Claude Code の場合:**
+
+ターミナルで以下のコマンドを実行:
 
 ```bash
-# macOS
-~/.claude/claude_desktop_config.json
-
-# Windows
-%APPDATA%\Claude\claude_desktop_config.json
+claude mcp add --transport http figma https://mcp.figma.com/mcp
 ```
 
-**2. MCP Server設定を追加**
+ブラウザでFigma認証画面が開くので、認証を完了してください。
+
+設定確認:
+```bash
+claude mcp list
+```
+
+#### 方法2: デスクトップMCPサーバー
+
+1. Figmaデスクトップアプリを開く
+2. Dev Modeに切り替え
+3. 検査パネルで「Enable desktop MCP server」をクリック
+4. ローカルサーバーが `http://127.0.0.1:3845/mcp` で起動
+
+**Claude Desktop設定 (`~/.claude/claude_desktop_config.json`):**
 
 ```json
 {
   "mcpServers": {
-    "figma-dev-mode-mcp-server": {
-      "command": "npx",
-      "args": ["-y", "figma-dev-mode-mcp-server"],
-      "env": {
-        "FIGMA_ACCESS_TOKEN": "your-figma-access-token"
-      }
+    "figma": {
+      "url": "http://127.0.0.1:3845/mcp"
     }
   }
 }
 ```
 
-**3. Figma Access Token の取得**
+#### 公式ドキュメント
 
-1. [Figma](https://www.figma.com) にログイン
-2. プロフィールアイコン → Settings
-3. Personal access tokens → Generate new token
-4. トークンをコピーして設定ファイルに貼り付け
+- [Figma MCP Server Guide](https://help.figma.com/hc/en-us/articles/32132100833559-Guide-to-the-Figma-MCP-server)
+- [Figma MCP Developer Docs](https://developers.figma.com/docs/figma-mcp-server)
 
 ## スキルのワークフロー
 
@@ -168,25 +176,19 @@ figma-flutter-implementation/
 
 ### Figma MCPツールが見つからない
 
-**原因:** MCP Server設定が正しくない
-
 **対処:**
-1. 設定ファイルのパスを確認
-2. JSON形式が正しいか確認（カンマ、括弧）
-3. Claude/Claude Codeを再起動
+1. `claude mcp add --transport http figma https://mcp.figma.com/mcp` を実行
+2. ブラウザでFigma認証を完了
+3. `claude mcp list` で設定を確認
 
 ### デザイン情報が取得できない
 
-**原因:** Access Tokenまたはnode-id
-
 **対処:**
-1. Access Tokenが有効か確認
+1. Figma認証が完了しているか確認
 2. node-idの形式確認（ハイフン → コロン）
 3. ファイルへのアクセス権限を確認
 
 ### 色が正しくない
-
-**原因:** HEX変換ミス
 
 **対処:**
 1. 大文字/小文字を確認
@@ -200,7 +202,7 @@ figma-flutter-implementation/
 
 ## 参考リンク
 
-- [Figma Dev Mode MCP Server](https://github.com/nicholasoxford/figma-dev-mode-mcp-server)
-- [Figma API Documentation](https://www.figma.com/developers/api)
+- [Figma MCP Server Guide](https://help.figma.com/hc/en-us/articles/32132100833559-Guide-to-the-Figma-MCP-server)
+- [Figma MCP Developer Docs](https://developers.figma.com/docs/figma-mcp-server)
 - [Model Context Protocol](https://modelcontextprotocol.io/)
 - [Flutter Documentation](https://flutter.dev/docs)
