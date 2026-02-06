@@ -1,7 +1,7 @@
 {
     "name": "flutter-development",
-    "description": "Flutter開発向けのツール群。Widget実装の設計判断から実装、画面定義書の作成までをサポート",
-    "version": "0.2.0",
+    "description": "Flutter開発向けのツール群。Widget実装の設計判断から実装、画面定義書の作成、Golden Testまでをサポート",
+    "version": "0.3.0",
     "owner": {
         "name": "HINO, Yasushi",
         "email": "y.hino@xtone.co.jp"
@@ -26,6 +26,16 @@
                 "name": "katsume"
             },
             "tags": ["flutter", "documentation", "screen-spec", "specification", "template"]
+        },
+        {
+            "name": "flutter-golden-test",
+            "source": "./skills/flutter-golden-test",
+            "description": "Golden Test（Visual Regression Test）環境のセットアップとテスト生成を対話形式で行うスキル。日本語フォント対応、Riverpod対応、レスポンシブテストに対応。",
+            "version": "1.0.0",
+            "author": {
+                "name": "katsume"
+            },
+            "tags": ["flutter", "testing", "golden-test", "visual-regression", "screenshot", "riverpod"]
         }
     ]
 }
