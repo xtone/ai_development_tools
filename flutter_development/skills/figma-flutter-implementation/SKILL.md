@@ -1,6 +1,6 @@
 ---
 name: figma-flutter-implementation
-description: "Extract design specifications from Figma using MCP and generate Flutter implementation plans. Use when you have Figma URLs and need to implement Flutter UI with accurate colors, spacing, and layout from Figma designs."
+description: "Extracts design specifications from Figma using MCP and generates Flutter implementation plans. Use when you have Figma URLs and need to implement Flutter UI with accurate colors, spacing, and layout from Figma designs."
 ---
 
 # Figma Flutter Implementation
@@ -82,12 +82,12 @@ Figma MCPの `get_design_context` ツールを使用してデザイン情報を�
 
 **レイアウト変換ガイド:**
 ```
-Read knowledge/flutter-layout-mapping.md
+Read figma-flutter-implementation/knowledge/flutter-layout-mapping.md
 ```
 
 **カラー変換ガイド:**
 ```
-Read knowledge/flutter-color-extraction.md
+Read figma-flutter-implementation/knowledge/flutter-color-extraction.md
 ```
 
 **主要な変換ルール:**
@@ -108,7 +108,7 @@ Read knowledge/flutter-color-extraction.md
 テンプレートを使用して実装計画書を作成します。
 
 ```
-Read templates/implementation-plan.md
+Read figma-flutter-implementation/templates/implementation-plan.md
 ```
 
 **計画書に含める内容:**
