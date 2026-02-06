@@ -13,7 +13,7 @@ Claude Code用の開発支援ツールとプラグインのコレクションで
 - **[backend-development](./backend_development/README.md)** - Ruby on Rails/PostgreSQLバックエンド開発向けのツール群（JSON仕様からAPI・管理画面の実装までをサポート）
 - **[flutter-development](./flutter_development/README.md)** - Flutter開発向けのツール群（Widget実装アシスタントなど）
 - **[android-development](./android_development/README.md)** - Android/Jetpack Compose開発向けのツール群（アーキテクチャ設計、テスト自動生成、Figma変換など）
-- **[common-development](./common_development/README.md)** - プラットフォーム非依存の汎用スキル（動画分析など）
+- **[common-development](./common_development/README.md)** - プラットフォーム非依存の汎用スキル（CLAUDE.md管理、動画分析など）
 
 ## プラグインのインストール方法
 

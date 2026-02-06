@@ -16,6 +16,16 @@
                 "name": "ISHIHARA, Masaya"
             },
             "tags": ["video-analysis", "cost-optimization", "keyframe", "debugging"]
+        },
+        {
+            "name": "lessons-md-manager",
+            "source": "./skills/lessons-md-manager",
+            "description": "CLAUDE.mdの「Lessons Learned」セクションを管理。セッション中の学びを自動抽出し、チーム全体の知見として蓄積する",
+            "version": "1.1.0",
+            "author": {
+                "name": "ISHIHARA, Masaya"
+            },
+            "tags": ["claude-code", "knowledge-management", "lessons-learned", "productivity"]
         }
     ]
 }

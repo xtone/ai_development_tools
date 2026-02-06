@@ -17,6 +17,7 @@
 | スキル | 説明 |
 |--------|------|
 | **video-keyframe-analyzer** | 動画からキーフレームを抽出してコスト効率的に分析（API コスト93%削減） |
+| **lessons-md-manager** | CLAUDE.mdの「Lessons Learned」セクションを管理。セッション中の学びを自動抽出・蓄積 |
 
 ## スキル詳細
 
@@ -40,6 +41,23 @@
 
 詳細: [skills/video-keyframe-analyzer/README.md](./skills/video-keyframe-analyzer/README.md)
 
+### lessons-md-manager
+
+Boris Cherny氏のTip #3「CLAUDE.mdへの投資」を仕組み化したスキル。
+
+**使い方:**
+```
+/lessons          # セッション中の学びをCLAUDE.mdに追記
+/lessons review   # 既存ルールのレビュー・整理
+```
+
+**特徴:**
+- セッション中の修正・失敗・発見を自動抽出
+- カテゴリ分類・重複チェック付きで蓄積
+- チーム全員が即座に恩恵を受けられる知見共有
+
+詳細: [skills/lessons-md-manager/README.md](./skills/lessons-md-manager/README.md)
+
 ## ディレクトリ構造
 
 ```
@@ -48,11 +66,14 @@ common_development/
 │   ├── marketplace.json    # マーケットプレイス設定
 │   └── plugin.json         # プラグイン基本情報
 ├── skills/
-│   └── video-keyframe-analyzer/
+│   ├── video-keyframe-analyzer/
+│   │   ├── SKILL.md
+│   │   ├── README.md
+│   │   ├── extract_keyframes.py
+│   │   └── requirements.txt
+│   └── lessons-md-manager/
 │       ├── SKILL.md
-│       ├── README.md
-│       ├── extract_keyframes.py
-│       └── requirements.txt
+│       └── README.md
 └── README.md
 ```
 
