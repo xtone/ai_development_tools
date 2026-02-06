@@ -1,7 +1,9 @@
 ---
 name: screen-spec-generator
-description:
+description: |
   Flutterプロジェクトの画面定義書（screen specification）を作成・管理するスキル。
+  「画面定義書を作成したい」「〇〇画面の定義書を作って」などの発言で発動し、
+  プロジェクト構造を解析してテンプレートをセットアップし、個別の画面定義書を生成します。
 ---
 
 # 画面定義書ジェネレーター スキル
@@ -99,18 +101,9 @@ description:
    - HTTP通信（dio, retrofit, http等）
 
 2. ディレクトリ構造を解析：
-   ```bash
-   # UI層を探索
-   ls lib/ui/ または lib/presentation/ または lib/features/
-
-   # ルーターファイルを探索
-   find lib -name "*router*.dart"
-
-   # API定義を探索
-   find lib -name "*api*.dart"
-   ```
-
-   ※ Claude Codeの場合は、Bashコマンドではなく専用ツール（Glob, Grep等）の使用を推奨します。
+   - UI層のパス（lib/ui/, lib/presentation/, lib/features/ など）
+   - ルーターファイル（*router*.dart）
+   - API定義（*api*.dart）
 
 3. 検出結果をすべてユーザーに確認：
    ```

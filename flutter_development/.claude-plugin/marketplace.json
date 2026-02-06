@@ -1,7 +1,7 @@
 {
     "name": "flutter-development",
-    "description": "Flutter開発向けのツール群。Widget実装の設計判断から実装までをサポート",
-    "version": "0.1.0",
+    "description": "Flutter開発向けのツール群。Widget実装の設計判断から実装、画面定義書の作成までをサポート",
+    "version": "0.2.0",
     "owner": {
         "name": "HINO, Yasushi",
         "email": "y.hino@xtone.co.jp"
@@ -16,6 +16,16 @@
                 "name": "HINO, Yasushi"
             },
             "tags": ["flutter", "widget", "architecture", "state-management", "riverpod", "autoroute", "mvvm", "interview"]
+        },
+        {
+            "name": "screen-spec-generator",
+            "source": "./skills/screen-spec-generator",
+            "description": "Flutterプロジェクトの画面定義書を作成・管理するスキル。プロジェクト構造を自動解析し、会話形式でテンプレートをカスタマイズ、カスタムコマンドを生成します。",
+            "version": "0.1.0",
+            "author": {
+                "name": "katsume"
+            },
+            "tags": ["flutter", "documentation", "screen-spec", "specification", "template"]
         }
     ]
 }

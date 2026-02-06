@@ -1,8 +1,8 @@
 # Flutter Development Tools
 
-Flutter開発向けの包括的なツール群です。Widget実装の設計判断からコード生成まで、Flutter開発をサポートします。
+Flutter開発向けの包括的なツール群です。Widget実装の設計判断から画面定義書の作成まで、Flutter開発をサポートします。
 
-## 📦 含まれるスキル
+## 含まれるスキル
 
 ### 1. flutter-widget-assistant
 
@@ -15,9 +15,34 @@ Flutter Widget実装のためのインタラクティブなアシスタントで
 - 構造化された実装仕様書の生成
 - Flutter/AutoRoute/Riverpod のベストプラクティスに基づいた設計支援
 
-**詳細:** [skills/flutter-widget-assistant/SKILL.md](./skills/flutter-widget-assistant/SKILL.md)
+**詳細:** [skills/flutter-widget-assistant/README.md](./skills/flutter-widget-assistant/README.md)
 
-## 🚀 使い方
+### 2. screen-spec-generator
+
+Flutterプロジェクトの画面定義書を作成・管理するスキルです。プロジェクト構造を自動解析し、会話形式でテンプレートをカスタマイズします。
+
+**主な機能:**
+- プロジェクト構造の自動解析（CLAUDE.md対応）
+- セクション選択による柔軟なテンプレート作成
+- カスタムコマンド（/screen-spec）の自動生成
+- 個別画面の定義書自動生成
+- 既存定義書の差分検出と更新
+
+**詳細:** [skills/screen-spec-generator/README.md](./skills/screen-spec-generator/README.md)
+
+## 技術スタック
+
+生成される実装は、以下の技術スタックを前提としています：
+
+| 項目 | 技術 |
+|------|------|
+| フレームワーク | Flutter |
+| ナビゲーション | AutoRoute |
+| 状態管理 | Riverpod（オプション） |
+| フック | flutter_hooks（オプション） |
+| アーキテクチャ | MVVM（画面レベル） |
+
+## 使い方
 
 ### 基本的なワークフロー
 
@@ -26,9 +51,12 @@ graph LR
     A[Widget要件] -->|flutter-widget-assistant| B[インタビュー]
     B --> C[実装仕様書]
     C --> D[Widget実装]
+    D -->|screen-spec-generator| E[画面定義書]
 ```
 
-### ステップ1: Widget設計アシスタントの起動
+### 使用例
+
+#### flutter-widget-assistant
 
 ```bash
 # Claude Codeで以下を実行
@@ -38,79 +66,36 @@ graph LR
 "ログイン画面を実装したいです。設計を手伝ってください。"
 ```
 
-### ステップ2: インタビューに回答
-
-アシスタントが3つの重要な質問を順番に行います：
-
-1. **状態管理の必要性** → StatefulWidget / StatelessWidget
-2. **Widget種別** → 画面/ページ / コンポーネント/部品
-3. **画面間の状態共有** → Riverpod使用 / 不使用
-
-### ステップ3: 実装仕様書の取得
-
-アシスタントが構造化された仕様書を生成します。仕様書には以下が含まれます：
-
-- Widget情報（名前、説明）
-- アーキテクチャの決定事項
-- 実装チェックリスト
-- コード構造テンプレート
-
-### ステップ4: 実装の実行
+#### screen-spec-generator
 
 ```bash
-"この仕様書に基づいてLoginScreenを実装してください"
+# 初期セットアップ
+"画面定義書を作成したい"
+
+# 画面定義書の生成（セットアップ後）
+/screen-spec lib/ui/mypage/widgets/mypage_page.dart
 ```
 
-## 💡 使用例
-
-### 例1: シンプルなボタンコンポーネント
+## ディレクトリ構造
 
 ```
-User: "カスタムボタンコンポーネントを作りたいです"
-Assistant: "了解しました。いくつか質問させてください。"
-
-Q1: 状態管理 → "いいえ（クリック時のコールバックのみ）"
-Q2: Widget種別 → "コンポーネント"
-Q3: 状態共有 → "いいえ"
-
-結果: StatelessWidget（props駆動のシンプルなコンポーネント）
+flutter_development/
+├── .claude-plugin/
+│   ├── marketplace.json          # スキル登録情報
+│   └── plugin.json
+├── skills/
+│   ├── flutter-widget-assistant/ # Widget設計支援スキル
+│   │   ├── SKILL.md
+│   │   └── README.md
+│   └── screen-spec-generator/    # 画面定義書生成スキル
+│       ├── SKILL.md
+│       ├── README.md
+│       └── templates/            # 定義書テンプレート
+│           ├── base_template.md
+│           ├── screen_spec_command.md
+│           └── sections/
+└── README.md                     # このファイル
 ```
-
-### 例2: ログイン画面
-
-```
-User: "ログイン画面を実装したいです"
-Assistant: "了解しました。いくつか質問させてください。"
-
-Q1: 状態管理 → "はい（フォーム入力、バリデーション）"
-Q2: Widget種別 → "画面"
-Q3: 状態共有 → "はい（認証状態を他の画面でも使用）"
-
-結果: HooksConsumerWidget + AutoRoute + ViewModel + UIState + Riverpod
-```
-
-### 例3: カウンターウィジェット
-
-```
-User: "カウンターウィジェットを作りたいです"
-Assistant: "了解しました。いくつか質問させてください。"
-
-Q1: 状態管理 → "はい（カウンター値）"
-Q2: Widget種別 → "コンポーネント"
-Q3: 状態共有 → "いいえ（ローカル状態のみ）"
-
-結果: StatefulWidget（ローカル状態管理のシンプルなコンポーネント）
-```
-
-## 🛠️ 技術スタック
-
-生成される実装は、以下の技術スタックを前提としています：
-
-- **フレームワーク:** Flutter
-- **ナビゲーション:** AutoRoute
-- **状態管理:** Riverpod（オプション）
-- **フック:** flutter_hooks（オプション）
-- **アーキテクチャ:** MVVM（画面レベル）
 
 ## インストール方法
 
@@ -152,33 +137,25 @@ cp -r ai_development_tools/flutter_development ~/.claude/plugins/
 /plugin list
 ```
 
-## 🤝 貢献
-
-このツール群の改善提案やバグ報告は、以下の方法で行ってください：
-
-1. 新しいガイドやテンプレートの追加
-2. 既存ガイドの改善
-3. バグ修正
-4. ドキュメントの改善
-
-Issue報告やPull Requestを歓迎します。
-
-## 📝 ライセンス
-
-MIT License
-
-## 👤 作成者
+## 作成者
 
 **HINO, Yasushi**
 - Email: y.hino@xtone.co.jp
 - Organization: XTONE
 
-## 🔄 バージョン履歴
+## バージョン履歴
+
+### v0.2.0 (2026-02-06)
+- `screen-spec-generator` スキルを統合
+- 画面定義書の作成・管理機能を追加
 
 ### v0.1.0 (2025-11-11)
 - 初期リリース
 - `flutter-widget-assistant` スキルの実装
-- インタラクティブなインタビュー形式での設計支援
+
+## ライセンス
+
+MIT License
 
 ## 参考リンク
 
