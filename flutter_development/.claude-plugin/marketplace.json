@@ -16,6 +16,16 @@
                 "name": "HINO, Yasushi"
             },
             "tags": ["flutter", "widget", "architecture", "state-management", "riverpod", "autoroute", "mvvm", "interview"]
+        },
+        {
+            "name": "api-client-generator",
+            "source": "./skills/api-client-generator",
+            "description": "OpenAPI/Swagger仕様からFlutter用のAPIクライアントコードを自動生成します。型安全なFreezedモデル、Retrofit APIサービス、Either型エラーハンドリング付きリポジトリ、Riverpodプロバイダをフルスタックで生成します。",
+            "version": "1.0.0",
+            "author": {
+                "name": "HINO, Yasushi"
+            },
+            "tags": ["flutter", "api", "openapi", "swagger", "retrofit", "freezed", "riverpod", "dio", "dartz", "code-generation"]
         }
     ]
 }
