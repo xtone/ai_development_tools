@@ -26,6 +26,26 @@
                 "name": "katsume"
             },
             "tags": ["flutter", "documentation", "screen-spec", "specification", "template"]
+        },
+        {
+            "name": "dark-mode-agent",
+            "source": "./skills/dark-mode-agent",
+            "description": "FigmaのDark Modeデザインを解析し、Flutter UIを実装するTeam Agentスキル。Figma MCPでダークテーマのデザイン情報を抽出し、FigmaとFlutter間の色味差異を回避しながら忠実な実装を行います。",
+            "version": "1.0.0",
+            "author": {
+                "name": "HINO, Yasushi"
+            },
+            "tags": ["flutter", "figma", "dark-mode", "theme", "team-agent", "figma-mcp", "color-scheme"]
+        },
+        {
+            "name": "light-mode-agent",
+            "source": "./skills/light-mode-agent",
+            "description": "FigmaのLight Modeデザインを解析し、Flutter UIを実装するTeam Agentスキル。Figma MCPでライトテーマのデザイン情報を抽出し、忠実なFlutter実装を行います。",
+            "version": "1.0.0",
+            "author": {
+                "name": "HINO, Yasushi"
+            },
+            "tags": ["flutter", "figma", "light-mode", "theme", "team-agent", "figma-mcp", "color-scheme"]
         }
     ]
 }
