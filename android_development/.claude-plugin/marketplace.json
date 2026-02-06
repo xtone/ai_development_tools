@@ -1,0 +1,81 @@
+{
+    "name": "android-development",
+    "description": "Android/Jetpack Compose開発向けのツール群。アーキテクチャ設計、UI実装、テスト自動生成、Figmaからのコード変換までをサポート",
+    "version": "0.1.0",
+    "owner": {
+        "name": "ISHIHARA, Masaya",
+        "email": "m.ishihara@xtone.co.jp"
+    },
+    "skills": [
+        {
+            "name": "android-architecture",
+            "source": "./.claude/skills/android-architecture",
+            "description": "Androidプロジェクトのアーキテクチャ設計を支援。MVI/MVVM/シンプルComposeから最適なパターンを提案し、パッケージ構造の設計を行う",
+            "version": "1.0.0",
+            "author": {
+                "name": "ISHIHARA, Masaya"
+            },
+            "tags": ["android", "architecture", "mvi", "mvvm", "jetpack-compose"]
+        },
+        {
+            "name": "android-api-client",
+            "source": "./.claude/skills/android-api-client",
+            "description": "Retrofit + OkHttpを使用したAPIクライアント実装のベストプラクティスを提供",
+            "version": "1.0.0",
+            "author": {
+                "name": "ISHIHARA, Masaya"
+            },
+            "tags": ["android", "retrofit", "okhttp", "api", "networking"]
+        },
+        {
+            "name": "android-ui-guidelines",
+            "source": "./.claude/skills/android-ui-guidelines",
+            "description": "Jetpack ComposeによるUI実装のコーディングガイドライン",
+            "version": "1.0.0",
+            "author": {
+                "name": "ISHIHARA, Masaya"
+            },
+            "tags": ["android", "jetpack-compose", "ui", "coding-guidelines"]
+        },
+        {
+            "name": "android-data-layer",
+            "source": "./.claude/skills/android-data-layer",
+            "description": "Room Database、DataStore、Repositoryパターンの実装ガイド",
+            "version": "1.0.0",
+            "author": {
+                "name": "ISHIHARA, Masaya"
+            },
+            "tags": ["android", "room", "datastore", "repository", "data-layer"]
+        },
+        {
+            "name": "android-test-runner",
+            "source": "./.claude/skills/android-test-runner",
+            "description": "Androidテストの実行と失敗分析を自動化。Multi-variantプロジェクト対応",
+            "version": "1.0.0",
+            "author": {
+                "name": "ISHIHARA, Masaya"
+            },
+            "tags": ["android", "testing", "junit", "gradle", "automation"]
+        },
+        {
+            "name": "android-test-generator",
+            "source": "./.claude/skills/android-test-generator",
+            "description": "実装コードからテストコードを自動生成。MVIアーキテクチャの各レイヤーに対応",
+            "version": "1.0.0",
+            "author": {
+                "name": "ISHIHARA, Masaya"
+            },
+            "tags": ["android", "testing", "code-generation", "mvi"]
+        },
+        {
+            "name": "figma-to-compose",
+            "source": "./.claude/skills/figma-to-compose",
+            "description": "FigmaデザインからJetpack Composeコードを高精度で生成。Figma APIから正確な値を取得し95%以上の準拠率を実現",
+            "version": "1.0.0",
+            "author": {
+                "name": "ISHIHARA, Masaya"
+            },
+            "tags": ["android", "figma", "jetpack-compose", "design-to-code"]
+        }
+    ]
+}

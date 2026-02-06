@@ -296,7 +296,27 @@ fun setup() {
 - ✅ 実行可能な修正提案を提供
 - ✅ デバッグ時間を30%以上削減
 
+## 互換性
+
+### Agent Skills (Open Standard)
+
+このスキルは [Agent Skills](https://agentskills.io) オープンスタンダードに準拠しています。
+
+**対応ツール**:
+- Claude Code ✅
+- GitHub Copilot ✅
+- VS Code ✅
+- Cursor (Nightly) ✅
+- OpenAI Codex ✅
+
+`.claude/skills/` ディレクトリに配置することで、上記すべてのツールで使用可能です。
+
 ## バージョン
+
+### v1.1 - Agent Skills対応 (2025-12-23)
+- ✅ Agent Skills オープンスタンダード準拠を確認
+- ✅ 互換性セクション追加
+- ✅ 複数コーディングエージェントで使用可能
 
 ### v1.0 - 汎用版リリース (2025-11-20)
 - ✅ Pattern 1-19 を実装
