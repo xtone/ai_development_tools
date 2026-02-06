@@ -1,0 +1,21 @@
+{
+    "name": "common-development",
+    "description": "プラットフォーム非依存の汎用開発スキル集。CLAUDE.md管理、動画分析など、あらゆるプロジェクトで使える共通ツール",
+    "version": "0.1.0",
+    "owner": {
+        "name": "ISHIHARA, Masaya",
+        "email": "m.ishihara@xtone.co.jp"
+    },
+    "skills": [
+        {
+            "name": "video-keyframe-analyzer",
+            "source": "./skills/video-keyframe-analyzer",
+            "description": "動画からキーフレームを抽出してコスト効率的に分析。Claude API コストを約93%削減（5秒動画: 約450円→約24円）",
+            "version": "0.1.0",
+            "author": {
+                "name": "ISHIHARA, Masaya"
+            },
+            "tags": ["video-analysis", "cost-optimization", "keyframe", "debugging"]
+        }
+    ]
+}
