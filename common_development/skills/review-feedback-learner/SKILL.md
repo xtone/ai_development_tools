@@ -1,6 +1,6 @@
 ---
 name: review-learn
-description: "PRレビューで受けた指摘をCLAUDE.mdのルールとして蓄積するスキル。`/review-learn` または `/review-learn #123` で起動。レビュアーの知見をチーム全体の資産に変換し、同じ指摘を繰り返さないコードベースを実現する。"
+description: "PRレビューで受けた指摘をCLAUDE.mdのルールとして蓄積するスキル。`/review-learn` または `/review-learn #123` で使用。レビュアーの知見をチーム全体の資産に変換し、同じ指摘を繰り返さないコードベースを実現する。"
 ---
 
 # Review Feedback Learner
