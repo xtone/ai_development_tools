@@ -63,8 +63,61 @@ Golden Test環境が存在しない場合に実行。
 ■ このスキルでできること
 対話形式で環境構築からテスト作成までサポートします。テスト画像がうまく生成されない場合も、会話しながら一緒に解決していきますので、お気軽にご質問ください。
 
-何か事前に質問があれば、今のうちにどうぞ。なければ、セットアップを始めましょう。」
+■ 具体例：こんなテストが作れます
+例えば、以下のようなボタンウィジェットがあるとします：」
 ```
+
+**続けて、以下の具体例を提示する:**
+
+````
+「▼ 対象ウィジェット（例）
+```dart
+class PrimaryButton extends StatelessWidget {
+  final String text;
+  final VoidCallback? onPressed;
+
+  const PrimaryButton({required this.text, this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return ElevatedButton(onPressed: onPressed, child: Text(text));
+  }
+}
+```
+
+▼ 生成されるテストコード
+```dart
+testWidgets('有効状態', (tester) async {
+  await tester.pumpGoldenWidget(
+    PrimaryButton(onPressed: () {}, text: '保存する'),
+  );
+  await expectLater(
+    find.byType(PrimaryButton),
+    matchesGoldenFile(
+      GoldenFilePath.component('primary_button', 'enabled'),
+    ),
+  );
+});
+```
+
+▼ 生成されるファイル
+test/ui/components/
+├── primary_button_golden_test.dart   ← テストコード
+└── goldens/components/primary_button/
+    ├── enabled.png                   ← 有効状態のスクリーンショット
+    ├── disabled.png                  ← 無効状態のスクリーンショット
+    └── all_states.png                ← 全状態の一覧比較
+
+▼ テスト実行コマンド
+# 初回：Goldenファイル（正解画像）を生成
+flutter test --update-goldens test/ui/components/primary_button_golden_test.dart
+
+# 以降：画像に差分がないか検証（CIでも実行可能）
+flutter test test/ui/components/primary_button_golden_test.dart
+
+セットアップ完了後、対話形式でこのようなテストを自動生成していきます。
+何か事前に質問があれば、今のうちにどうぞ。なければ、セットアップを始めましょう。」
+````
 
 **ユーザーの回答を待つ → 回答後、Step 1へ進む**
 
