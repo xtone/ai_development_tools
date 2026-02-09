@@ -26,6 +26,16 @@
                 "name": "ISHIHARA, Masaya"
             },
             "tags": ["claude-code", "knowledge-management", "lessons-learned", "productivity"]
+        },
+        {
+            "name": "review-feedback-learner",
+            "source": "./skills/review-feedback-learner",
+            "description": "PRレビューで受けた指摘をCLAUDE.mdのルールとして蓄積。レビュアーの暗黙知をチーム全体の資産に変換する",
+            "version": "1.0.0",
+            "author": {
+                "name": "ISHIHARA, Masaya"
+            },
+            "tags": ["claude-code", "code-review", "knowledge-management", "github", "team-learning"]
         }
     ]
 }
