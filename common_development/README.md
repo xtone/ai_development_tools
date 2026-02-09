@@ -18,6 +18,7 @@
 |--------|------|
 | **video-keyframe-analyzer** | 動画からキーフレームを抽出してコスト効率的に分析（API コスト93%削減） |
 | **lessons-md-manager** | CLAUDE.mdの「Lessons Learned」セクションを管理。セッション中の学びを自動抽出・蓄積 |
+| **review-feedback-learner** | PRレビューで受けた指摘をCLAUDE.mdのルールとして蓄積。レビュアーの暗黙知をチーム資産に |
 
 ## スキル詳細
 
@@ -58,6 +59,24 @@ Boris Cherny氏のTip #3「CLAUDE.mdへの投資」を仕組み化したスキ�
 
 詳細: [skills/lessons-md-manager/README.md](./skills/lessons-md-manager/README.md)
 
+### review-feedback-learner
+
+PRレビューで受けた指摘をCLAUDE.mdのルールとして蓄積するスキル。lessons-md-managerと補完関係にあり、「自分の気づき」＋「他者の指摘」の両方を蓄積できます。
+
+**使い方:**
+```
+/review-learn          # 直近のマージ済みPRから学ぶ
+/review-learn #123     # 指定PRのレビューから学ぶ
+```
+
+**lessons-md-managerとの補完関係:**
+| スキル | 学びの源泉 | タイミング |
+|--------|-----------|-----------|
+| `/lessons` | 自分で気づいた失敗・修正 | セッション終了時 |
+| `/review-learn` | 他者からの指摘 | PRマージ後 |
+
+詳細: [skills/review-feedback-learner/README.md](./skills/review-feedback-learner/README.md)
+
 ## ディレクトリ構造
 
 ```
@@ -71,7 +90,10 @@ common_development/
 │   │   ├── README.md
 │   │   ├── extract_keyframes.py
 │   │   └── requirements.txt
-│   └── lessons-md-manager/
+│   ├── lessons-md-manager/
+│   │   ├── SKILL.md
+│   │   └── README.md
+│   └── review-feedback-learner/
 │       ├── SKILL.md
 │       └── README.md
 └── README.md
