@@ -16,7 +16,8 @@ code-review/
 └── references/
     ├── typescript-best-practices.md       # TypeScript固有のチェック
     ├── authorization-review-general.md    # 認可レビュー観点（一般編）
-    └── authorization-review-portgres-rls.md  # 認可レビュー観点（PostgreSQL RLS編）
+    ├── authorization-review-postgres-rls.md  # 認可レビュー観点（PostgreSQL RLS編）
+    └── github-pr-review-actions.md        # GitHub PRレビューアクション
 ```
 
 ## 外部スキル連携
@@ -68,7 +69,7 @@ React / Next.js のベストプラクティスは、Vercel提供の **react-best
 | 機密データが不用意にログ出力されていないか | Major |
 | CORS設定が適切か | Major |
 
-> **認可（Authorization）の詳細レビュー**：認可に関わる変更がある場合は、[references/authorization-review-general.md](references/authorization-review-general.md) を参照して詳細なチェックを行う。PostgreSQL RLSを使用している場合は、追加で [references/authorization-review-portgres-rls.md](references/authorization-review-portgres-rls.md) も参照する。
+> **認可（Authorization）の詳細レビュー**：認可に関わる変更がある場合は、[references/authorization-review-general.md](references/authorization-review-general.md) を参照して詳細なチェックを行う。PostgreSQL RLSを使用している場合は、追加で [references/authorization-review-postgres-rls.md](references/authorization-review-postgres-rls.md) も参照する。
 
 #### 2-2. ロジック・正確性
 
@@ -123,13 +124,15 @@ React / Next.js のベストプラクティスは、Vercel提供の **react-best
 | 観点 | 参照先 | 種別 |
 |------|--------|------|
 | 認可（一般） | [references/authorization-review-general.md](references/authorization-review-general.md) | 内部リファレンス |
-| 認可（PostgreSQL RLS） | [references/authorization-review-portgres-rls.md](references/authorization-review-portgres-rls.md) | 内部リファレンス |
+| 認可（PostgreSQL RLS） | [references/authorization-review-postgres-rls.md](references/authorization-review-postgres-rls.md) | 内部リファレンス |
+| GitHub PRレビュー | [references/github-pr-review-actions.md](references/github-pr-review-actions.md) | 内部リファレンス |
 
 **参照ルール：**
 - TypeScriptの変更 → 内部リファレンスを読み込む
 - React / Next.js の変更 → `react-best-practices` スキルを併用する（インストール済みの場合）
 - 認可に関わる変更（認証/権限チェック、データアクセス制御等） → 認可リファレンス（一般編）を参照
 - PostgreSQL RLSを使用している場合 → 認可リファレンス（RLS編）も追加で参照
+- GitHub Actions等のCI環境でPRレビューを実行する場合 → GitHub PRレビューアクションを参照（コメント投稿・評価方法）
 - 複数の言語/FWにまたがる変更の場合は、すべての該当リファレンスを参照する
 - リファレンスが存在しない言語の場合は、ステップ2の共通チェックのみで判断する
 
@@ -177,6 +180,8 @@ Conditional Approve
 ### ステップ5: レビュー結果の出力
 
 以下のフォーマットでレビュー結果を出力する。
+
+> **GitHub上でのレビュー投稿**：GitHub Actions等のCI環境でPRレビューを実行している場合のみ、[references/github-pr-review-actions.md](references/github-pr-review-actions.md) を参照して、`gh`コマンドやインラインコメントを使用してレビュー結果をGitHub上に投稿する。ローカル環境での実行時は、結果を標準出力に表示するのみとする。
 
 ```markdown
 ## Code Review: [判定結果]
