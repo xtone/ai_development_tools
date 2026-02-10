@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: PRやコード変更の汎用コードレビューを実施します。コードの品質、セキュリティ、設計を共通基準で評価し、approve/rejectを判断します。PRレビュー、コードレビュー、マージ前チェックを依頼された場合に使用してください。
+description: PRやコード変更の汎用コードレビューを実施します。コードの品質、セキュリティ、設計を共通基準で評価し、approve/rejectを判断します。「このPRをレビュー」「コードレビューして」「マージ前チェック」などの依頼や、gh pr viewコマンドの実行時に使用してください。
 ---
 
 # コードレビュー
@@ -14,7 +14,9 @@ PRやコード変更を体系的にレビューするための汎用スキルで
 code-review/
 ├── SKILL.md (このファイル)
 └── references/
-    └── typescript-best-practices.md  # TypeScript固有のチェック
+    ├── typescript-best-practices.md       # TypeScript固有のチェック
+    ├── authorization-review-general.md    # 認可レビュー観点（一般編）
+    └── authorization-review-portgres-rls.md  # 認可レビュー観点（PostgreSQL RLS編）
 ```
 
 ## 外部スキル連携
@@ -66,6 +68,8 @@ React / Next.js のベストプラクティスは、Vercel提供の **react-best
 | 機密データが不用意にログ出力されていないか | Major |
 | CORS設定が適切か | Major |
 
+> **認可（Authorization）の詳細レビュー**：認可に関わる変更がある場合は、[references/authorization-review-general.md](references/authorization-review-general.md) を参照して詳細なチェックを行う。PostgreSQL RLSを使用している場合は、追加で [references/authorization-review-portgres-rls.md](references/authorization-review-portgres-rls.md) も参照する。
+
 #### 2-2. ロジック・正確性
 
 | チェック項目 | 重要度 |
@@ -116,9 +120,16 @@ React / Next.js のベストプラクティスは、Vercel提供の **react-best
 | TypeScript | [references/typescript-best-practices.md](references/typescript-best-practices.md) | 内部リファレンス |
 | React / Next.js | `react-best-practices` スキル（Vercel提供） | 外部スキル |
 
+| 観点 | 参照先 | 種別 |
+|------|--------|------|
+| 認可（一般） | [references/authorization-review-general.md](references/authorization-review-general.md) | 内部リファレンス |
+| 認可（PostgreSQL RLS） | [references/authorization-review-portgres-rls.md](references/authorization-review-portgres-rls.md) | 内部リファレンス |
+
 **参照ルール：**
 - TypeScriptの変更 → 内部リファレンスを読み込む
 - React / Next.js の変更 → `react-best-practices` スキルを併用する（インストール済みの場合）
+- 認可に関わる変更（認証/権限チェック、データアクセス制御等） → 認可リファレンス（一般編）を参照
+- PostgreSQL RLSを使用している場合 → 認可リファレンス（RLS編）も追加で参照
 - 複数の言語/FWにまたがる変更の場合は、すべての該当リファレンスを参照する
 - リファレンスが存在しない言語の場合は、ステップ2の共通チェックのみで判断する
 
