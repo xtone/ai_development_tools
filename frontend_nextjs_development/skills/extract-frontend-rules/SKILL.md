@@ -1,6 +1,6 @@
 ---
 name: extract-frontend-rules
-description: コードベースを分析してフロントエンドのコーディング規約・パターンを抽出し、.claude/rules/frontend/配下にルールファイルとして出力します。フロントエンドプロジェクトの規約を文書化したい場合や、新メンバーのオンボーディング時に使用してください。
+description: コードベースを分析してフロントエンド規約を抽出し、.claude/rules/frontend/に出力します。フロントエンドプロジェクトの規約文書化や新メンバーオンボーディング時に使用してください。
 ---
 
 # フロントエンド規約抽出
@@ -45,3 +45,42 @@ Task tool:
 ```
 
 出力先: `.claude/rules/frontend/directory-structure.md`, `.claude/rules/frontend/naming-conventions.md`
+
+## 生成されるルールファイル例
+
+`.claude/rules/frontend/naming-conventions.md` の出力例:
+
+````markdown
+# 命名規則
+
+> 自動生成: 2026-02-10
+> 検出フレームワーク: Next.js 15 + TypeScript + Tailwind CSS v4
+
+## 概要
+
+プロジェクト内で一貫して使用されているファイル・コンポーネント・関数の命名パターン。
+
+## ルール
+
+### ルール1: コンポーネントファイルはPascalCase
+
+**適用条件**: React/Nextコンポーネントファイル
+
+**ルール内容**:
+- コンポーネントファイル名はPascalCaseを使用する
+- ファイル拡張子は `.tsx` を使用する
+
+**コード例**:
+```typescript
+// 正しい例
+import { UserProfile } from './UserProfile/UserProfile.tsx'
+
+// 間違った例
+import { userProfile } from './userProfile/userProfile.tsx'
+```
+
+**検出根拠**:
+- `src/app/_components/Header/Header.tsx`
+- `src/shared/components/Button/Button.tsx`
+- `src/app/dashboard/_components/Chart/Chart.tsx`
+````
