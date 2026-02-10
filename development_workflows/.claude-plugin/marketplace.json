@@ -10,7 +10,7 @@
         {
             "name": "code-review",
             "source": "./skills/code-review",
-            "description": "PRやコード変更の汎用コードレビューを実施します。コードの品質、セキュリティ、設計を共通基準で評価し、approve/rejectを判断します。",
+            "description": "PRやコード変更の汎用コードレビューを実施します。品質、セキュリティ、設計を共通基準で評価し、approve/rejectを判断します。「このPRをレビュー」「コードレビューして」といった依頼時や、gh pr viewコマンド実行時に使用されます。",
             "version": "1.0.0",
             "author": {
                 "name": "TOYOTA, Yoichi"

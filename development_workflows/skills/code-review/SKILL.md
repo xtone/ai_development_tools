@@ -16,7 +16,7 @@ code-review/
 └── references/
     ├── typescript-best-practices.md       # TypeScript固有のチェック
     ├── authorization-review-general.md    # 認可レビュー観点（一般編）
-    ├── authorization-review-portgres-rls.md  # 認可レビュー観点（PostgreSQL RLS編）
+    ├── authorization-review-postgres-rls.md  # 認可レビュー観点（PostgreSQL RLS編）
     └── github-pr-review-actions.md        # GitHub PRレビューアクション
 ```
 
@@ -69,7 +69,7 @@ React / Next.js のベストプラクティスは、Vercel提供の **react-best
 | 機密データが不用意にログ出力されていないか | Major |
 | CORS設定が適切か | Major |
 
-> **認可（Authorization）の詳細レビュー**：認可に関わる変更がある場合は、[references/authorization-review-general.md](references/authorization-review-general.md) を参照して詳細なチェックを行う。PostgreSQL RLSを使用している場合は、追加で [references/authorization-review-portgres-rls.md](references/authorization-review-portgres-rls.md) も参照する。
+> **認可（Authorization）の詳細レビュー**：認可に関わる変更がある場合は、[references/authorization-review-general.md](references/authorization-review-general.md) を参照して詳細なチェックを行う。PostgreSQL RLSを使用している場合は、追加で [references/authorization-review-postgres-rls.md](references/authorization-review-postgres-rls.md) も参照する。
 
 #### 2-2. ロジック・正確性
 
@@ -124,7 +124,7 @@ React / Next.js のベストプラクティスは、Vercel提供の **react-best
 | 観点 | 参照先 | 種別 |
 |------|--------|------|
 | 認可（一般） | [references/authorization-review-general.md](references/authorization-review-general.md) | 内部リファレンス |
-| 認可（PostgreSQL RLS） | [references/authorization-review-portgres-rls.md](references/authorization-review-portgres-rls.md) | 内部リファレンス |
+| 認可（PostgreSQL RLS） | [references/authorization-review-postgres-rls.md](references/authorization-review-postgres-rls.md) | 内部リファレンス |
 | GitHub PRレビュー | [references/github-pr-review-actions.md](references/github-pr-review-actions.md) | 内部リファレンス |
 
 **参照ルール：**
