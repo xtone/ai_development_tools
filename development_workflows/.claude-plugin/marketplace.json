@@ -1,0 +1,21 @@
+{
+    "name": "development-workflows",
+    "description": "開発ワークフロー向けスキル群（コードレビュー、認可チェックなど）",
+    "version": "0.1.0",
+    "owner": {
+        "name": "TOYOTA, Yoichi",
+        "email": "y.toyota@xtone.co.jp"
+    },
+    "skills": [
+        {
+            "name": "code-review",
+            "source": "./skills/code-review",
+            "description": "PRやコード変更の汎用コードレビューを実施します。コードの品質、セキュリティ、設計を共通基準で評価し、approve/rejectを判断します。",
+            "version": "1.0.0",
+            "author": {
+                "name": "TOYOTA, Yoichi"
+            },
+            "tags": ["code-review", "pr-review", "security", "authorization", "typescript", "postgresql-rls"]
+        }
+    ]
+}

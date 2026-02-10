@@ -49,6 +49,15 @@
             "author": {
                 "name": "katsume"
             }
+        },
+        {
+            "name": "development-workflows",
+            "source": "./development_workflows",
+            "description": "開発ワークフロー向けスキル群（コードレビュー、認可チェックなど）",
+            "version": "0.1.0",
+            "author": {
+                "name": "TOYOTA, Yoichi"
+            }
         }
     ]
 }
