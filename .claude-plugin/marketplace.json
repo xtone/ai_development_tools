@@ -33,6 +33,15 @@
             }
         },
         {
+            "name": "ios-development",
+            "source": "./ios_development",
+            "description": "iOS/SwiftUI開発向けのツール群（コーディングガイドライン、コンポーネントカタログ、マイグレーションガイド、アクセシビリティ実装ガイドなど）",
+            "version": "0.1.0",
+            "author": {
+                "name": "OKUBO, Sosuke"
+            }
+        },
+        {
             "name": "skill-usage-tracker",
             "source": "./skill_usage_tracker",
             "description": "スキル使用状況トラッキングと外部サービスへの分析データ送信",
