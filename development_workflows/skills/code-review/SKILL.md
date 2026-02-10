@@ -132,7 +132,7 @@ React / Next.js のベストプラクティスは、Vercel提供の **react-best
 - React / Next.js の変更 → `react-best-practices` スキルを併用する（インストール済みの場合）
 - 認可に関わる変更（認証/権限チェック、データアクセス制御等） → 認可リファレンス（一般編）を参照
 - PostgreSQL RLSを使用している場合 → 認可リファレンス（RLS編）も追加で参照
-- GitHub上でPRレビューを実行する場合 → GitHub PRレビューアクションを参照（コメント投稿・評価方法）
+- GitHub Actions等のCI環境でPRレビューを実行する場合 → GitHub PRレビューアクションを参照（コメント投稿・評価方法）
 - 複数の言語/FWにまたがる変更の場合は、すべての該当リファレンスを参照する
 - リファレンスが存在しない言語の場合は、ステップ2の共通チェックのみで判断する
 
@@ -181,7 +181,7 @@ Conditional Approve
 
 以下のフォーマットでレビュー結果を出力する。
 
-> **GitHub上でのレビュー投稿**：GitHub ActionsやGitHubリポジトリでPRレビューを実行している場合は、[references/github-pr-review-actions.md](references/github-pr-review-actions.md) を参照して、`gh`コマンドやインラインコメントを使用してレビュー結果を投稿する。
+> **GitHub上でのレビュー投稿**：GitHub Actions等のCI環境でPRレビューを実行している場合のみ、[references/github-pr-review-actions.md](references/github-pr-review-actions.md) を参照して、`gh`コマンドやインラインコメントを使用してレビュー結果をGitHub上に投稿する。ローカル環境での実行時は、結果を標準出力に表示するのみとする。
 
 ```markdown
 ## Code Review: [判定結果]
