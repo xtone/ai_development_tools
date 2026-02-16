@@ -26,6 +26,46 @@
                 "name": "katsume"
             },
             "tags": ["flutter", "documentation", "screen-spec", "specification", "template"]
+        },
+        {
+            "name": "dark-mode-agent",
+            "source": "./skills/dark-mode-agent",
+            "description": "FigmaのDark Modeデザインを解析し、Flutter UIを実装するTeam Agentスキル。Figma MCPでダークテーマのデザイン情報を抽出し、FigmaとFlutter間の色味差異を回避しながら忠実な実装を行います。",
+            "version": "1.0.0",
+            "author": {
+                "name": "HINO, Yasushi"
+            },
+            "tags": ["flutter", "figma", "dark-mode", "theme", "team-agent", "figma-mcp", "color-scheme"]
+        },
+        {
+            "name": "light-mode-agent",
+            "source": "./skills/light-mode-agent",
+            "description": "FigmaのLight Modeデザインを解析し、Flutter UIを実装するTeam Agentスキル。Figma MCPでライトテーマのデザイン情報を抽出し、忠実なFlutter実装を行います。",
+            "version": "1.0.0",
+            "author": {
+                "name": "HINO, Yasushi"
+            },
+            "tags": ["flutter", "figma", "light-mode", "theme", "team-agent", "figma-mcp", "color-scheme"]
+        },
+        {
+            "name": "flutter-team",
+            "source": "./skills/flutter-team",
+            "description": "Flutter開発チームのオーケストレーター。ユーザーの依頼内容を解析し、Figma URL種別（Light/Dark Mode）やUI状態分析の依頼を判定して、最適なスキル/チームに自動ルーティングします。",
+            "version": "1.0.0",
+            "author": {
+                "name": "HINO, Yasushi"
+            },
+            "tags": ["flutter", "orchestrator", "team-agent", "routing", "figma", "light-mode", "dark-mode", "fire-ui-stack"]
+        },
+        {
+            "name": "fire-ui-stack",
+            "source": "./skills/fire-ui-stack",
+            "description": "Fire UI Stackパターンに基づいて、UIの5つの状態（Ideal/Blank/Loading/Error/Partial）を並列分析するTeam Agentスキル。各状態の実装品質を評価し、改善提案を含む総合レポートを生成します。",
+            "version": "1.0.0",
+            "author": {
+                "name": "HINO, Yasushi"
+            },
+            "tags": ["flutter", "ui-state", "fire-ui-stack", "team-agent", "analysis", "quality"]
         }
     ]
 }
