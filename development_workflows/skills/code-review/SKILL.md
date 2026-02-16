@@ -22,10 +22,10 @@ code-review/
 
 ## 外部スキル連携
 
-React / Next.js のベストプラクティスは、Vercel提供の **react-best-practices** スキルを使用する。
+React / Next.js のベストプラクティスは、Vercel提供の **vercel-react-best-practices** スキルを使用する。
 
 - **リポジトリ**: https://github.com/vercel-labs/agent-skills/tree/main/skills/react-best-practices
-- **インストール**: `npx add-skill vercel-labs/agent-skills`
+- **インストール**: `npx -y skills add vercel-labs/agent-skills --skill vercel-react-best-practices --agent claude-code --yes`
 - **カバー範囲**: 非同期ウォーターフォール排除、バンドルサイズ最適化、サーバー側パフォーマンス、クライアント側データ取得、再レンダリング最適化、レンダリングパフォーマンス、高度なパターン、JavaScriptパフォーマンス（8カテゴリ、40以上のルール）
 
 ## レビューワークフロー
@@ -119,7 +119,7 @@ React / Next.js のベストプラクティスは、Vercel提供の **react-best
 | 言語/FW | 参照先 | 種別 |
 |---------|--------|------|
 | TypeScript | [references/typescript-best-practices.md](references/typescript-best-practices.md) | 内部リファレンス |
-| React / Next.js | `react-best-practices` スキル（Vercel提供） | 外部スキル |
+| React / Next.js | `vercel-react-best-practices` スキル（Vercel提供） | 外部スキル |
 
 | 観点 | 参照先 | 種別 |
 |------|--------|------|
@@ -129,7 +129,7 @@ React / Next.js のベストプラクティスは、Vercel提供の **react-best
 
 **参照ルール：**
 - TypeScriptの変更 → 内部リファレンスを読み込む
-- React / Next.js の変更 → `react-best-practices` スキルを併用する（インストール済みの場合）
+- React / Next.js の変更 → `vercel-react-best-practices` スキルを併用する（インストール済みの場合）
 - 認可に関わる変更（認証/権限チェック、データアクセス制御等） → 認可リファレンス（一般編）を参照
 - PostgreSQL RLSを使用している場合 → 認可リファレンス（RLS編）も追加で参照
 - GitHub Actions等のCI環境でPRレビューを実行する場合 → GitHub PRレビューアクションを参照（コメント投稿・評価方法）

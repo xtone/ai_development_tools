@@ -210,6 +210,28 @@ permissions:
   issues: write
 ```
 
+### allowedTools の設定（重要）
+
+`claude-code-action` の `claude_args` で `--allowedTools` を指定する場合、以下のツールを**すべて含める**こと。不足するとスキルの実行やコード読み取りに失敗し、レビューが正常に行われない。
+
+| ツール | 用途 | 必須 |
+|--------|------|------|
+| `Skill` | `/code-review` スキル自体の実行 | 必須 |
+| `Read` | ソースコードの読み取り | 必須 |
+| `Glob` | ファイルパターンによる検索 | 必須 |
+| `Grep` | コード内のパターン検索 | 必須 |
+| `Bash(gh:*)` | `gh` CLIによるPR情報取得・レビュー投稿 | 必須 |
+| `WebSearch` | ベストプラクティスや公式ドキュメントの参照 | 推奨 |
+| `mcp__github_inline_comment__create_inline_comment` | インラインコメント投稿（MCPツール利用時） | 任意 |
+
+**設定例：**
+
+```
+--allowedTools "Skill,Read,Glob,Grep,WebSearch,Bash(gh:*)"
+```
+
+> **注意**: `allowedTools` を指定しない場合は全ツールが利用可能。指定する場合は上記の必須ツールを漏れなく含めること。過去にこの設定不足により、17ターン消費してもレビューが投稿されない問題が発生した。
+
 ### 環境変数
 
 `gh` CLIが正しく動作するために必要：
@@ -234,7 +256,76 @@ env:
 
 ---
 
-## 7. チェックリスト
+## 7. GitHub Actionsワークフローの設定例
+
+`anthropics/claude-code-action` を使用した、実運用で検証済みの設定例。
+
+```yaml
+name: Automated PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths-ignore:
+      - '.claude/skills/**'
+      - '*.md'
+      - 'LICENSE'
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: pr-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  automated-review:
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - name: Install vercel-react-best-practices skill
+        run: npx -y skills add vercel-labs/agent-skills --skill vercel-react-best-practices --agent claude-code --yes
+
+      - name: Run Claude Code PR Review
+        uses: anthropics/claude-code-action@v1
+        with:
+          github_token: ${{ steps.app-token.outputs.token }}
+          prompt: |
+            PR #${{ github.event.pull_request.number }} をコードレビューしてください。
+
+            /code-review
+          claude_args: |
+            --max-turns 40
+            --allowedTools "Skill,Read,Glob,Grep,WebSearch,Bash(gh:*)"
+```
+
+### 設定のポイント
+
+| 項目 | 説明 |
+|------|------|
+| `paths-ignore` | スキルファイルやドキュメントの変更ではレビューを実行しない |
+| `concurrency` | 同一PRへの重複実行を防止する |
+| `if: github.actor != 'dependabot[bot]'` | Dependabot PRではSecretsが利用不可のためスキップ |
+| `max-turns 40` | 大規模PRでもレビューを完了できるよう十分なターン数を設定 |
+| `Install skill` ステップ | React / Next.js プロジェクトの場合に外部スキルをインストール |
+
+> **Vertex AI経由の場合**: `use_vertex: "true"` と `ANTHROPIC_VERTEX_PROJECT_ID`、`CLOUD_ML_REGION` の設定が追加で必要。認証には Workload Identity Federation を使用し、`id-token: write` 権限も追加する。
+
+---
+
+## 8. チェックリスト
 
 ### レビュー投稿前
 
