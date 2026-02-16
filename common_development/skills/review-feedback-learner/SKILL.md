@@ -58,15 +58,113 @@ gh pr list --author @me --state merged --limit 5 --json number,title,mergedAt
 どのPRのレビューから学びますか？（番号 or 全て）
 ```
 
-### ステップ2: レビューコメントの取得
+### ステップ2: レビューデータの取得（GraphQL + REST ハイブリッド）
+
+**変更理由**: `isResolved` / `isOutdated` は REST API では取得できず、GraphQL でのみ取得可能。
+対応済み判定に必須のため、GraphQL をメインのデータ取得手段として使用する。
 
 ```bash
-# PRのレビューコメントを取得
-gh api repos/{owner}/{repo}/pulls/{pr_number}/comments --jq '.[] | {author: .user.login, body: .body, path: .path, line: .line}'
-
-# PRのレビュー（承認/変更要求）も取得
-gh api repos/{owner}/{repo}/pulls/{pr_number}/reviews --jq '.[] | {author: .user.login, state: .state, body: .body}'
+# GraphQL でレビュースレッド・コミット・レビューを一括取得
+gh api graphql -f query='
+query($owner: String!, $repo: String!, $pr: Int!) {
+  repository(owner: $owner, name: $repo) {
+    pullRequest(number: $pr) {
+      author { login }
+      commits(last: 100) {
+        nodes {
+          commit {
+            committedDate
+            message
+            additions
+            deletions
+          }
+        }
+      }
+      reviewThreads(first: 100) {
+        nodes {
+          isResolved
+          isOutdated
+          path
+          comments(first: 10) {
+            nodes {
+              author { login }
+              body
+              createdAt
+            }
+          }
+        }
+      }
+      reviews(first: 50) {
+        nodes {
+          author { login }
+          state
+          body
+        }
+      }
+    }
+  }
+}
+' -f owner='{owner}' -f repo='{repo}' -F pr={pr_number}
 ```
+
+取得データの用途:
+- `reviewThreads`: 各スレッドの `isResolved` / `isOutdated` で対応済み判定
+- `commits`: コメント後の同一ファイルへのコミット有無を確認
+- `reviews`: APPROVED レビューの body から具体的指摘を抽出
+- `author`: PR作者の特定（返信の判別に使用）
+
+### ステップ2.5: 対応済みフィルタリング
+
+**目的**: 「対応した指摘のみをナレッジ化する」ためのフィルタ。
+Bot の的外れな指摘や、未対応のコメントをノイズとして除外する。
+
+#### 2a. コメント著者の分類
+
+| 著者種別 | 判定方法 | デフォルト扱い |
+|---------|---------|--------------|
+| Bot | `login` が `[bot]` で終わる or GitHub API の `is_bot` | **蓄積対象外** |
+| 人間 | 上記以外 | **蓄積候補** |
+
+#### 2b. 「対応済み」判定ロジック（信頼度順）
+
+以下の順で判定し、最初にマッチした条件を採用する:
+
+```
+対応済み判定(thread):
+  1. thread.isResolved == true → 対応済み（確定）
+  2. thread.isOutdated == true かつ
+     thread.comments[0].createdAt 以降に同一ファイル（thread.path）へのコミットあり
+     → 対応済み（高確度）
+  3. PR作者からの返信に対応キーワードあり
+     （"対応しました", "修正しました", "fixed", "done", "updated"）
+     → 対応済み（中確度）
+  4. いずれにも該当しない → 未対応
+```
+
+#### 2c. 著者種別 × 対応状況のマトリクス
+
+| | 対応済み | 未対応 |
+|---|---------|--------|
+| **Bot** | 蓄積候補に昇格 | **除外**（デフォルト） |
+| **人間** | **蓄積候補**（高優先） | 除外 |
+
+- Bot でも対応した指摘は有用なため蓄積候補に含める
+- 人間でも未対応（放置）の指摘は的外れだった可能性があるため除外
+
+#### 2d. APPROVED レビュー body の特別処理
+
+レビュー `state: APPROVED` の body に具体的な指摘（番号付きリスト等）が含まれる場合:
+- APPROVED = レビュアーが対応を確認済みという強いシグナル
+- body 内の各ポイントを個別の蓄積候補として扱う
+- これらは「対応済み（確定）」として扱う
+
+例: APPROVED レビューの body が以下の場合
+```
+LGTMです。以下の修正ありがとうございました:
+1. LifecycleResumeEffectの追加
+2. トリガーイベントの送信タイミング修正
+```
+→ 2つの個別の蓄積候補として抽出
 
 ### ステップ3: コメントの分類
 
@@ -97,6 +195,9 @@ gh api repos/{owner}/{repo}/pulls/{pr_number}/reviews --jq '.[] | {author: .user
 - 特定のバグ修正（再現性なし）
 - 好みの問題（「私なら〜する」）
 - 曖昧なコメント（「ここ気になる」）
+- 未対応のコメント（ステップ2.5のフィルタで除外済みだが、明示的に除外）
+- Bot コメントで対応していないもの
+- resolve せずに放置されたスレッドで対応コミットもないもの
 
 ### ステップ5: 既存ルールとの重複チェック
 
@@ -134,9 +235,28 @@ gh api repos/{owner}/{repo}/pulls/{pr_number}/reviews --jq '.[] | {author: .user
 
 ### ステップ7: ユーザー確認と追記
 
-1. 抽出したルール案を提示
-2. ユーザーに追記するか確認
+蓄積候補を対応確度別にグループ化して表示する:
+
+```markdown
+## 蓄積候補（対応済み指摘から抽出）
+
+### 確実に対応した指摘（resolved / APPROVED body）
+1. {指摘の要約} → {対応内容}
+   - 📝 PR #{PR番号} で @{レビュアー} さんが指摘
+   → ルール案: 「{具体的なルール文}」
+
+### おそらく対応した指摘（outdated + コミットあり）
+2. ...（該当があれば表示）
+
+---
+除外した指摘: Bot未対応 {N}件 / 人間未対応 {N}件
+（詳細を見たい場合は「除外した指摘を見せて」と伝えてください）
+```
+
+1. 上記の形式で蓄積候補を提示
+2. ユーザーに追記するか確認（個別に選択可能）
 3. 承認されたらCLAUDE.mdに追記
+4. 「除外した指摘を見せて」と言われた場合は除外理由付きで一覧表示
 
 **追記先セクション**:
 - `## Review Learnings` セクションがあればそこに追記
@@ -199,6 +319,13 @@ $ gh auth login
 - プラットフォーム非依存: あらゆるGitHubリポジトリで使用可能
 
 ## バージョン
+
+### v1.1 - 対応済みフィルタリング (2026-02-16)
+- Bot vs 人間のコメント自動分類
+- GraphQL API で isResolved / isOutdated を取得
+- 「対応した指摘のみ蓄積」フィルタ導入
+- APPROVED レビュー body の解析対応
+- 確度別グループ表示
 
 ### v1.0 - 初回リリース (2026-02-07)
 - PRレビューコメントからルールを抽出
