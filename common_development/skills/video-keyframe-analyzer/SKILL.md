@@ -1,6 +1,6 @@
 ---
 name: video-keyframe-analyzer
-description: Extract keyframes from videos for cost-efficient analysis. Reduces Claude API costs by 93% (from ~$4.50 to ~$0.24 for 5-sec video) by extracting only significant frames with frame difference detection and quality optimization.
+description: "動画からキーフレームを抽出してコスト効率的に分析するスキル。フレーム差分検出と画質最適化により、Claude APIコストを約93%削減する。`/video-keyframe-analyzer <動画パス>` で使用。"
 ---
 
 # Video Keyframe Analyzer
