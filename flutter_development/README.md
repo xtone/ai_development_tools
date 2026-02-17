@@ -1,6 +1,6 @@
 # Flutter Development Tools
 
-Flutter開発向けの包括的なツール群です。Widget実装の設計判断から画面定義書の作成まで、Flutter開発をサポートします。
+Flutter開発向けの包括的なツール群です。Widget実装の設計判断から画面定義書の作成、Golden Testまで、Flutter開発をサポートします。
 
 ## 含まれるスキル
 
@@ -30,6 +30,20 @@ Flutterプロジェクトの画面定義書を作成・管理するスキルで�
 
 **詳細:** [skills/screen-spec-generator/README.md](./skills/screen-spec-generator/README.md)
 
+### 3. flutter-golden-test
+
+Golden Test（Visual Regression Test）環境のセットアップとテスト生成を対話形式で行うスキルです。Flutter初心者でもGolden Test環境を構築できます。
+
+**主な機能:**
+- Golden Test環境の初期セットアップ（flutter_test_config.dart、ヘルパー生成）
+- コンポーネント/画面のGolden Testコード生成
+- 日本語フォント対応
+- Riverpod対応（ProviderScopeラップ）
+- レスポンシブテスト（複数画面サイズ）
+- トラブルシューティング支援
+
+**詳細:** [skills/flutter-golden-test/README.md](./skills/flutter-golden-test/README.md)
+
 ## 技術スタック
 
 生成される実装は、以下の技術スタックを前提としています：
@@ -52,6 +66,7 @@ graph LR
     B --> C[実装仕様書]
     C --> D[Widget実装]
     D -->|screen-spec-generator| E[画面定義書]
+    D -->|flutter-golden-test| F[Golden Test]
 ```
 
 ### 使用例
@@ -76,6 +91,19 @@ graph LR
 /screen-spec lib/ui/mypage/widgets/mypage_page.dart
 ```
 
+#### flutter-golden-test
+
+```bash
+# 初期セットアップ
+"Golden Testを導入したい"
+
+# テスト生成
+"PrimaryButtonのGolden Testを書いて"
+
+# テスト実行
+flutter test --update-goldens test/ui/components/primary_button_golden_test.dart
+```
+
 ## ディレクトリ構造
 
 ```
@@ -87,13 +115,15 @@ flutter_development/
 │   ├── flutter-widget-assistant/ # Widget設計支援スキル
 │   │   ├── SKILL.md
 │   │   └── README.md
-│   └── screen-spec-generator/    # 画面定義書生成スキル
+│   ├── screen-spec-generator/    # 画面定義書生成スキル
+│   │   ├── SKILL.md
+│   │   ├── README.md
+│   │   └── templates/
+│   └── flutter-golden-test/      # Golden Testスキル
 │       ├── SKILL.md
 │       ├── README.md
-│       └── templates/            # 定義書テンプレート
-│           ├── base_template.md
-│           ├── screen_spec_command.md
-│           └── sections/
+│       ├── knowledge/            # 基礎知識・トラブルシューティング
+│       └── templates/            # テストテンプレート
 └── README.md                     # このファイル
 ```
 
@@ -144,6 +174,10 @@ cp -r ai_development_tools/flutter_development ~/.claude/plugins/
 - Organization: XTONE
 
 ## バージョン履歴
+
+### v0.3.0 (2026-02-06)
+- `flutter-golden-test` スキルを追加
+- Golden Test環境のセットアップとテスト生成機能を追加
 
 ### v0.2.0 (2026-02-06)
 - `screen-spec-generator` スキルを統合
