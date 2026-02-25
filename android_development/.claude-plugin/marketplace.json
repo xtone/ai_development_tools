@@ -76,6 +76,16 @@
                 "name": "ISHIHARA, Masaya"
             },
             "tags": ["android", "figma", "jetpack-compose", "design-to-code"]
+        },
+        {
+            "name": "android-crash-analyzer",
+            "source": "./.claude/skills/android-crash-analyzer",
+            "description": "Firebase Crashlyticsのスタックトレースを解析。トリアージ分類→根本原因分析→修正提案を出力。ANR/Non-fatal/Fatal全タイプ対応",
+            "version": "1.0.0",
+            "author": {
+                "name": "ISHIHARA, Masaya"
+            },
+            "tags": ["android", "crashlytics", "firebase", "debugging", "crash-analysis"]
         }
     ]
 }
