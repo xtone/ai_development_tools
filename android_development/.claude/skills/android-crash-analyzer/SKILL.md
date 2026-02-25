@@ -1,6 +1,6 @@
 ---
 name: android-crash-analyzer
-description: "Firebase Crashlyticsのスタックトレースを解析し、トリアージ分類→根本原因分析→修正提案を出力するスキル。以下の場合に使用: /crash-analyze、クラッシュ解析、スタックトレース分析、ANR分析、Crashlytics、クラッシュレポート、またはFirebase crashに関連する任意のリクエスト。クラッシュ対応のワークフローを標準化し、対応品質と速度を向上させる。ANR/Non-fatal/Fatal全タイプ対応。"
+description: "Firebase Crashlyticsのスタックトレースを解析し、トリアージ分類→根本原因分析→修正提案を出力するスキル。以下のキーワードで起動: /crash-analyze、クラッシュ解析、スタックトレース分析、ANR分析、Crashlytics、クラッシュレポート、またはFirebase crashに関連する任意のリクエスト。クラッシュ対応のワークフローを標準化し、対応品質と速度を向上させる。ANR/Non-fatal/Fatal全タイプ対応。"
 ---
 
 # Android Crash Analyzer
