@@ -1,6 +1,6 @@
 ---
 name: rules-split-manager
-description: "CLAUDE.mdを分割ルールファイル(.claude/rules/)で管理するスキル。学習トライアドの書き込み先を分割ファイルにリダイレクトし、自動マージでCLAUDE.mdを生成。/rules-init, /rules-merge, /rules-add コマンドを提供。CLAUDE.mdが肥大化している場合や、学習トライアドの蓄積を分割管理したい場合に使用。"
+description: "CLAUDE.mdを分割ルールファイル(.claude/rules/)で管理するスキル。学習トライアドの書き込み先を分割ファイルにリダイレクトし、自動マージでCLAUDE.mdを生成。/rules-init, /rules-merge, /rules-add, /rules-status コマンドを提供。CLAUDE.mdが肥大化している場合や、学習トライアドの蓄積を分割管理したい場合に使用。"
 ---
 
 # Rules Split Manager
@@ -19,6 +19,7 @@ CLAUDE.mdが学習トライアド（`/lessons`, `/review-learn`, `/ci-learn`）�
 - `/rules-init` — 既存CLAUDE.mdを分割ファイルに移行
 - `/rules-merge` — 分割ファイルからCLAUDE.mdを再生成
 - `/rules-add [topic]` — 新規ルールファイルを作成（01-89番台）
+- `/rules-status` — 分割ファイルの一覧・行数・健全性を表示
 - 「CLAUDE.mdを分割して」「ルールファイルを管理して」等の自然言語
 
 ## トライアド統合メカニズム
@@ -203,6 +204,20 @@ dmenu-newsはAndroidアプリです。
 
 1. マージに含まれたファイル一覧を表示する
 2. 生成されたCLAUDE.mdの行数を表示する
+3. 前回のCLAUDE.mdとの差分サマリーを表示する:
+   - マージ前のCLAUDE.mdの内容と比較し、各分割ファイルに対応するセクションの行数差分を算出する
+   - 変更があったファイルのみ差分行数と変更概要を表示し、変更がないファイルはまとめて表示する
+
+出力例:
+```
+マージ完了:
+  ファイル: 7個
+  CLAUDE.md: 157行
+
+  変更サマリー:
+    90-lessons-learned.md: +2行（新規ルール1件）
+    他6ファイル: 変更なし
+```
 
 ---
 
@@ -241,6 +256,63 @@ dmenu-newsはAndroidアプリです。
    ```
 3. マージを実行してCLAUDE.mdを更新する
 
+### /rules-status — 分割ファイルの一覧・行数・健全性を表示
+
+#### ステップ1: 前提チェック
+
+1. `.claude/rules/` ディレクトリが存在するか確認
+2. 存在しない場合はエラーメッセージを表示:
+   ```
+   .claude/rules/ ディレクトリが見つかりません。
+   先に /rules-init で分割ファイルを作成してください。
+   ```
+
+#### ステップ2: ファイルスキャン
+
+1. `.claude/rules/*.md` をファイル名でソートして取得する
+2. 各ファイルの行数をカウントする
+3. CLAUDE.md の行数もカウントする
+
+#### ステップ3: 一覧表示
+
+以下のフォーマットでファイル一覧を表示する:
+
+```
+.claude/rules/ ステータス:
+  01-overview.md           7行
+  02-commands.md          32行
+  03-architecture.md      27行
+  04-guidelines.md        35行
+  05-session-rules.md      3行
+  90-lessons-learned.md   16行
+  91-review-learnings.md  28行
+  ─────────────────────────
+  合計: 7ファイル / 148行
+  CLAUDE.md: 157行（マージ済み）
+```
+
+#### ステップ4: 健全性チェック
+
+以下の項目をチェックし、結果を表示する:
+
+1. **番号の重複**: ファイル名の先頭2桁の番号が重複していないか
+2. **番号帯の混在**: 01-89番台（手書き）と90番台（自動蓄積）の分離が維持されているか（90番台に手書きルールが混在していないか）
+3. **空ファイル**: 0行のファイルがないか
+
+すべてOKの場合:
+```
+健全性: OK
+```
+
+問題がある場合は具体的な内容を表示する:
+```
+健全性: 要確認
+  ⚠ 番号の重複: 03-architecture.md, 03-coding-rules.md
+  ⚠ 空ファイル: 05-session-rules.md
+```
+
+---
+
 ## エッジケース
 
 | ケース | 対応 |
@@ -260,6 +332,10 @@ dmenu-newsはAndroidアプリです。
 - マージ後のCLAUDE.mdはgitにコミットする（チーム全員が参照するため）
 
 ## バージョン
+
+### v1.1 - /rules-status 追加 & /rules-merge 差分サマリー
+- `/rules-status`: 分割ファイルの一覧・行数・健全性チェック（番号重複、番号帯混在、空ファイル検出）
+- `/rules-merge`: ステップ3に前回CLAUDE.mdとの差分サマリー表示を追加
 
 ### v1.0 - 初回リリース
 - `/rules-init`: 既存CLAUDE.mdの分割移行
