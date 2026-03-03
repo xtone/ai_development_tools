@@ -33,7 +33,7 @@ CLAUDE.mdが学習トライアド（`/lessons`, `/review-learn`, `/ci-learn`）�
   /lessons    → .claude/rules/90-lessons-learned.md に書き込み
   /review-learn → .claude/rules/91-review-learnings.md に書き込み
   /ci-learn   → .claude/rules/92-ci-learnings.md に書き込み
-  書き込み後 → 自動マージで CLAUDE.md 再生成
+  書き込み後 → 自動マージで CLAUDE.md 再生成（01-89番台のみ連結）
 
 .claude/rules/ ディレクトリが存在しない場合:
   従来通り CLAUDE.md に直接書き込み（介入なし）
@@ -41,7 +41,7 @@ CLAUDE.mdが学習トライアド（`/lessons`, `/review-learn`, `/ci-learn`）�
 
 ### 重複チェック
 
-重複チェックは**CLAUDE.mdを読む**。マージ済みの全体ビューなので、トライアド側の重複チェックロジックは変更不要。書き込み先だけが分割ファイルに変わる。
+重複チェックは**CLAUDE.mdと対象の分割ファイル（90番台）の両方を読む**。CLAUDE.mdには01-89番台のみ含まれるため、90番台の重複チェックには該当する分割ファイルを直接参照する。
 
 ### トライアド書き込みのリダイレクト手順
 
@@ -151,7 +151,7 @@ dmenu-newsはAndroidアプリです。
 └── 91-review-learnings.md  # Review Learnings（自動蓄積）
 ```
 
-**再生成されたCLAUDE.md**:
+**再生成されたCLAUDE.md**（01-89番台のみ連結、90番台は含まない）:
 ```markdown
 <!-- このファイルは .claude/rules/ から自動生成されています。直接編集しないでください。 -->
 <!-- /rules-merge または学習トライアド実行で自動更新されます。 -->
@@ -165,15 +165,8 @@ dmenu-newsはAndroidアプリです。
 ## Session Rules
 - セッション終了前に `/lessons` の実行を提案すること
 
-## Lessons Learned
-
-### テスト
-- `@JvmInline value class` はMockKでモック不可
-
-## Review Learnings
-
-### 命名規則
-- Repository層のメソッドは `getXxx` を使う
+<!-- 以下のファイルは .claude/rules/ から自動ロードされるため、CLAUDE.md には含まれません -->
+<!-- 90-lessons-learned.md / 91-review-learnings.md -->
 ```
 
 ---
@@ -192,13 +185,19 @@ dmenu-newsはAndroidアプリです。
 #### ステップ2: マージアルゴリズムの実行
 
 1. `.claude/rules/*.md` をファイル名でソートする
-2. 各ファイルの内容を連結する（ファイル間は空行1行で区切り）
+2. **01-89番台のファイルのみ**内容を連結する（ファイル間は空行1行で区切り）。90番台以降はスキップする
+   - 理由: 90番台は `.claude/rules/` に置くだけでClaude Codeが自動ロードするため、CLAUDE.mdに含めるとコンテキストが重複する
 3. 先頭にヘッダーコメントを付与する:
    ```markdown
    <!-- このファイルは .claude/rules/ から自動生成されています。直接編集しないでください。 -->
    <!-- /rules-merge または学習トライアド実行で自動更新されます。 -->
    ```
-4. CLAUDE.md に上書きする
+4. 末尾に90番台の参照注記を付与する（存在するファイルのみ列挙）:
+   ```markdown
+   <!-- 以下のファイルは .claude/rules/ から自動ロードされるため、CLAUDE.md には含まれません -->
+   <!-- 90-lessons-learned.md / 91-review-learnings.md / 92-ci-learnings.md -->
+   ```
+5. CLAUDE.md に上書きする
 
 #### ステップ3: 結果の表示
 
@@ -211,12 +210,13 @@ dmenu-newsはAndroidアプリです。
 出力例:
 ```
 マージ完了:
-  ファイル: 7個
-  CLAUDE.md: 157行
+  マージ対象: 5個（01-89番台）
+  スキップ: 2個（90番台 — 自動ロード）
+  CLAUDE.md: 110行
 
   変更サマリー:
-    90-lessons-learned.md: +2行（新規ルール1件）
-    他6ファイル: 変更なし
+    03-architecture.md: +3行（新規ルール1件）
+    他4ファイル: 変更なし
 ```
 
 ---
@@ -279,16 +279,23 @@ dmenu-newsはAndroidアプリです。
 
 ```
 .claude/rules/ ステータス:
+  [マージ対象: 01-89番台]
   01-overview.md           7行
   02-commands.md          32行
   03-architecture.md      27行
   04-guidelines.md        35行
   05-session-rules.md      3行
+  ─────────────────────────
+  小計: 5ファイル / 104行
+
+  [自動ロード: 90番台]
   90-lessons-learned.md   16行
   91-review-learnings.md  28行
   ─────────────────────────
+  小計: 2ファイル / 44行
+
   合計: 7ファイル / 148行
-  CLAUDE.md: 157行（マージ済み）
+  CLAUDE.md: 110行（01-89番台のみ）
 ```
 
 #### ステップ4: 健全性チェック
@@ -332,6 +339,12 @@ dmenu-newsはAndroidアプリです。
 - マージ後のCLAUDE.mdはgitにコミットする（チーム全員が参照するため）
 
 ## バージョン
+
+### v1.2 - マージ対象を01-89番台に限定
+- `/rules-merge`: 90番台以降をスキップし、01-89番台のみCLAUDE.mdに連結。末尾に90番台の参照注記を付与
+- `/rules-status`: マージ対象（01-89番台）と自動ロード（90番台）を区別して表示
+- 重複チェック: CLAUDE.mdと対象分割ファイルの両方を参照するよう変更
+- トライアド自動マージ: 同じ01-89限定ロジックを適用
 
 ### v1.1 - /rules-status 追加 & /rules-merge 差分サマリー
 - `/rules-status`: 分割ファイルの一覧・行数・健全性チェック（番号重複、番号帯混在、空ファイル検出）
