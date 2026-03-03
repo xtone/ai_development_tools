@@ -4,9 +4,9 @@
  * Skill Usage Counter Hook (PostToolUse)
  *
  * This hook records skill invocations via the "Skill" tool with detailed metadata.
- * It stores events with timestamps, user info, and context for later aggregation.
+ * It stores events as JSONL (one JSON object per line) for efficient append-only logging.
  *
- * Data is stored in ~/.claude/hooks/state/skill_usage_events.json
+ * Data is stored in ~/.claude/hooks/logs/skill_usage.jsonl
  */
 
 const fs = require('fs');
@@ -16,15 +16,69 @@ const os = require('os');
 const { execSync } = require('child_process');
 
 // Configuration
-const STATE_DIR = path.join(os.homedir(), '.claude', 'hooks', 'state');
-const EVENTS_FILE = path.join(STATE_DIR, 'skill_usage_events.json');
+const LOGS_DIR = path.join(os.homedir(), '.claude', 'hooks', 'logs');
+const EVENTS_FILE = path.join(LOGS_DIR, 'skill_usage.jsonl');
+const LOCK_FILE = path.join(LOGS_DIR, 'skill_usage.lock');
+const LOCK_TIMEOUT = 5000; // 5 seconds
+const LOCK_RETRY_INTERVAL = 50; // 50ms
 
 /**
- * Ensure state directory exists
+ * Ensure logs directory exists
  */
-function ensureStateDirectory() {
-  if (!fs.existsSync(STATE_DIR)) {
-    fs.mkdirSync(STATE_DIR, { recursive: true });
+function ensureLogsDirectory() {
+  if (!fs.existsSync(LOGS_DIR)) {
+    fs.mkdirSync(LOGS_DIR, { recursive: true });
+  }
+}
+
+/**
+ * Acquire a file lock with timeout
+ * Uses exclusive file creation to prevent race conditions
+ */
+async function acquireLock() {
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < LOCK_TIMEOUT) {
+    try {
+      // Try to create lock file exclusively (fails if exists)
+      const fd = fs.openSync(LOCK_FILE, 'wx');
+      fs.writeSync(fd, String(process.pid));
+      fs.closeSync(fd);
+      return true;
+    } catch (error) {
+      if (error.code === 'EEXIST') {
+        // Lock file exists, check if stale
+        try {
+          const stat = fs.statSync(LOCK_FILE);
+          const age = Date.now() - stat.mtimeMs;
+          // If lock is older than timeout, consider it stale and remove
+          if (age > LOCK_TIMEOUT) {
+            fs.unlinkSync(LOCK_FILE);
+            continue;
+          }
+        } catch {
+          // Lock file was removed, retry
+          continue;
+        }
+        // Wait and retry
+        await new Promise(resolve => setTimeout(resolve, LOCK_RETRY_INTERVAL));
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  throw new Error('Failed to acquire lock: timeout');
+}
+
+/**
+ * Release the file lock
+ */
+function releaseLock() {
+  try {
+    fs.unlinkSync(LOCK_FILE);
+  } catch {
+    // Ignore errors when releasing lock
   }
 }
 
@@ -64,38 +118,10 @@ function getContextInfo() {
 }
 
 /**
- * Load existing events data
+ * Append a skill usage event to JSONL file (async) with file locking
  */
-function loadEventsData() {
-  try {
-    if (fs.existsSync(EVENTS_FILE)) {
-      const data = fs.readFileSync(EVENTS_FILE, 'utf8');
-      return JSON.parse(data);
-    }
-  } catch {
-    console.error('Warning: Failed to load events file');
-  }
-  return { events: [], summary: {}, pending_sync: true };
-}
-
-/**
- * Save events data (async)
- */
-async function saveEventsData(data) {
-  try {
-    ensureStateDirectory();
-    await fsPromises.writeFile(EVENTS_FILE, JSON.stringify(data, null, 2), 'utf8');
-  } catch (error) {
-    console.error('Error: Failed to save events');
-    throw error;
-  }
-}
-
-/**
- * Record a skill usage event (async)
- */
-async function recordSkillEvent(skillName) {
-  const data = loadEventsData();
+async function appendSkillEvent(skillName) {
+  ensureLogsDirectory();
 
   // Create new event
   const event = {
@@ -105,18 +131,17 @@ async function recordSkillEvent(skillName) {
     context: getContextInfo(),
   };
 
-  // Add event to list
-  data.events.push(event);
+  // Acquire lock before writing
+  try {
+    await acquireLock();
 
-  // Update summary counts
-  data.summary[skillName] = (data.summary[skillName] || 0) + 1;
+    // Append to JSONL file
+    await fsPromises.appendFile(EVENTS_FILE, JSON.stringify(event) + '\n', 'utf8');
 
-  // Mark as pending sync
-  data.pending_sync = true;
-
-  await saveEventsData(data);
-
-  console.log(`Recorded: ${skillName} (total: ${data.summary[skillName]})`);
+    console.log(`Recorded: ${skillName}`);
+  } finally {
+    releaseLock();
+  }
 }
 
 /**
@@ -148,7 +173,7 @@ async function main() {
     }
 
     // Record the skill usage event
-    await recordSkillEvent(skillName);
+    await appendSkillEvent(skillName);
 
   } catch (error) {
     console.error(`Error: ${error.message}`);

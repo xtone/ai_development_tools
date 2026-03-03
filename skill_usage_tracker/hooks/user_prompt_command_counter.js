@@ -6,7 +6,7 @@
  * This hook detects when users directly type slash commands in their prompts.
  * It records these invocations to complement the SlashCommand tool tracking.
  *
- * Data is stored in ~/.claude/hooks/state/slash_command_events.json
+ * Data is stored in ~/.claude/hooks/logs/slash_command.jsonl
  */
 
 const fs = require('fs');
@@ -16,15 +16,69 @@ const os = require('os');
 const { execSync } = require('child_process');
 
 // Configuration
-const STATE_DIR = path.join(os.homedir(), '.claude', 'hooks', 'state');
-const EVENTS_FILE = path.join(STATE_DIR, 'slash_command_events.json');
+const LOGS_DIR = path.join(os.homedir(), '.claude', 'hooks', 'logs');
+const EVENTS_FILE = path.join(LOGS_DIR, 'slash_command.jsonl');
+const LOCK_FILE = path.join(LOGS_DIR, 'slash_command.lock');
+const LOCK_TIMEOUT = 5000; // 5 seconds
+const LOCK_RETRY_INTERVAL = 50; // 50ms
 
 /**
- * Ensure state directory exists
+ * Ensure logs directory exists
  */
-function ensureStateDirectory() {
-  if (!fs.existsSync(STATE_DIR)) {
-    fs.mkdirSync(STATE_DIR, { recursive: true });
+function ensureLogsDirectory() {
+  if (!fs.existsSync(LOGS_DIR)) {
+    fs.mkdirSync(LOGS_DIR, { recursive: true });
+  }
+}
+
+/**
+ * Acquire a file lock with timeout
+ * Uses exclusive file creation to prevent race conditions
+ */
+async function acquireLock() {
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < LOCK_TIMEOUT) {
+    try {
+      // Try to create lock file exclusively (fails if exists)
+      const fd = fs.openSync(LOCK_FILE, 'wx');
+      fs.writeSync(fd, String(process.pid));
+      fs.closeSync(fd);
+      return true;
+    } catch (error) {
+      if (error.code === 'EEXIST') {
+        // Lock file exists, check if stale
+        try {
+          const stat = fs.statSync(LOCK_FILE);
+          const age = Date.now() - stat.mtimeMs;
+          // If lock is older than timeout, consider it stale and remove
+          if (age > LOCK_TIMEOUT) {
+            fs.unlinkSync(LOCK_FILE);
+            continue;
+          }
+        } catch {
+          // Lock file was removed, retry
+          continue;
+        }
+        // Wait and retry
+        await new Promise(resolve => setTimeout(resolve, LOCK_RETRY_INTERVAL));
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  throw new Error('Failed to acquire lock: timeout');
+}
+
+/**
+ * Release the file lock
+ */
+function releaseLock() {
+  try {
+    fs.unlinkSync(LOCK_FILE);
+  } catch {
+    // Ignore errors when releasing lock
   }
 }
 
@@ -64,34 +118,6 @@ function getContextInfo() {
 }
 
 /**
- * Load existing events data
- */
-function loadEventsData() {
-  try {
-    if (fs.existsSync(EVENTS_FILE)) {
-      const data = fs.readFileSync(EVENTS_FILE, 'utf8');
-      return JSON.parse(data);
-    }
-  } catch {
-    // Ignore errors, return default
-  }
-  return { events: [], summary: {}, pending_sync: true };
-}
-
-/**
- * Save events data (async)
- */
-async function saveEventsData(data) {
-  try {
-    ensureStateDirectory();
-    await fsPromises.writeFile(EVENTS_FILE, JSON.stringify(data, null, 2), 'utf8');
-  } catch (error) {
-    console.error('Error: Failed to save events');
-    throw error;
-  }
-}
-
-/**
  * Parse slash command from user prompt
  * Returns command name if prompt starts with /command, null otherwise
  */
@@ -105,10 +131,10 @@ function parseSlashCommand(prompt) {
 }
 
 /**
- * Record a slash command usage event (async)
+ * Append a slash command usage event to JSONL file (async) with file locking
  */
-async function recordCommandEvent(commandName, fullPrompt, source) {
-  const data = loadEventsData();
+async function appendCommandEvent(commandName, fullPrompt, source) {
+  ensureLogsDirectory();
 
   // Create new event
   const event = {
@@ -120,16 +146,15 @@ async function recordCommandEvent(commandName, fullPrompt, source) {
     context: getContextInfo(),
   };
 
-  // Add event to list
-  data.events.push(event);
+  // Acquire lock before writing
+  try {
+    await acquireLock();
 
-  // Update summary counts
-  data.summary[commandName] = (data.summary[commandName] || 0) + 1;
-
-  // Mark as pending sync
-  data.pending_sync = true;
-
-  await saveEventsData(data);
+    // Append to JSONL file
+    await fsPromises.appendFile(EVENTS_FILE, JSON.stringify(event) + '\n', 'utf8');
+  } finally {
+    releaseLock();
+  }
 }
 
 /**
@@ -162,7 +187,7 @@ async function main() {
     }
 
     // Record the command usage event
-    await recordCommandEvent(commandName, prompt, 'user_prompt');
+    await appendCommandEvent(commandName, prompt, 'user_prompt');
 
   } catch (error) {
     // Exit silently on errors to not disrupt user experience

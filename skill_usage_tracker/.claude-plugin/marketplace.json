@@ -1,8 +1,8 @@
 {
   "name": "skill-usage-tracker",
   "displayName": "Skill Usage Tracker",
-  "version": "0.1.0",
-  "description": "Track skill usage statistics locally. Automatically counts each skill invocation and displays usage summary on session end.",
+  "version": "0.4.2",
+  "description": "Track skill usage statistics locally and sync to Notion database for team analytics. Automatically counts each skill invocation and displays usage summary on session end.",
   "author": {
     "name": "HINO, Yasushi",
     "email": "y.hino@xtone.co.jp"

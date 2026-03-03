@@ -5,6 +5,8 @@
  *
  * This hook displays a summary of skill usage when a Claude Code session ends.
  * Shows the data file path and usage counts for each skill.
+ *
+ * Reads data from ~/.claude/hooks/logs/skill_usage.jsonl
  */
 
 const fs = require('fs');
@@ -12,38 +14,49 @@ const path = require('path');
 const os = require('os');
 
 // Configuration
-const STATE_DIR = path.join(os.homedir(), '.claude', 'hooks', 'state');
-const EVENTS_FILE = path.join(STATE_DIR, 'skill_usage_events.json');
+const LOGS_DIR = path.join(os.homedir(), '.claude', 'hooks', 'logs');
+const EVENTS_FILE = path.join(LOGS_DIR, 'skill_usage.jsonl');
 
 /**
- * Load events data from file
+ * Load events from JSONL file
  */
-function loadEventsData() {
+function loadEvents() {
   try {
     if (fs.existsSync(EVENTS_FILE)) {
-      const data = fs.readFileSync(EVENTS_FILE, 'utf8');
-      return JSON.parse(data);
+      const content = fs.readFileSync(EVENTS_FILE, 'utf8');
+      return content
+        .trim()
+        .split('\n')
+        .filter(line => line)
+        .map(line => {
+          try {
+            return JSON.parse(line);
+          } catch {
+            return null;
+          }
+        })
+        .filter(event => event !== null);
     }
   } catch (error) {
     // Silently ignore errors
   }
-  return null;
+  return [];
 }
 
 /**
  * Main execution
  */
 function main() {
-  const data = loadEventsData();
+  const events = loadEvents();
 
-  if (!data || !data.events || data.events.length === 0) {
-    // No skill usage in this session, skip output
+  if (events.length === 0) {
+    // No skill usage, skip output
     return;
   }
 
-  // Count skills used in this session (events since last clear)
+  // Count skills
   const sessionSkills = {};
-  for (const event of data.events) {
+  for (const event of events) {
     if (event && event.skill) {
       sessionSkills[event.skill] = (sessionSkills[event.skill] || 0) + 1;
     }
