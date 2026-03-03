@@ -28,7 +28,14 @@ function loadEvents() {
         .trim()
         .split('\n')
         .filter(line => line)
-        .map(line => JSON.parse(line));
+        .map(line => {
+          try {
+            return JSON.parse(line);
+          } catch {
+            return null;
+          }
+        })
+        .filter(event => event !== null);
     }
   } catch (error) {
     // Silently ignore errors
