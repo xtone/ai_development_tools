@@ -1,6 +1,6 @@
 ---
 name: rules-split-manager
-description: "CLAUDE.mdを分割ルールファイル(.claude/rules/)で管理するスキル。学習トライアドの書き込み先を分割ファイルにリダイレクトし、自動マージでCLAUDE.mdを生成。/rules-init, /rules-merge, /rules-add コマンドを提供。"
+description: "CLAUDE.mdを分割ルールファイル(.claude/rules/)で管理するスキル。学習トライアドの書き込み先を分割ファイルにリダイレクトし、自動マージでCLAUDE.mdを生成。/rules-init, /rules-merge, /rules-add コマンドを提供。CLAUDE.mdが肥大化している場合や、学習トライアドの蓄積を分割管理したい場合に使用。"
 ---
 
 # Rules Split Manager
@@ -114,6 +114,67 @@ CLAUDE.mdが学習トライアド（`/lessons`, `/review-learn`, `/ci-learn`）�
 1. マージアルゴリズム（後述）に従いCLAUDE.mdを再生成する
 2. 再生成されたCLAUDE.mdの内容を表示し、元の内容と差異がないことを確認する（ヘッダーコメント以外）
 
+#### 実行例
+
+**実行前のCLAUDE.md**:
+```markdown
+# CLAUDE.md
+
+## Project Overview
+dmenu-newsはAndroidアプリです。
+
+## 必須コマンド
+- `./gradlew assembleDebug`
+
+## Session Rules
+- セッション終了前に `/lessons` の実行を提案すること
+
+## Lessons Learned
+
+### テスト
+- `@JvmInline value class` はMockKでモック不可
+
+## Review Learnings
+
+### 命名規則
+- Repository層のメソッドは `getXxx` を使う
+```
+
+**実行後のディレクトリ構造**:
+```
+.claude/rules/
+├── 01-overview.md          # Project Overview
+├── 02-commands.md          # 必須コマンド
+├── 03-session-rules.md     # Session Rules
+├── 90-lessons-learned.md   # Lessons Learned（自動蓄積）
+└── 91-review-learnings.md  # Review Learnings（自動蓄積）
+```
+
+**再生成されたCLAUDE.md**:
+```markdown
+<!-- このファイルは .claude/rules/ から自動生成されています。直接編集しないでください。 -->
+<!-- /rules-merge または学習トライアド実行で自動更新されます。 -->
+
+## Project Overview
+dmenu-newsはAndroidアプリです。
+
+## 必須コマンド
+- `./gradlew assembleDebug`
+
+## Session Rules
+- セッション終了前に `/lessons` の実行を提案すること
+
+## Lessons Learned
+
+### テスト
+- `@JvmInline value class` はMockKでモック不可
+
+## Review Learnings
+
+### 命名規則
+- Repository層のメソッドは `getXxx` を使う
+```
+
 ---
 
 ### /rules-merge — 分割ファイルからCLAUDE.mdを再生成
@@ -200,7 +261,7 @@ CLAUDE.mdが学習トライアド（`/lessons`, `/review-learn`, `/ci-learn`）�
 
 ## バージョン
 
-### v1.0 - 初回リリース (2026-03-03)
+### v1.0 - 初回リリース
 - `/rules-init`: 既存CLAUDE.mdの分割移行
 - `/rules-merge`: 分割ファイルからCLAUDE.mdの再生成
 - `/rules-add`: 新規ルールファイル作成（01-89番台の自動採番）
