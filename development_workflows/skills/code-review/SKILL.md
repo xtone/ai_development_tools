@@ -17,7 +17,8 @@ code-review/
     ├── typescript-best-practices.md       # TypeScript固有のチェック
     ├── authorization-review-general.md    # 認可レビュー観点（一般編）
     ├── authorization-review-postgres-rls.md  # 認可レビュー観点（PostgreSQL RLS編）
-    └── github-pr-review-actions.md        # GitHub PRレビューアクション
+    ├── github-pr-review-actions.md        # GitHub PRレビューアクション
+    └── ci-optimized-workflow.md           # CI環境でのコスト最適化ワークフロー
 ```
 
 ## 外部スキル連携
@@ -27,6 +28,62 @@ React / Next.js のベストプラクティスは、Vercel提供の **vercel-rea
 - **リポジトリ**: https://github.com/vercel-labs/agent-skills/tree/main/skills/react-best-practices
 - **インストール**: `npx -y skills add vercel-labs/agent-skills --skill vercel-react-best-practices --agent claude-code --yes`
 - **カバー範囲**: 非同期ウォーターフォール排除、バンドルサイズ最適化、サーバー側パフォーマンス、クライアント側データ取得、再レンダリング最適化、レンダリングパフォーマンス、高度なパターン、JavaScriptパフォーマンス（8カテゴリ、40以上のルール）
+
+## コスト最適化（CI環境）
+
+GitHub Actions等のCI環境で実行する場合、トリアージフェーズを軽量モデル（Haiku）に委任することでコストを大幅に削減できる。
+詳細は [references/ci-optimized-workflow.md](references/ci-optimized-workflow.md) を参照。
+
+### トリアージ結果の活用
+
+CI環境で事前トリアージが実行されている場合、作業ディレクトリに `.pr-triage.json` が存在する。
+このファイルが存在する場合、以下の最適化を適用する：
+
+1. **ステップ1をスキップ** — トリアージ結果の `summary` を使用する
+2. **リファレンスの選択的読み込み** — `required_references` に含まれるものだけを読む
+3. **表層チェックの省略** — `surface_issues` に含まれるMinor/Suggestion問題は既にチェック済みとして、Critical/Major分析に集中する
+4. **差分の効率的な確認** — `files` のカテゴリ分類を活用し、重要度の高いファイルから優先的にレビューする
+
+```json
+// .pr-triage.json の構造
+{
+  "pr_number": 123,
+  "summary": "認証ミドルウェアの追加とユーザーAPI新規作成",
+  "files": {
+    "added": ["src/middleware/auth.ts", "src/api/users.ts"],
+    "modified": ["src/routes/index.ts"],
+    "deleted": []
+  },
+  "languages": ["typescript"],
+  "frameworks": ["express"],
+  "change_categories": {
+    "has_auth_changes": true,
+    "has_db_changes": false,
+    "has_rls_changes": false,
+    "has_api_changes": true,
+    "has_test_changes": false,
+    "has_config_changes": false
+  },
+  "required_references": [
+    "typescript-best-practices.md",
+    "authorization-review-general.md"
+  ],
+  "surface_issues": [
+    {
+      "severity": "Minor",
+      "file": "src/api/users.ts",
+      "line": 15,
+      "issue": "`any`型が使用されている",
+      "suggestion": "具体的な型に変更する"
+    }
+  ],
+  "diff_summary": "認証ミドルウェアを新規追加。JWTトークン検証を実装。ユーザーCRUD APIを新規作成。テストは未追加。",
+  "estimated_complexity": "medium",
+  "focus_areas": ["セキュリティ: JWT検証の実装", "認可: ユーザーAPIのアクセス制御"]
+}
+```
+
+> **`.pr-triage.json` が存在しない場合**は、従来通りステップ1から全ステップを実行する（後方互換性あり）。
 
 ## レビューワークフロー
 
@@ -43,6 +100,8 @@ React / Next.js のベストプラクティスは、Vercel提供の **vercel-rea
 
 ### ステップ1: 変更概要の把握
 
+> **`.pr-triage.json` が存在する場合**: このファイルを読み込み、`summary`、`files`、`change_categories`、`diff_summary` を使用する。以下の手動確認はスキップしてステップ2へ進む。
+
 変更内容を理解する。
 
 1. **変更ファイル一覧を確認** - 変更の範囲とスコープを把握
@@ -55,6 +114,8 @@ React / Next.js のベストプラクティスは、Vercel提供の **vercel-rea
 - 関連する変更が漏れなく含まれているか
 
 ### ステップ2: 共通品質チェック
+
+> **`.pr-triage.json` が存在する場合**: `surface_issues` に含まれるMinor/Suggestionの問題は既にチェック済み。ここではCritical/Majorレベル（セキュリティ、ロジック・正確性、パフォーマンスの重大問題）の検出に集中する。表層的な問題（命名規則、デストラクチャリング等）は再チェック不要。
 
 言語に依存しない汎用的なチェックを実施する。
 
@@ -111,6 +172,8 @@ React / Next.js のベストプラクティスは、Vercel提供の **vercel-rea
 | テスト名がテスト対象の振る舞いを明確に表しているか | Suggestion |
 
 ### ステップ3: 言語/フレームワーク固有チェック
+
+> **`.pr-triage.json` が存在する場合**: `required_references` に記載されたリファレンスのみを読み込む。リストにないリファレンスは読み込まない（トークン節約）。
 
 変更ファイルの言語/フレームワークに応じて、対応するリファレンスファイルを参照する。
 
@@ -178,6 +241,8 @@ Conditional Approve
 ```
 
 ### ステップ5: レビュー結果の出力
+
+> **`.pr-triage.json` が存在する場合**: トリアージフェーズの `surface_issues` をレビュー結果の「検出された問題」テーブルにマージする（重複を除外）。スコアリングにはトリアージの指摘も含める。
 
 以下のフォーマットでレビュー結果を出力する。
 
