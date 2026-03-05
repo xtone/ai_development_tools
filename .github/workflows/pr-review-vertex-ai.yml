@@ -42,6 +42,16 @@ jobs:
           ANTHROPIC_VERTEX_PROJECT_ID: ${{ steps.auth.outputs.project_id }}
           CLOUD_ML_REGION: global
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          CLAUDE_CODE_ENABLE_TELEMETRY: "1"
+          OTEL_METRICS_EXPORTER: "otlp"
+          OTEL_LOGS_EXPORTER: "otlp"
+          OTEL_EXPORTER_OTLP_PROTOCOL: "http/protobuf"
+          OTEL_EXPORTER_OTLP_ENDPOINT: ${{ secrets.GRAFANA_OTLP_ENDPOINT }}
+          OTEL_EXPORTER_OTLP_HEADERS: "Authorization=Basic ${{ secrets.GRAFANA_OTLP_TOKEN }}"
+          OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE: "cumulative"
+          OTEL_METRIC_EXPORT_INTERVAL: "30000"
+          OTEL_LOGS_EXPORT_INTERVAL: "5000"
+          OTEL_RESOURCE_ATTRIBUTES: "github.repository=${{ github.repository }},github.repository_owner=${{ github.repository_owner }},github.actor=${{ github.actor }},github.event_name=${{ github.event_name }},deployment.environment=production"
         with:
           github_token: ${{ steps.app-token.outputs.token }}
           use_vertex: "true"
