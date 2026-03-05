@@ -258,6 +258,8 @@ env:
 
 ## 7. GitHub Actionsワークフローの設定例
 
+> **コスト最適化版**: Haiku + Opus の2ジョブ構成でトークンコストを50-60%削減できる設定例は [ci-optimized-workflow.md](ci-optimized-workflow.md) を参照。
+
 `anthropics/claude-code-action` を使用した、実運用で検証済みの設定例。
 
 ```yaml
