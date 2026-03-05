@@ -160,6 +160,64 @@ Text(
 )
 ```
 
+---
+
+## ラッパーウィジェットの Key 付与
+
+### カスタムウィジェットへの Key 伝播
+
+プロジェクトで独自のラッパーウィジェットを使用している場合の Key 付与パターン。
+
+#### super.key を受け取るラッパー
+
+`super.key` を受け取る `StatefulWidget` / `StatelessWidget` には直接 Key を付与できる。
+
+```dart
+// カスタムウィジェットの定義（既存コード）
+class CustomTextFormField extends StatefulWidget {
+  const CustomTextFormField({
+    super.key,  // ← Key を受け取る
+    this.controller,
+    // ...
+  });
+}
+
+// Key の付与
+CustomTextFormField(
+  key: LoginKeys.driverIdPart1Field,  // 直接付与可能
+  controller: idPart1Controller,
+)
+```
+
+#### super.key を受け取らないラッパー
+
+Key を受け取らないウィジェットの場合、外側に `KeyedSubtree` でラップする。
+
+```dart
+KeyedSubtree(
+  key: LoginKeys.emailField,
+  child: LegacyTextField(
+    controller: emailController,
+  ),
+)
+```
+
+### 分割フィールドの命名規約
+
+1つの論理入力が複数フィールドに分割されている場合の命名:
+
+```
+{screen}_field_{name}_part{N}
+
+例:
+login_field_driver_id_part1   ← 運転者ID前半（CP000000）
+login_field_driver_id_part2   ← 運転者ID後半（001）
+```
+
+パート番号は入力順に 1 から採番する。
+
+---
+
 ### リストアイテムへの付与
 
 動的なリストでは、ユニークな識別子を含める。

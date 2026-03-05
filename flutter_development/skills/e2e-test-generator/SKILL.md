@@ -81,6 +81,35 @@ description: |
 
 **ここでユーザーの回答を待つ。**
 
+#### Step 0-3: カスタムウィジェットの検出
+
+プロジェクト固有のウィジェットパターンを事前に把握する。
+
+```
+1. ラッパーウィジェットの検出:
+   - CustomTextFormField 等のカスタム入力ウィジェットを検索
+   - `super.key` の有無を確認（Key 伝播の可否判定）
+   - Key を受け取れないラッパーには KeyedSubtree での対応が必要
+
+2. 認証フローパターンの判定:
+   - 直接ログイン画面パターン: アプリ起動 → LoginPage
+   - AuthWall 経由パターン: アプリ起動 → AuthWall → LoginPage（2段階認証フロー）
+   - AuthWall がある場合、AuthWall 用の Keys / Page Object も必要
+
+3. テキスト入力ウィジェットの種類判定:
+   - 生の TextField / TextFormField → tester.enterText() が直接使用可能
+   - カスタムラッパー（CustomTextFormField 等）→ find.descendant パターンが必要
+
+4. 結果をユーザーに確認：
+   「カスタムウィジェットを検出しました：
+   - テキスト入力: CustomTextFormField（super.key あり → 直接 Key 付与可能）
+   - 認証フロー: AuthWall 経由（2段階）
+   - ナビゲーション: AutoTabsScaffold + BottomNavigationTabItem
+   この認識で合っていますか？」
+```
+
+**ここでユーザーの回答を待つ。**
+
 ---
 
 ### Phase 1: テスト仕様書の読み取り
@@ -167,6 +196,18 @@ Key を追加しますか？（追加する場合、Keys クラスも生成し�
 2. 対象 Widget に `key: {Screen}Keys.{name}` を追加
 3. 変更差分をユーザーに表示
 
+**ラッパーウィジェットの Key 伝播戦略:**
+
+- `super.key` があるラッパーウィジェットには直接 Key を付与する
+  ```dart
+  CustomTextFormField(
+    key: LoginKeys.driverIdPart1Field,  // super.key があるため直接付与可能
+    controller: idPart1Controller,
+  )
+  ```
+- `super.key` がないラッパーには `KeyedSubtree` でラップする
+- Page Object 側では `find.descendant` パターンを使用し、ラッパーの Key から内部の `EditableText` を特定する
+
 ---
 
 ### Phase 3: テストコード生成
@@ -176,11 +217,29 @@ Key を追加しますか？（追加する場合、Keys クラスも生成し�
 画面ごとに Page Object クラスを生成する。
 詳細は `references/page-object-pattern.md` を参照。
 
+**Page Object クラスの命名規則:**
+
+- 基本形: `{Screen}PageObject`（ウィジェットクラス名との衝突回避）
+  - 例: `LoginPage` ウィジェット → `LoginPageObject` テストクラス
+  - 例: `MyPagePage` ウィジェット → `MyPagePageObject` テストクラス
+- 例外: ウィジェットクラス名と衝突しない場合は `{Screen}Page` でもよい（例: `AuthWallPage`）
+
+**スクロール対応パターン:**
+
+- 画面外要素へのアクセスには `scrollUntilVisible` を使用する
+- マイページのログアウトボタンなど、画面下部の要素が対象
+- Page Object 内でスクロール処理をカプセル化する
+
+**`pumpAndSettle` タイムアウト調整:**
+
+- API 通信を伴う操作（ログイン等）では `Duration(seconds: 10)` 以上を設定
+- 認証フロー全体のタイムアウトは `Duration(seconds: 15)` を推奨
+
 ```
 生成ファイル:
-  integration_test/page_objects/login_page.dart
+  integration_test/page_objects/login_page_object.dart
   integration_test/page_objects/home_page.dart
-  integration_test/page_objects/my_page_page.dart
+  integration_test/page_objects/my_page_page_object.dart
 ```
 
 #### Step 3-2: シナリオテストの生成
@@ -408,5 +467,6 @@ QA（検証）: マッピングレポート生成 + 整合性チェック
 - `references/page-object-pattern.md` - Page Object パターンのテンプレート
 - `references/test-template.md` - テストコードテンプレート
 - `references/mapping-report.md` - マッピングレポートのフォーマット
-- `references/poc-example.md` - PoC 実行例（ST-AUTH-001）
+- `references/poc-example.md` - PoC 実行例（ST-AUTH-001 / ic_card プロジェクト）
+- `references/real-project-patterns.md` - 実プロジェクトで発見されたパターン集
 - `references/agent-team-workflow.md` - Agent Team ワークフロー（PL/PG/QA ロール分割）

@@ -90,13 +90,18 @@ class LoginPage {
 
 ### 1. クラス名
 
-`{Screen}Page` とする（画面名 + Page）。
+`{Screen}PageObject` とする（画面名 + PageObject）。
+ウィジェットクラス名との衝突を回避するため `Page` ではなく `PageObject` を使用する。
 
-| 画面ファイル | Page Object クラス名 |
-|------------|-------------------|
-| `login_screen.dart` | `LoginPage` |
-| `home_screen.dart` | `HomePage` |
-| `reservation_detail_screen.dart` | `ReservationDetailPage` |
+| 画面ファイル | ウィジェットクラス | Page Object クラス名 |
+|------------|---------------|-------------------|
+| `login_page.dart` | `LoginPage` | `LoginPageObject` |
+| `mypage_page.dart` | `MyPagePage` | `MyPagePageObject` |
+| `auth_wall.dart` | `AuthWall` | `AuthWallPage` |
+| `home_screen.dart` | `HomeScreen` | `HomeScreenPageObject` |
+| `reservation_detail_screen.dart` | `ReservationDetailScreen` | `ReservationDetailPageObject` |
+
+**例外**: ウィジェットクラス名と衝突しない場合は `{Screen}Page` でもよい（例: `AuthWallPage`）。
 
 ### 2. ファイル配置
 
@@ -166,6 +171,73 @@ Future<void> login({required String email, required String password}) async {
   await tapLogin();
 }
 ```
+
+---
+
+## ラッパーウィジェットのテキスト入力パターン
+
+### find.descendant パターン
+
+カスタムの TextFormField ラッパーを使用している場合、
+`tester.enterText()` を Key の Finder に対して直接呼び出すと動作しないことがある。
+ラッパー内部の `EditableText` を `find.descendant` で特定する。
+
+```dart
+/// カスタム TextFormField ラッパーへのテキスト入力
+Future<void> enterDriverIdPart1(String value) async {
+  // Key が付与されたラッパーから内部の EditableText を特定
+  final editableText = find.descendant(
+    of: driverIdPart1Field,  // find.byKey(LoginKeys.driverIdPart1Field)
+    matching: find.byType(EditableText),
+  );
+  await tester.tap(editableText);
+  await tester.enterText(editableText, value);
+  await tester.pumpAndSettle();
+}
+```
+
+### 直接入力が動作するケース
+
+Key が `TextField` / `TextFormField` 自体に付与されている場合は直接入力可能。
+
+```dart
+Future<void> enterEmail(String email) async {
+  await tester.enterText(emailField, email);
+  await tester.pumpAndSettle();
+}
+```
+
+---
+
+## スクロール対応パターン
+
+### 画面外要素へのアクセス
+
+ログアウトボタンなど、画面の下部にあり初期表示では見えない要素には
+`scrollUntilVisible` を使用する。
+
+```dart
+/// ログアウトボタンをタップする（スクロール対応）
+Future<void> tapLogout() async {
+  // ログアウトボタンが画面外にある可能性があるためスクロール
+  await tester.scrollUntilVisible(
+    logoutButton,
+    300,  // スクロール量（ピクセル）
+    scrollable: find.byType(SingleChildScrollView).first,
+  );
+  await tester.tap(logoutButton);
+  await tester.pumpAndSettle(const Duration(seconds: 5));
+}
+```
+
+### スクロール対応が必要な画面の判定
+
+- マイページ: メニュー項目が多く、ログアウトボタンが画面外になりやすい
+- 設定画面: 設定項目が多い場合
+- フォーム画面: 入力フィールドが多い場合
+
+Page Object 生成時に、対象画面の Widget ツリーの深さとスクロール可能なコンテナの
+有無を確認し、スクロール対応が必要か判断する。
 
 ---
 

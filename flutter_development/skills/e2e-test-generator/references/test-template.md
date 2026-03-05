@@ -74,6 +74,77 @@ void main() {
 
 ---
 
+## AuthWall 経由フローのテンプレート
+
+未ログイン状態で AuthWall（認証壁）が表示されるアプリの場合:
+
+```dart
+// === セットアップ ===
+await AppLauncher.launchAsLoggedOut(tester);
+
+final authWallPage = AuthWallPage(tester);
+final loginPage = LoginPageObject(tester);
+
+// === 手順 1: AuthWall が表示される ===
+await authWallPage.verifyDisplayed();
+
+// === 手順 2: 「ログイン」ボタンをタップ → ログイン画面に遷移 ===
+await authWallPage.tapLogin();
+await loginPage.verifyDisplayed();
+
+// 以降、ログイン操作...
+```
+
+---
+
+## 3フィールドログインのテンプレート
+
+運転者IDが分割フィールドの場合:
+
+```dart
+// テストデータ
+const testDriverIdPart1 = 'CP000000';
+const testDriverIdPart2 = '001';
+const testPassword = 'TestPass123!';
+
+// 個別入力
+await loginPage.enterDriverIdPart1(testDriverIdPart1);
+await loginPage.enterDriverIdPart2(testDriverIdPart2);
+await loginPage.enterPassword(testPassword);
+await loginPage.tapLogin();
+
+// または複合メソッド
+await loginPage.login(
+  driverIdPart1: testDriverIdPart1,
+  driverIdPart2: testDriverIdPart2,
+  password: testPassword,
+);
+```
+
+---
+
+## ダイアログなしログアウトのテンプレート
+
+確認ダイアログなしで直接ログアウトするアプリの場合:
+
+```dart
+// === ログアウト操作 ===
+// 確認ダイアログなし（ic_card パターン）
+await myPage.tapLogout();
+// ログアウト後、AuthWall に戻ることを検証
+await authWallPage.verifyDisplayed();
+```
+
+**比較: ダイアログありの場合:**
+```dart
+// 確認ダイアログあり（標準パターン）
+await myPage.tapLogout();
+await TestHelper.confirmDialog(tester);
+await loginPage.verifyDisplayed();
+```
+
+---
+
 ## コメント規約
 
 ### 手順コメント
