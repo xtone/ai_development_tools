@@ -222,6 +222,7 @@ jobs:
             .pr-triage.json
             .pr-review-state.json
           if-no-files-found: error
+          include-hidden-files: true
           retention-days: 1
 
   # ==========================================================
