@@ -10,9 +10,11 @@ PRの変更内容を分析し、後続のコードレビューフェーズに必
 
 ## 手順
 
-1. `gh pr view <PR番号> --json title,body,headRefName,baseRefName` でPR情報を取得
+1. `gh pr view <PR番号> --json title,body,headRefName,baseRefName,changedFiles` でPR情報を取得
 2. `gh pr diff <PR番号> --name-only` で変更ファイル一覧を取得
-3. `gh pr diff <PR番号>` でコード差分を取得
+3. 差分の取得（**changedFilesが15以上の場合、手順3はスキップしてファイル名とPR説明のみで分析する**）：
+   - changedFilesが15未満の場合のみ `gh pr diff <PR番号>` でコード差分を取得
+   - 表層チェックが必要なファイル（.ts, .js, .tsx, .jsx）が多い場合は個別に `gh pr diff <PR番号> -- <file>` で取得
 4. `.pr-review-state.json` が存在するか確認する（前回レビュー状態）
 5. 以下の分析を行う：
    - 変更ファイルのカテゴリ分類（added/modified/deleted）
