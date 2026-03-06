@@ -19,7 +19,10 @@ code-review/
     ├── authorization-review-postgres-rls.md  # 認可レビュー観点（PostgreSQL RLS編）
     ├── github-pr-review-actions.md        # GitHub PRレビューアクション
     ├── ci-optimized-workflow.md           # CI環境でのコスト最適化ワークフロー
-    └── incremental-review.md             # インクリメンタルレビューの詳細
+    ├── incremental-review.md             # インクリメンタルレビューの詳細
+    ├── skill-review.md                    # Claude Codeスキル（SKILL.md）レビュー基準
+    ├── skill-overview.md                  # スキル概要（公式ドキュメント）
+    └── skill-best-practices.md            # スキルベストプラクティス（公式ドキュメント）
 ```
 
 ## ランタイムファイル
@@ -72,7 +75,8 @@ CI環境で事前トリアージが実行されている場合、作業ディレ
     "has_rls_changes": false,
     "has_api_changes": true,
     "has_test_changes": false,
-    "has_config_changes": false
+    "has_config_changes": false,
+    "has_skill_changes": false
   },
   "required_references": [
     "typescript-best-practices.md",
@@ -206,6 +210,7 @@ PR更新（`synchronize`イベント）時に、前回のレビュー状態を�
 | 認可（一般） | [references/authorization-review-general.md](references/authorization-review-general.md) | 内部リファレンス |
 | 認可（PostgreSQL RLS） | [references/authorization-review-postgres-rls.md](references/authorization-review-postgres-rls.md) | 内部リファレンス |
 | GitHub PRレビュー | [references/github-pr-review-actions.md](references/github-pr-review-actions.md) | 内部リファレンス |
+| Claude Codeスキル | [references/skill-review.md](references/skill-review.md) | 内部リファレンス |
 
 **参照ルール：**
 - TypeScriptの変更 → 内部リファレンスを読み込む
@@ -213,6 +218,7 @@ PR更新（`synchronize`イベント）時に、前回のレビュー状態を�
 - 認可に関わる変更（認証/権限チェック、データアクセス制御等） → 認可リファレンス（一般編）を参照
 - PostgreSQL RLSを使用している場合 → 認可リファレンス（RLS編）も追加で参照
 - GitHub Actions等のCI環境でPRレビューを実行する場合 → GitHub PRレビューアクションを参照（コメント投稿・評価方法）
+- SKILL.mdファイルが含まれる変更 → スキルレビューリファレンスを参照し、スキル品質チェックを追加実施する
 - 複数の言語/FWにまたがる変更の場合は、すべての該当リファレンスを参照する
 - リファレンスが存在しない言語の場合は、ステップ2の共通チェックのみで判断する
 
