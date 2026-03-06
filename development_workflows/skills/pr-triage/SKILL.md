@@ -40,9 +40,9 @@ PRの変更内容を分析し、後続のコードレビューフェーズに必
 `resolved_issues` のフォーマット：
 ```json
 {
-  "comment_id": "<元のインラインコメントID（.pr-review-state.jsonから取得）>",
+  "comment_id": 12345678,
   "file": "<ファイルパス>",
-  "line": "<元の行番号>",
+  "line": 42,
   "issue": "<元の問題の説明>",
   "resolution": "fixed"
 }
@@ -76,8 +76,8 @@ PRの変更内容を分析し、後続のコードレビューフェーズに必
 
 ```json
 {
-  "pr_number": "<PR番号>",
-  "incremental": "<true（前回状態あり）/ false（初回）>",
+  "pr_number": 123,
+  "incremental": false,
   "base_commit": "<前回レビュー時のコミットSHA（インクリメンタル時のみ）>",
   "summary": "<変更の概要（1-2文）>",
   "files": {
@@ -90,30 +90,30 @@ PRの変更内容を分析し、後続のコードレビューフェーズに必
   "languages": ["<検出された言語>"],
   "frameworks": ["<検出されたフレームワーク>"],
   "change_categories": {
-    "has_auth_changes": "<true/false>",
-    "has_db_changes": "<true/false>",
-    "has_rls_changes": "<true/false>",
-    "has_api_changes": "<true/false>",
-    "has_test_changes": "<true/false>",
-    "has_config_changes": "<true/false>",
-    "has_skill_changes": "<true/false>"
+    "has_auth_changes": false,
+    "has_db_changes": false,
+    "has_rls_changes": false,
+    "has_api_changes": false,
+    "has_test_changes": false,
+    "has_config_changes": true,
+    "has_skill_changes": true
   },
   "required_references": ["<必要なリファレンスファイル名>"],
   "surface_issues": [
     {
       "severity": "Minor|Suggestion",
       "file": "<ファイルパス>",
-      "line": "<行番号>",
+      "line": 15,
       "issue": "<問題の説明>",
       "suggestion": "<改善案>",
-      "carried_over": "<true（前回から引き継ぎ）/ 省略（今回検出）>"
+      "carried_over": true
     }
   ],
   "resolved_issues": [
     {
-      "comment_id": "<元のインラインコメントID>",
+      "comment_id": 12345678,
       "file": "<ファイルパス>",
-      "line": "<元の行番号>",
+      "line": 42,
       "issue": "<元の問題の説明>",
       "resolution": "fixed"
     }
