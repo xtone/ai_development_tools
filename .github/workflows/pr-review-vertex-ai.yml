@@ -73,7 +73,7 @@ jobs:
           # claude_args: |
           #   --model claude-haiku-4-5@20251001
           #   --max-turns 15
-          #   --allowedTools "Skill,Read,Glob,Grep,Bash(gh:*),Write"
+          #   --allowedTools "Skill,Read,Glob,Grep,Bash(gh:*),Bash(cat:*),Bash(test:*),Write"
           prompt: |
             PR #${{ github.event.pull_request.number }} のトリアージを実行してください。
 
@@ -199,7 +199,7 @@ jobs:
           claude_args: |
             --model claude-haiku-4-5@20251001
             --max-turns 20
-            --allowedTools "Read,Glob,Grep,Bash(gh:*),Write"
+            --allowedTools "Read,Glob,Grep,Bash(gh:*),Bash(cat:*),Bash(test:*),Write"
 
       - name: Upload triage results
         uses: actions/upload-artifact@v4
