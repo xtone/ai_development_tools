@@ -201,6 +201,19 @@ jobs:
             --max-turns 20
             --allowedTools "Read,Glob,Grep,Bash(gh:*),Bash(cat:*),Bash(test:*),Write"
 
+      - name: Verify triage output
+        if: always()
+        run: |
+          echo "=== Working directory ==="
+          pwd
+          echo "=== Files matching .pr-* ==="
+          ls -la .pr-* 2>/dev/null || echo "No .pr-* files found"
+          echo "=== Find .pr-triage.json anywhere ==="
+          find /home/runner/work -name ".pr-triage.json" -type f 2>/dev/null || echo "Not found anywhere"
+          echo "=== Check specific paths ==="
+          test -f .pr-triage.json && echo ".pr-triage.json EXISTS ($(wc -c < .pr-triage.json) bytes)" || echo ".pr-triage.json MISSING"
+          test -f .pr-review-state.json && echo ".pr-review-state.json EXISTS" || echo ".pr-review-state.json MISSING (expected on first run)"
+
       - name: Upload triage results
         uses: actions/upload-artifact@v4
         with:
