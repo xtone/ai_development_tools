@@ -81,7 +81,7 @@ jobs:
 
             1. `gh pr view ${{ github.event.pull_request.number }} --json title,body,headRefName,baseRefName` でPR情報を取得
             2. `gh pr diff ${{ github.event.pull_request.number }} --name-only` で変更ファイル一覧を取得
-            3. `gh pr diff ${{ github.event.pull_request.number }}` でコード差分を取得
+            3. `gh pr diff ${{ github.event.pull_request.number }}` でコード差分を取得（差分が大きい場合は `--name-only` の結果とファイル拡張子から分析し、表層チェックが必要なファイルのみ `gh pr diff ${{ github.event.pull_request.number }} -- <file>` で個別に差分を取得する）
             4. `.pr-review-state.json` が存在するか確認する（前回レビュー状態）
             5. 以下の分析を行う：
                - 変更ファイルのカテゴリ分類（added/modified/deleted）
