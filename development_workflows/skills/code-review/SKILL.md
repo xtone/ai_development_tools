@@ -18,12 +18,18 @@ code-review/
     ├── authorization-review-general.md    # 認可レビュー観点（一般編）
     ├── authorization-review-postgres-rls.md  # 認可レビュー観点（PostgreSQL RLS編）
     ├── github-pr-review-actions.md        # GitHub PRレビューアクション
-    └── ci-optimized-workflow.md           # CI環境でのコスト最適化ワークフロー
-
-ランタイム生成ファイル:
-├── .pr-triage.json          # トリアージ結果（毎回生成）
-└── .pr-review-state.json    # レビュー状態（実行間で永続化）
+    ├── ci-optimized-workflow.md           # CI環境でのコスト最適化ワークフロー
+    └── incremental-review.md             # インクリメンタルレビューの詳細
 ```
+
+## ランタイムファイル
+
+CI実行時に自動生成されるファイル。リポジトリにはコミットしない。
+
+| ファイル | 用途 | ライフサイクル |
+|---------|------|--------------|
+| `.pr-triage.json` | トリアージ結果 | 毎回生成 |
+| `.pr-review-state.json` | レビュー状態 | `actions/cache` で実行間永続化 |
 
 ## 外部スキル連携
 
@@ -92,89 +98,9 @@ CI環境で事前トリアージが実行されている場合、作業ディレ
 ### インクリメンタルレビュー（PR更新時の差分最適化）
 
 PR更新（`synchronize`イベント）時に、前回のレビュー状態を活用してトークン消費を削減する。
+詳細は [references/incremental-review.md](references/incremental-review.md) を参照。
 
-#### `.pr-review-state.json` の構造
-
-CI環境で `actions/cache` により実行間で永続化される。
-
-```json
-{
-  "pr_number": 123,
-  "last_reviewed_commit": "abc123def",
-  "last_reviewed_at": "2026-03-06T10:00:00Z",
-  "triage": {
-    "surface_issues": [
-      {
-        "severity": "Minor",
-        "file": "src/api/users.ts",
-        "line": 15,
-        "issue": "`any`型が使用されている",
-        "suggestion": "具体的な型に変更する"
-      }
-    ]
-  },
-  "review_comments": [
-    {
-      "comment_id": 789,
-      "file": "src/api/users.ts",
-      "line": 15,
-      "severity": "Minor",
-      "issue": "`any`型が使用されている",
-      "commit_id": "abc123def"
-    }
-  ]
-}
-```
-
-#### インクリメンタルトリアージの動作
-
-`.pr-review-state.json` が存在する場合、トリアージジョブは以下の最適化を行う：
-
-1. **変更差分の比較** — `last_reviewed_commit` 以降に変更されたファイルを特定する
-2. **Minor/Suggestionのスキップ** — 前回から変更のないファイルに対する `surface_issues` はそのまま引き継ぎ、再チェックしない（`"carried_over": true` を付与）
-3. **変更ファイルのみ再チェック** — 変更があったファイルについてのみ、表層チェックを実行する
-4. **解決済み問題の検出** — 前回の `surface_issues` のうち、該当行が修正されたものを `resolved_issues` として出力する
-
-インクリメンタルモードの `.pr-triage.json` 追加フィールド：
-
-```json
-{
-  "incremental": true,
-  "base_commit": "abc123def",
-  "changed_since_last_review": ["src/api/users.ts"],
-  "unchanged_since_last_review": ["src/routes/index.ts"],
-  "resolved_issues": [
-    {
-      "comment_id": 789,
-      "file": "src/api/users.ts",
-      "line": 15,
-      "issue": "`any`型が使用されている",
-      "resolution": "fixed"
-    }
-  ],
-  "surface_issues": [
-    {
-      "severity": "Minor",
-      "file": "src/routes/index.ts",
-      "line": 42,
-      "issue": "マジックナンバーの使用",
-      "suggestion": "定数に抽出する",
-      "carried_over": true
-    }
-  ]
-}
-```
-
-#### 修正済み問題へのコメントリプライ
-
-レビュージョブは `resolved_issues` に含まれる問題について、元のインラインコメント（`comment_id`）にリプライする：
-
-```
-gh api repos/{owner}/{repo}/pulls/{pr}/comments/{comment_id}/replies \
-  -f body="この問題は修正されました。"
-```
-
-> **`.pr-review-state.json` が存在しない場合**（初回レビュー）は、インクリメンタル最適化は適用されず、フルトリアージを実行する。
+> **`.pr-review-state.json` が存在しない場合**（初回レビュー）は、インクリメンタル最適化は適用されず、フルトリアージを実行する。不正な形式の場合も警告を出力してフルトリアージを実行する。
 
 ## レビューワークフロー
 
