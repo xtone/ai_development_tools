@@ -194,7 +194,7 @@ jobs:
             重要: テキスト出力は最小限にし、`.pr-triage.json` の出力に集中してください。
           claude_args: |
             --model claude-haiku-4-5@20251001
-            --max-turns 15
+            --max-turns 20
             --allowedTools "Read,Glob,Grep,Bash(gh:*),Write"
 
       - name: Upload triage results
