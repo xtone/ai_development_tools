@@ -62,8 +62,8 @@
         {
             "name": "development-workflows",
             "source": "./development_workflows",
-            "description": "開発ワークフロー向けスキル群（コードレビュー、認可チェックなど）",
-            "version": "0.1.0",
+            "description": "開発ワークフロー向けスキル群（コードレビュー、PRトリアージ、認可チェックなど）",
+            "version": "0.2.0",
             "author": {
                 "name": "TOYOTA, Yoichi"
             }
