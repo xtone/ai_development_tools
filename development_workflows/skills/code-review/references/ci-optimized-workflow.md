@@ -141,7 +141,7 @@ jobs:
             `.pr-review-state.json` が存在する場合はインクリメンタルモードで実行してください。
             /pr-triage
           claude_args: |
-            --model claude-haiku-4-5-20251001
+            --model claude-haiku-4-5@20251001
             --max-turns 10
             --allowedTools "Skill,Read,Glob,Grep,Bash(gh:*),Write"
 
@@ -287,7 +287,7 @@ gcloud ai models list --region=global --filter="displayName:claude"
 ```
 
 一般的なVertex AIのモデルID：
-- `claude-haiku-4-5-20251001` (Claude 4.5 Haiku)
+- `claude-haiku-4-5@20251001` (Claude 4.5 Haiku)
 - `claude-opus-4-6@default` (Claude Opus 4.6)
 
 ### トリアージ失敗時のフォールバック
