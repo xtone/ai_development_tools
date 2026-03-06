@@ -18,8 +18,18 @@ code-review/
     ├── authorization-review-general.md    # 認可レビュー観点（一般編）
     ├── authorization-review-postgres-rls.md  # 認可レビュー観点（PostgreSQL RLS編）
     ├── github-pr-review-actions.md        # GitHub PRレビューアクション
-    └── ci-optimized-workflow.md           # CI環境でのコスト最適化ワークフロー
+    ├── ci-optimized-workflow.md           # CI環境でのコスト最適化ワークフロー
+    └── incremental-review.md             # インクリメンタルレビューの詳細
 ```
+
+## ランタイムファイル
+
+CI実行時に自動生成されるファイル。リポジトリにはコミットしない。
+
+| ファイル | 用途 | ライフサイクル |
+|---------|------|--------------|
+| `.pr-triage.json` | トリアージ結果 | 毎回生成 |
+| `.pr-review-state.json` | レビュー状態 | `actions/cache` で実行間永続化 |
 
 ## 外部スキル連携
 
@@ -84,6 +94,13 @@ CI環境で事前トリアージが実行されている場合、作業ディレ
 ```
 
 > **`.pr-triage.json` が存在しない場合**は、従来通りステップ1から全ステップを実行する（後方互換性あり）。
+
+### インクリメンタルレビュー（PR更新時の差分最適化）
+
+PR更新（`synchronize`イベント）時に、前回のレビュー状態を活用してトークン消費を削減する。
+詳細は [references/incremental-review.md](references/incremental-review.md) を参照。
+
+> **`.pr-review-state.json` が存在しない場合**（初回レビュー）は、インクリメンタル最適化は適用されず、フルトリアージを実行する。不正な形式の場合も警告を出力してフルトリアージを実行する。
 
 ## レビューワークフロー
 
@@ -247,6 +264,8 @@ Conditional Approve
 以下のフォーマットでレビュー結果を出力する。
 
 > **GitHub上でのレビュー投稿**：GitHub Actions等のCI環境でPRレビューを実行している場合のみ、[references/github-pr-review-actions.md](references/github-pr-review-actions.md) を参照して、`gh`コマンドやインラインコメントを使用してレビュー結果をGitHub上に投稿する。ローカル環境での実行時は、結果を標準出力に表示するのみとする。
+>
+> **修正済み問題のフォローアップ**：`.pr-triage.json` に `resolved_issues` が含まれる場合（インクリメンタルレビュー時）、元のインラインコメントにリプライして修正を報告する。レビュー完了後、投稿したコメントIDを `.pr-review-state.json` に記録する。
 
 ```markdown
 ## Code Review: [判定結果]
