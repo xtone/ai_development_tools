@@ -17,8 +17,8 @@ PRにSKILL.mdファイルが含まれる場合、通常のコードレビュー�
 
 スキルの仕組みやベストプラクティスの詳細は、以下を参照：
 
-- **スキル概要**: [references/skill-overview.md](skill-overview.md)
-- **ベストプラクティス**: [references/skill-best-practices.md](skill-best-practices.md)
+- **スキル概要**: [skill-overview.md](skill-overview.md)
+- **ベストプラクティス**: [skill-best-practices.md](skill-best-practices.md)
 
 ---
 
