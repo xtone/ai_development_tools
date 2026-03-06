@@ -64,6 +64,7 @@ jobs:
         with:
           github_token: ${{ steps.app-token.outputs.token }}
           use_vertex: "true"
+          show_full_output: "true"
           # TODO: マージ後にスキル版プロンプトに切り替える
           # prompt: |
           #   PR #${{ github.event.pull_request.number }} のトリアージを実行してください。
@@ -71,7 +72,7 @@ jobs:
           #   /pr-triage
           # claude_args: |
           #   --model claude-haiku-4-5@20251001
-          #   --max-turns 10
+          #   --max-turns 15
           #   --allowedTools "Skill,Read,Glob,Grep,Bash(gh:*),Write"
           prompt: |
             PR #${{ github.event.pull_request.number }} のトリアージを実行してください。
@@ -193,7 +194,7 @@ jobs:
             重要: テキスト出力は最小限にし、`.pr-triage.json` の出力に集中してください。
           claude_args: |
             --model claude-haiku-4-5@20251001
-            --max-turns 10
+            --max-turns 15
             --allowedTools "Read,Glob,Grep,Bash(gh:*),Write"
 
       - name: Upload triage results
@@ -203,6 +204,7 @@ jobs:
           path: |
             .pr-triage.json
             .pr-review-state.json
+          if-no-files-found: error
           retention-days: 1
 
   # ==========================================================
