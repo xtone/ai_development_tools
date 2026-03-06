@@ -143,7 +143,7 @@ jobs:
           claude_args: |
             --model claude-haiku-4-5@20251001
             --max-turns 10
-            --allowedTools "Skill,Read,Glob,Grep,Bash(gh:*),Bash(cat:*),Bash(test:*),Write"
+            --allowedTools "Skill,Read,Glob,Grep,Bash(gh:*),Write"
 
       - name: Upload triage results
         uses: actions/upload-artifact@v4
