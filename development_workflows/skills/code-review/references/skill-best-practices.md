@@ -331,8 +331,8 @@ feat(auth): JWT ベースの認証を実装する
 
 ### Windowsスタイルのパス
 
-- ✓ **良い**: `scripts/helper.py`, `reference/guide.md`
-- ✗ **避ける**: `scripts\helper.py`, `reference\guide.md`
+- 良い: `scripts/helper.py`, `reference/guide.md`
+- 避ける: `scripts\helper.py`, `reference\guide.md`
 
 ### 多くのオプションを提供しすぎる
 
