@@ -193,7 +193,9 @@ jobs:
             }
             ```
 
-            重要: テキスト出力は最小限にし、`.pr-triage.json` の出力に集中してください。
+            重要:
+            - テキスト出力は最小限にし、`.pr-triage.json` の出力に集中してください。
+            - ファイル出力には Write ツールではなく `cat <<'TRIAGE_EOF' > .pr-triage.json` の Bash ヒアドキュメントを使用してください。
           claude_args: |
             --model claude-haiku-4-5@20251001
             --max-turns 20
