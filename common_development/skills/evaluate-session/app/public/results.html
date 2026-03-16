@@ -1,0 +1,2047 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session Evaluator - Results</title>
+<style>
+  :root {
+    --bg: #1e1e1e;
+    --bg-secondary: #252526;
+    --bg-widget: #333333;
+    --fg: #d4d4d4;
+    --fg-dim: #858585;
+    --accent: #569cd6;
+    --accent-hover: #6cb3f0;
+    --border: #3e3e3e;
+    --select-bg: #264f78;
+    --select-fg: #ffffff;
+    --red: #f44747;
+    --status-bg: #181818;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Segoe UI', 'SF Pro Text', -apple-system, sans-serif;
+    font-size: 13px;
+    background: var(--bg);
+    color: var(--fg);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Toolbar */
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    flex-shrink: 0;
+  }
+
+  button {
+    font-family: inherit;
+    font-size: 13px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 5px 14px;
+    cursor: pointer;
+    background: var(--bg-widget);
+    color: var(--fg);
+    transition: background 0.15s;
+  }
+  button:hover { background: var(--accent); color: var(--bg); }
+  button:disabled { background: var(--bg-secondary); color: var(--fg-dim); cursor: default; }
+
+  .btn-accent {
+    background: var(--accent);
+    color: var(--bg);
+    font-weight: 600;
+    border-color: var(--accent);
+    padding: 6px 16px;
+  }
+  .btn-accent:hover { background: var(--accent-hover); }
+
+  .toolbar-spacer { flex: 1; }
+
+  select {
+    font-family: inherit;
+    font-size: 13px;
+    background: var(--bg-widget);
+    color: var(--fg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 5px 8px;
+    cursor: pointer;
+  }
+  select:focus { outline: 1px solid var(--accent); }
+
+  label { color: var(--fg-dim); margin-right: 4px; }
+
+  /* Main layout */
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 0 12px 8px;
+    overflow: hidden;
+    gap: 8px;
+  }
+  .top-pane {
+    display: none;
+  }
+
+  .session-context {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: var(--bg-secondary);
+    padding: 6px 10px;
+    font-size: 12px;
+    color: var(--fg-dim);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 0;
+  }
+
+  .panel {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .panel-header {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent);
+    padding: 6px 10px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .panel-body {
+    flex: 1;
+    overflow-y: auto;
+    background: var(--bg-secondary);
+  }
+
+  .project-panel { flex: 0 0 280px; min-width: 200px; }
+  .session-panel { flex: 1; }
+  .result-panel { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+
+  /* Project list */
+  .project-list {
+    list-style: none;
+  }
+  .project-list li {
+    padding: 5px 10px;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    direction: rtl;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  .project-list li:hover { background: var(--bg-widget); }
+  .project-list li.selected { background: var(--select-bg); color: var(--select-fg); }
+
+  /* Session table */
+  .session-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+  .session-table th {
+    background: var(--bg-widget);
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 8px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+  .session-table td {
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .session-table tr:hover td { background: var(--bg-widget); }
+  .session-table tr.selected td { background: var(--select-bg); color: var(--select-fg); }
+
+  .col-date { width: 140px; }
+  .col-size { width: 70px; }
+  .col-msg { }
+
+  /* Result tabs */
+  .result-tabs {
+    display: flex;
+    gap: 0;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .result-tab {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--fg-dim);
+    padding: 6px 16px;
+    cursor: pointer;
+    border: none;
+    border-bottom: 2px solid transparent;
+    background: none;
+    border-radius: 0;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .result-tab:hover { color: var(--fg); background: none; }
+  .result-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .result-tab-content { display: none; flex: 1; overflow-y: auto; background: var(--bg-secondary); min-height: 0; }
+  .result-tab-content.active { display: flex; flex-direction: column; }
+
+  /* Plain text result */
+  .result-text {
+    white-space: pre-wrap;
+    font-family: 'Consolas', 'Menlo', monospace;
+    font-size: 12px;
+    padding: 10px;
+    line-height: 1.5;
+    color: var(--fg);
+    min-height: 100%;
+  }
+
+  /* Visual result */
+  .result-visual {
+    padding: 16px 20px;
+    font-size: 14px;
+    line-height: 1.65;
+    color: var(--fg);
+    flex: 1;
+  }
+  .result-visual h2 {
+    font-size: 18px;
+    color: var(--accent);
+    margin: 0 0 12px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border);
+  }
+  .result-visual h3 {
+    font-size: 16px;
+    color: #9cdcfe;
+    margin: 16px 0 8px;
+  }
+  .result-visual h4 {
+    font-size: 14px;
+    color: #c586c0;
+    margin: 12px 0 6px;
+  }
+  .result-visual p { margin: 4px 0 8px; }
+  .result-visual strong { color: #dcdcaa; }
+  .result-visual em { color: #ce9178; font-style: italic; }
+  .result-visual ul, .result-visual ol { margin: 4px 0 8px 20px; }
+  .result-visual li { margin: 2px 0; }
+  .result-visual hr { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+  .result-visual code {
+    background: var(--bg-widget);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-family: 'Consolas', 'Menlo', monospace;
+    font-size: 13px;
+  }
+  .result-visual pre {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 10px 12px;
+    overflow-x: auto;
+    margin: 8px 0;
+    font-family: 'Consolas', 'Menlo', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .result-visual pre code { background: none; padding: 0; }
+
+  /* Visual tables */
+  .result-visual table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 8px 0 12px;
+    font-size: 12px;
+  }
+  .result-visual th {
+    background: var(--bg-widget);
+    color: var(--accent);
+    font-weight: 600;
+    padding: 6px 10px;
+    text-align: left;
+    border: 1px solid var(--border);
+  }
+  .result-visual td {
+    padding: 5px 10px;
+    border: 1px solid var(--border);
+  }
+  .result-visual tr:hover td { background: rgba(86, 156, 214, 0.08); }
+
+  /* ---- Hero score ring (large, centered) ---- */
+  .score-hero {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 40px 16px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .score-hero-label {
+    position: absolute;
+    top: 16px;
+    left: 20px;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--fg);
+  }
+  .score-ring-wrap { position: relative; width: 120px; height: 120px; flex-shrink: 0; }
+  .score-ring-wrap svg { transform: rotate(-90deg); width: 120px; height: 120px; }
+  .score-ring-bg { fill: none; stroke: var(--border); stroke-width: 10; }
+  .score-ring-fg { fill: none; stroke-width: 10; stroke-linecap: round; transition: stroke-dashoffset 0.8s ease; }
+  .score-ring-text { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .score-ring-text .ring-val { font-size: 36px; font-weight: 900; line-height: 1; letter-spacing: -2px; }
+  .score-ring-text .ring-max { font-size: 13px; color: var(--fg-dim); font-weight: 700; margin-top: -2px; }
+  .score-hero-footer {
+    margin-top: 20px;
+    text-align: center;
+    width: 100%;
+  }
+  .score-hero-badge {
+    display: inline-block;
+    padding: 5px 18px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 700;
+    background: rgba(86,156,214,0.1);
+    color: var(--accent);
+    border: 1px solid rgba(86,156,214,0.2);
+  }
+  .score-hero-comment {
+    font-size: 11px;
+    color: var(--fg-dim);
+    margin-top: 12px;
+    line-height: 1.6;
+    max-width: 320px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  /* ---- Score detail grid (progress bars) ---- */
+  .score-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px 24px;
+  }
+  .score-detail-item { }
+  .score-detail-item .sdi-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 6px;
+  }
+  .score-detail-item .sdi-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--fg);
+  }
+  .score-detail-item .sdi-score {
+    font-size: 14px;
+    font-family: 'Consolas', monospace;
+    font-weight: 700;
+  }
+  .score-detail-item .sdi-bar {
+    width: 100%;
+    height: 6px;
+    background: var(--border);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .score-detail-item .sdi-bar-fill {
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.5s ease;
+  }
+  .score-detail-item .sdi-reason {
+    font-size: 13px;
+    color: var(--fg);
+    margin-top: 5px;
+    line-height: 1.5;
+  }
+
+  /* ---- Score cards (stat overview) ---- */
+  .score-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 10px;
+    margin: 12px 0;
+  }
+  .score-card {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .score-card:hover {
+    border-color: rgba(86,156,214,0.4);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+  .score-card .score-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .score-card .score-label {
+    font-size: 13px;
+    color: var(--fg);
+    margin-top: 6px;
+    letter-spacing: 0.3px;
+  }
+  .score-card .score-minibar {
+    height: 3px;
+    border-radius: 2px;
+    margin-top: 8px;
+    background: var(--border);
+    overflow: hidden;
+  }
+  .score-card .score-minibar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.5s ease;
+  }
+  .score-card.score-high .score-value { color: #4ec9b0; }
+  .score-card.score-high .score-minibar-fill { background: #4ec9b0; }
+  .score-card.score-high { border-left: 3px solid #4ec9b0; }
+  .score-card.score-mid .score-value { color: #dcdcaa; }
+  .score-card.score-mid .score-minibar-fill { background: #dcdcaa; }
+  .score-card.score-mid { border-left: 3px solid #dcdcaa; }
+  .score-card.score-low .score-value { color: #f44747; }
+  .score-card.score-low .score-minibar-fill { background: #f44747; }
+  .score-card.score-low { border-left: 3px solid #f44747; }
+
+  /* ---- Stat bars ---- */
+  .stat-bar-row { display: flex; align-items: center; gap: 10px; margin: 3px 0; padding: 4px 0; border-radius: 4px; transition: background 0.15s; }
+  .stat-bar-row:hover { background: rgba(255,255,255,0.03); }
+  .stat-bar-label { width: 140px; text-align: right; font-size: 13px; color: var(--fg); font-weight: 600; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .stat-bar-track { flex: 1; height: 6px; background: var(--border); border-radius: 999px; overflow: hidden; }
+  .stat-bar-fill { height: 100%; border-radius: 999px; transition: width 0.5s ease; position: relative; }
+  .stat-bar-value { width: 50px; font-size: 13px; font-weight: 700; font-family: 'Consolas', monospace; flex-shrink: 0; }
+
+  /* ---- Section wrapper ---- */
+  .visual-section {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin: 14px 0;
+  }
+  .visual-section-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--fg);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .visual-section-title .sec-icon {
+    font-size: 17px;
+    color: var(--accent);
+  }
+
+  /* ---- Tag badges (planning tools) ---- */
+  .tool-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 13px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    border: 1px solid;
+    font-family: 'Consolas', monospace;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .tool-tag:hover { transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,0.3); }
+  .tool-tag-read { background: rgba(78,201,176,0.12); border-color: rgba(78,201,176,0.4); color: #4ec9b0; }
+  .tool-tag-write { background: rgba(86,156,214,0.12); border-color: rgba(86,156,214,0.4); color: #569cd6; }
+  .tool-tag .tag-num { font-size: 9px; opacity: 0.6; margin-right: 2px; }
+
+  /* ---- Evaluation detail section (always visible) ---- */
+  .eval-detail-section {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 14px 0;
+  }
+  .eval-detail-body { margin-top: 0; }
+
+  /* ---- Session report info grid ---- */
+  .report-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
+  }
+  .report-info-item .rii-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: var(--fg-dim);
+    margin-bottom: 3px;
+  }
+  .report-info-item .rii-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--fg);
+    word-break: break-all;
+  }
+  .report-info-item .rii-value .rii-accent {
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .report-info-full {
+    grid-column: 1 / -1;
+    padding-top: 10px;
+    margin-top: 4px;
+    border-top: 1px solid var(--border);
+  }
+  .report-info-full .rii-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: var(--fg-dim);
+    display: inline;
+    margin-right: 8px;
+  }
+  .report-info-full .rii-value {
+    font-size: 13px;
+    color: var(--fg);
+    display: inline;
+  }
+
+  /* (Score table styles removed - using progress bar grid instead) */
+
+  /* ---- Issue cards (design_base style) ---- */
+  .issue-card {
+    padding: 14px 16px;
+    border-radius: 8px;
+    margin: 8px 0;
+    border: 1px solid;
+  }
+  .issue-card.issue-critical {
+    background: rgba(244,71,71,0.08);
+    border-color: rgba(244,71,71,0.25);
+  }
+  .issue-card.issue-warning {
+    background: rgba(220,220,170,0.07);
+    border-color: rgba(220,220,170,0.25);
+  }
+  .issue-card .issue-title {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .issue-card .issue-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .issue-card.issue-critical .issue-badge { background: #f44747; }
+  .issue-card.issue-warning .issue-badge { background: #dcdcaa; color: var(--bg); }
+  .issue-card .issue-problem {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--fg);
+  }
+  .issue-card .issue-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 8px;
+    font-size: 13px;
+  }
+  .issue-card .issue-meta-label {
+    font-weight: 700;
+    color: var(--fg);
+  }
+  .issue-card .issue-meta-value {
+    color: var(--fg);
+  }
+
+  /* ---- Suggestion cards (icon-based layout) ---- */
+  .suggestion-list { display: flex; flex-direction: column; gap: 14px; }
+  .suggestion-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+  }
+  .suggestion-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 16px;
+    border: 1px solid;
+  }
+  .suggestion-icon-hook { background: rgba(86,156,214,0.1); border-color: rgba(86,156,214,0.2); color: #569cd6; }
+  .suggestion-icon-rule { background: rgba(220,220,170,0.1); border-color: rgba(220,220,170,0.2); color: #dcdcaa; }
+  .suggestion-icon-skill { background: rgba(78,201,176,0.1); border-color: rgba(78,201,176,0.2); color: #4ec9b0; }
+  .suggestion-icon-command { background: rgba(197,134,192,0.1); border-color: rgba(197,134,192,0.2); color: #c586c0; }
+  .suggestion-icon-default { background: rgba(86,156,214,0.1); border-color: rgba(86,156,214,0.2); color: var(--accent); }
+  .suggestion-card .suggestion-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--fg);
+  }
+  .suggestion-card .suggestion-body {
+    font-size: 13px;
+    color: var(--fg);
+    line-height: 1.6;
+    margin-top: 3px;
+  }
+
+  /* ---- Eval layout: grid for score ring + detail ---- */
+  .eval-score-layout {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 14px;
+    margin: 14px 0;
+  }
+  .eval-score-layout > .visual-section,
+  .eval-score-layout > .score-hero { margin: 0; }
+  @media (max-width: 900px) {
+    .eval-score-layout {
+      grid-template-columns: 1fr;
+    }
+  }
+  /* ---- Eval issues + suggestions side by side ---- */
+  .eval-bottom-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin: 14px 0;
+  }
+  .eval-bottom-row > .visual-section { margin: 0; }
+  @media (max-width: 900px) {
+    .eval-bottom-row {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* Help modal content */
+  .help-content { padding: 16px 20px; overflow-y: auto; flex: 1; line-height: 1.7; font-size: 13px; }
+  .help-content h3 { color: var(--accent); font-size: 14px; margin: 16px 0 6px; }
+  .help-content h3:first-child { margin-top: 0; }
+  .help-content p { margin: 4px 0 8px; }
+  .help-content ol, .help-content ul { margin: 4px 0 10px 20px; }
+  .help-content li { margin: 3px 0; }
+  .help-content kbd {
+    background: var(--bg-widget); border: 1px solid var(--border); border-radius: 3px;
+    padding: 1px 6px; font-family: 'Consolas', monospace; font-size: 12px;
+  }
+  .help-content code { background: var(--bg-widget); padding: 1px 5px; border-radius: 3px; font-family: 'Consolas', monospace; font-size: 12px; }
+  .help-content .help-step {
+    display: flex; gap: 10px; align-items: flex-start; margin: 6px 0;
+    background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 4px; padding: 8px 12px;
+  }
+  .help-content .help-step-num {
+    background: var(--accent); color: var(--bg); font-weight: 700; font-size: 12px;
+    min-width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .help-content .help-btn-label {
+    display: inline-block; background: var(--bg-widget); border: 1px solid var(--border); border-radius: 3px;
+    padding: 1px 8px; font-weight: 600; font-size: 12px;
+  }
+
+  /* Status bar */
+  .status-bar {
+    font-size: 12px;
+    color: var(--fg-dim);
+    background: var(--status-bg);
+    padding: 4px 12px;
+    flex-shrink: 0;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: var(--bg-secondary); }
+  ::-webkit-scrollbar-thumb { background: var(--bg-widget); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border); }
+
+  /* History modal */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 100;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.active { display: flex; }
+
+  .modal {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    width: 900px;
+    max-width: 90vw;
+    height: 600px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .modal-header h2 { font-size: 15px; color: var(--accent); }
+  .modal-close {
+    background: none;
+    border: none;
+    color: var(--fg-dim);
+    font-size: 20px;
+    cursor: pointer;
+    padding: 0 4px;
+  }
+  .modal-close:hover { color: var(--fg); background: none; }
+
+  .modal-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 8px;
+    gap: 8px;
+  }
+
+  .history-table-wrap {
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+  }
+
+  .history-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .history-table th {
+    background: var(--bg-widget);
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 5px 8px;
+    text-align: left;
+    position: sticky;
+    top: 0;
+  }
+  .history-table td {
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+  }
+  .history-table tr:hover td { background: var(--bg-widget); cursor: pointer; }
+  .history-table tr.selected td { background: var(--select-bg); color: var(--select-fg); }
+
+  .history-detail {
+    flex: 1;
+    overflow-y: auto;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 10px;
+    font-family: 'Consolas', 'Menlo', monospace;
+    font-size: 12px;
+    white-space: pre-wrap;
+    line-height: 1.5;
+  }
+
+  .modal-footer {
+    display: flex;
+    gap: 8px;
+    padding: 8px;
+    border-top: 1px solid var(--border);
+  }
+
+  /* Loading spinner */
+  .spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--fg-dim);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- Toolbar -->
+<div class="toolbar">
+  <button onclick="goToSessions()">&larr; Sessions</button>
+  <button class="btn-accent" id="analyzeBtn" onclick="onAnalyze()">&#x25B6; Analyze</button>
+  <button id="statsBtn" onclick="onStatsOnly()">Stats Only</button>
+  <button id="openFileBtn" onclick="onOpenFile()">Open Session...</button>
+  <button id="copyBtn" onclick="onCopy()">Copy Result</button>
+  <button onclick="onHelp()">Help</button>
+  <div class="toolbar-spacer"></div>
+  <label for="modelSelect">Model:</label>
+  <select id="modelSelect">
+    <option value="sonnet" selected>sonnet</option>
+    <option value="opus">opus</option>
+    <option value="haiku">haiku</option>
+  </select>
+</div>
+
+<!-- Main -->
+<div class="main">
+  <div class="session-context" id="sessionContext">Session: (none selected)</div>
+  <div class="top-pane">
+    <!-- Projects -->
+    <div class="panel project-panel">
+      <div class="panel-header">Projects</div>
+      <div class="panel-body">
+        <ul class="project-list" id="projectList"></ul>
+      </div>
+    </div>
+
+    <!-- Sessions -->
+    <div class="panel session-panel">
+      <div class="panel-header">Sessions</div>
+      <div class="panel-body">
+        <table class="session-table">
+          <thead>
+            <tr>
+              <th class="col-date">Date</th>
+              <th class="col-size">Size</th>
+              <th class="col-msg">First Message</th>
+            </tr>
+          </thead>
+          <tbody id="sessionBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div class="panel result-panel">
+    <div class="result-tabs">
+      <button class="result-tab active" data-tab="visual" onclick="switchResultTab('visual')">Visual</button>
+      <button class="result-tab" data-tab="plain" onclick="switchResultTab('plain')">Plain Text</button>
+      <button class="result-tab" data-tab="history" onclick="switchResultTab('history')">History</button>
+    </div>
+    <div class="result-tab-content active" id="resultVisualPane">
+      <div class="result-visual" id="resultVisual"><span style="color:var(--fg-dim)">Run an analysis to see results here.</span></div>
+    </div>
+    <div class="result-tab-content" id="resultPlainPane">
+      <div class="result-text" id="resultText"></div>
+    </div>
+    <div class="result-tab-content" id="resultHistoryPane">
+      <div style="display:flex;flex-direction:column;height:100%;overflow:hidden">
+        <div style="display:flex;gap:8px;padding:8px;flex-shrink:0">
+          <button onclick="loadHistoryTab()">Refresh</button>
+          <button onclick="copyHistoryDetail()">Copy Detail</button>
+          <button onclick="openHistorySelected()">Open in Visual</button>
+          <button onclick="deleteHistorySelected()">Delete Selected</button>
+        </div>
+        <div style="display:flex;flex:1;gap:8px;padding:0 8px 8px;min-height:0">
+          <div class="history-table-wrap" style="flex:0 0 45%;overflow-y:auto">
+            <table class="history-table">
+              <thead>
+                <tr>
+                  <th style="width:130px">Date</th>
+                  <th>Project</th>
+                  <th style="width:120px">Session ID</th>
+                  <th style="width:70px">Score</th>
+                </tr>
+              </thead>
+              <tbody id="historyBody"></tbody>
+            </table>
+          </div>
+          <div class="history-detail" id="historyDetail" style="flex:1;overflow-y:auto"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Status bar -->
+<div class="status-bar" id="statusBar">Ready</div>
+
+
+<!-- Help Modal -->
+<div class="modal-overlay" id="helpModal">
+  <div class="modal" style="width:680px;height:auto;max-height:80vh">
+    <div class="modal-header">
+      <h2>Session Evaluator - Help</h2>
+      <button class="modal-close" onclick="closeHelp()">&times;</button>
+    </div>
+    <div class="help-content">
+      <h3>Session Evaluator とは？</h3>
+      <p>Claude Code のセッション（JSONL）を解析し、ツール使用効率・トークン消費・手戻りなどを可視化するツールです。<br>AIによる 7 観点のスコアリング評価（<strong>100 点満点</strong>）も実行できます。</p>
+
+      <h3>基本的な使い方</h3>
+      <div class="help-step">
+        <div class="help-step-num">1</div>
+        <div><strong>Sessions</strong> ボタンで一覧画面へ戻り、<strong>Projects</strong> から対象プロジェクトを選択します。<code>~/.claude/projects</code> 配下のプロジェクトが自動で一覧されます。</div>
+      </div>
+      <div class="help-step">
+        <div class="help-step-num">2</div>
+        <div>一覧画面の <strong>Sessions</strong> テーブルで分析対象セッションを選択し、<strong>Analyze</strong> または <strong>Stats Only</strong> でこの結果画面へ遷移します。</div>
+      </div>
+      <div class="help-step">
+        <div class="help-step-num">3</div>
+        <div>ツールバーのボタンで分析を実行します：
+          <ul>
+            <li><span class="help-btn-label">&#x25B6; Analyze</span> &mdash; Claude による AI 評価 + 統計レポートを生成（1分ほどかかります）</li>
+            <li><span class="help-btn-label">Stats Only</span> &mdash; 統計レポートのみ生成（高速、Claude 呼び出しなし）</li>
+          </ul>
+        </div>
+      </div>
+      <div class="help-step">
+        <div class="help-step-num">4</div>
+        <div>結果はこのページの <strong>Visual</strong> / <strong>Plain Text</strong> タブに表示されます。</div>
+      </div>
+
+      <h3>その他のボタン</h3>
+      <ul>
+        <li><span class="help-btn-label">Open Session...</span> &mdash; フォルダ選択ダイアログから任意のセッションフォルダを直接開きます</li>
+        <li><span class="help-btn-label">Copy Result</span> &mdash; 現在の結果をクリップボードにコピーします</li>
+        <li><span class="help-btn-label">History</span> &mdash; 過去の評価履歴を確認し、Visual タブに復元できます</li>
+        <li><strong>Model</strong> ドロップダウン &mdash; AI 評価に使用する Claude モデルを選択します（sonnet / opus / haiku）</li>
+      </ul>
+
+      <h3>評価の 7 観点（100 点満点）</h3>
+      <p>「品質」ではなく「無駄の有無」を評価します。平均的なセッションは 50〜65 点が目安です。</p>
+      <ul>
+        <li><strong>A. 重複作業（/15）</strong> &mdash; 同一ファイル重複 Read、同じファイルの複数回書き直し、サブエージェントとの作業重複</li>
+        <li><strong>B. トークン効率（/15）</strong> &mdash; 入力トークンの異常値、キャッシュ活用率、大型ツール結果によるコンテキスト肥大</li>
+        <li><strong>C. 目的外作業（/20）</strong> &mdash; ユーザー指示と無関係なファイル操作、頼まれていないリファクタリング（最重要観点）</li>
+        <li><strong>D. 初動の的確さ（/15）</strong> &mdash; タスクに適した初手を取れているか、不要な前置き作業がないか</li>
+        <li><strong>E. エラー回復効率（/10）</strong> &mdash; エラー後に原因分析せず同じことをリトライしていないか</li>
+        <li><strong>F. 不要な探索（/15）</strong> &mdash; 目的に不要なファイル読み込み、過剰な Glob/Grep</li>
+        <li><strong>G. モデル選定（/10）</strong> &mdash; タスク複雑さに対してモデルが適切か、サブエージェントのモデル選定</li>
+      </ul>
+
+      <h3>スコアの目安</h3>
+      <ul>
+        <li><strong>80〜100</strong> &mdash; 極めて効率的（ほぼ無駄なし）</li>
+        <li><strong>65〜79</strong> &mdash; 良好（軽微な無駄のみ）</li>
+        <li><strong>50〜64</strong> &mdash; 平均的（改善の余地あり）</li>
+        <li><strong>30〜49</strong> &mdash; 非効率（明確な無駄が複数）</li>
+        <li><strong>0〜29</strong> &mdash; 大幅な改善が必要</li>
+      </ul>
+
+      <h3>Visual タブの見方</h3>
+      <ul>
+        <li><strong>スコアカード</strong> &mdash; 合計スコアとカテゴリ別スコア（緑=良好、黄=普通、赤=要改善）</li>
+        <li><strong>Tool Usage</strong> &mdash; ツールごとの使用回数を横棒グラフで表示</li>
+        <li><strong>Duplicate Reads</strong> &mdash; 同一ファイルを複数回読み込んだ箇所</li>
+        <li><strong>Rework</strong> &mdash; 同一ファイルへの書き込みが3回以上あった箇所（手戻り）</li>
+        <li><strong>Errors &amp; Retries</strong> &mdash; エラー発生数と即座のリトライ数</li>
+        <li><strong>Planning</strong> &mdash; セッション最初の15ツール呼び出し（調査系=緑、その他=青）</li>
+      </ul>
+
+      <h3>トラブルシューティング</h3>
+      <ul>
+        <li><strong>Claude CLI が見つからない</strong> &mdash; <code>claude --version</code> でインストール確認。Stats Only なら CLI 不要で利用可能</li>
+        <li><strong>ポートが使用中</strong> &mdash; <code>npx session-evaluator --port 8080</code> で別ポートを指定</li>
+        <li><strong>セッションが表示されない</strong> &mdash; <code>~/.claude/projects/</code> にログが存在するか確認</li>
+        <li><strong>評価が途中で失敗</strong> &mdash; Claude CLI の認証やネットワーク接続を確認。Stats Only で統計だけ確認可能</li>
+      </ul>
+
+      <h3>CLI から起動する場合</h3>
+      <p><code>npx session-evaluator</code> でサーバーが起動し、ブラウザが自動で開きます。<code>--port</code> でポート変更可。</p>
+    </div>
+  </div>
+</div>
+
+<script>
+// State
+let projects = [];
+let sessions = [];
+let selectedProjectIdx = -1;
+let selectedSessionIdx = -1;
+let currentResult = '';
+let running = false;
+let historyRecords = [];
+let historySelectedIdx = -1;
+
+const STORAGE_SELECTED_SESSION = 'sessionEvaluator.selectedSession';
+const STORAGE_REQUESTED_ACTION = 'sessionEvaluator.requestedAction';
+const STORAGE_MODEL = 'sessionEvaluator.model';
+const STORAGE_OPEN_HISTORY_RECORD = 'sessionEvaluator.openHistoryRecord';
+
+// Elements
+const projectList = document.getElementById('projectList');
+const sessionBody = document.getElementById('sessionBody');
+const resultText = document.getElementById('resultText');
+const resultVisual = document.getElementById('resultVisual');
+const statusBar = document.getElementById('statusBar');
+const analyzeBtn = document.getElementById('analyzeBtn');
+const statsBtn = document.getElementById('statsBtn');
+const modelSelect = document.getElementById('modelSelect');
+
+// Tab switching
+function switchResultTab(tab) {
+  document.querySelectorAll('.result-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  document.getElementById('resultVisualPane').classList.toggle('active', tab === 'visual');
+  document.getElementById('resultPlainPane').classList.toggle('active', tab === 'plain');
+  document.getElementById('resultHistoryPane').classList.toggle('active', tab === 'history');
+  if (tab === 'history' && historyRecords.length === 0) loadHistoryTab();
+}
+
+// --- Lightweight Markdown to HTML ---
+function mdToHtml(md) {
+  let html = '';
+  const lines = md.split('\n');
+  let inTable = false;
+  let inCode = false;
+  let codeBuf = [];
+  let inList = false;
+  let listType = 'ul';
+
+  function closeList() {
+    if (inList) { html += `</${listType}>`; inList = false; }
+  }
+
+  function inline(text) {
+    return text
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em>$1</em>')
+      .replace(/`([^`]+)`/g, '<code>$1</code>');
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Fenced code block
+    if (line.trimStart().startsWith('```')) {
+      if (inCode) {
+        html += `<pre><code>${codeBuf.join('\n').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</code></pre>`;
+        codeBuf = [];
+        inCode = false;
+      } else {
+        closeList();
+        if (inTable) { html += '</table>'; inTable = false; }
+        inCode = true;
+      }
+      continue;
+    }
+    if (inCode) { codeBuf.push(line); continue; }
+
+    // Empty line
+    if (line.trim() === '') {
+      closeList();
+      if (inTable) { html += '</table>'; inTable = false; }
+      continue;
+    }
+
+    // Headings
+    const hm = line.match(/^(#{1,4})\s+(.*)$/);
+    if (hm) {
+      closeList(); if (inTable) { html += '</table>'; inTable = false; }
+      const lvl = hm[1].length;
+      html += `<h${lvl + 1}>${inline(hm[2])}</h${lvl + 1}>`;
+      continue;
+    }
+
+    // Horizontal rule
+    if (/^[-*_]{3,}\s*$/.test(line.trim())) {
+      closeList(); if (inTable) { html += '</table>'; inTable = false; }
+      html += '<hr>';
+      continue;
+    }
+
+    // Table row
+    if (line.includes('|') && line.trim().startsWith('|')) {
+      const cells = line.split('|').slice(1, -1).map(c => c.trim());
+      // Separator row
+      if (cells.every(c => /^[-:]+$/.test(c))) continue;
+      if (!inTable) {
+        closeList();
+        html += '<table>';
+        inTable = true;
+        // First row = header
+        html += '<tr>' + cells.map(c => `<th>${inline(c)}</th>`).join('') + '</tr>';
+        continue;
+      }
+      html += '<tr>' + cells.map(c => `<td>${inline(c)}</td>`).join('') + '</tr>';
+      continue;
+    }
+
+    // Close table if line doesn't have pipes
+    if (inTable) { html += '</table>'; inTable = false; }
+
+    // Unordered list
+    if (/^[\s]*[-*]\s+/.test(line)) {
+      if (!inList || listType !== 'ul') { closeList(); html += '<ul>'; inList = true; listType = 'ul'; }
+      html += `<li>${inline(line.replace(/^[\s]*[-*]\s+/, ''))}</li>`;
+      continue;
+    }
+
+    // Ordered list
+    if (/^[\s]*\d+\.\s+/.test(line)) {
+      if (!inList || listType !== 'ol') { closeList(); html += '<ol>'; inList = true; listType = 'ol'; }
+      html += `<li>${inline(line.replace(/^[\s]*\d+\.\s+/, ''))}</li>`;
+      continue;
+    }
+
+    closeList();
+    html += `<p>${inline(line)}</p>`;
+  }
+
+  closeList();
+  if (inTable) html += '</table>';
+  if (inCode) html += `<pre><code>${codeBuf.join('\n').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</code></pre>`;
+  return html;
+}
+
+// --- Build visual result ---
+function buildScoreRing(val, max) {
+  const pct = max > 0 ? val / max : 0;
+  const color = pct >= 0.75 ? '#4ec9b0' : pct >= 0.5 ? '#dcdcaa' : '#f44747';
+  const r = 44;
+  const circ = 2 * Math.PI * r;
+  const offset = circ * (1 - pct);
+  return `<div class="score-ring-wrap">
+    <svg width="100" height="100" viewBox="0 0 100 100">
+      <circle class="score-ring-bg" cx="50" cy="50" r="${r}" />
+      <circle class="score-ring-fg" cx="50" cy="50" r="${r}" stroke="${color}" stroke-dasharray="${circ}" stroke-dashoffset="${offset}" />
+    </svg>
+    <div class="score-ring-text">
+      <span class="ring-val" style="color:${color}">${val}</span>
+      <span class="ring-max">/ ${max}</span>
+    </div>
+  </div>`;
+}
+
+function renderVisualResult(text) {
+  if (!text) {
+    resultVisual.innerHTML = '<span style="color:var(--fg-dim)">Run an analysis to see results here.</span>';
+    return;
+  }
+
+  const evalMatch = text.match(/=== EVALUATION ===\s*\n([\s\S]*?)(?=\n=== STATISTICS ===|$)/);
+  const evalErrMatch = text.match(/=== EVALUATION ERROR ===\s*\n([\s\S]*?)(?=\n=== STATISTICS ===|$)/);
+  const statsMatch = text.match(/=== STATISTICS ===\s*\n([\s\S]*?)$/);
+
+  let html = '';
+
+  if (evalMatch) {
+    const evalText = evalMatch[1].trim();
+    // Format 1: "**合計** | **71/100**"  Format 2: "**合計** | **/100** | **71**"
+    const scoreMatch = evalText.match(/\*\*合計\*\*\s*\|\s*\*\*(\d+)\/(60|80|100)\*\*/)
+      || evalText.match(/\*\*合計\*\*\s*\|\s*\*\*\/(60|80|100)\*\*\s*\|\s*\*\*(\d+)\*\*/);
+    // Evaluation detail - always visible, structured rendering
+    html += renderEvalContent(evalText);
+  } else if (evalErrMatch) {
+    html += `<div class="visual-section" style="border-color:var(--red)"><div class="visual-section-title" style="color:var(--red)"><span class="sec-icon">&#9888;</span> Evaluation Error</div><pre style="color:var(--red)">${escHtml(evalErrMatch[1].trim())}</pre></div>`;
+  }
+
+  if (statsMatch) {
+    html += renderVisualStats(statsMatch[1].trim());
+  } else if (!evalMatch && !evalErrMatch) {
+    html += renderVisualStats(text);
+  }
+
+  resultVisual.innerHTML = html || `<div class="result-visual"><p style="color:var(--fg-dim)">No visual data to display.</p></div>`;
+}
+
+function renderEvalContent(evalText) {
+  let html = '';
+  const lines = evalText.split('\n');
+  let section = 'report'; // track which section we're in
+
+  // --- 1. Session report as a compact table ---
+  const reportFields = [];
+  const reportRe = /^\*\*(.+?)\*\*:\s*(.+)$/;
+  let reportEndIdx = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(reportRe);
+    if (m) {
+      reportFields.push({ label: m[1], value: m[2].trim() });
+      reportEndIdx = i;
+    } else if (reportFields.length > 0 && lines[i].trim() === '') {
+      break;
+    } else if (reportFields.length > 0) {
+      break;
+    }
+  }
+  let reportHtml = '';
+  if (reportFields.length > 0) {
+    reportHtml += `<div class="visual-section"><div class="visual-section-title"><span class="sec-icon">&#128203;</span> セッション解析概要</div>`;
+    reportHtml += `<div class="report-info-grid">`;
+    // Separate task summary from other fields
+    let taskSummary = null;
+    reportFields.forEach(f => {
+      const label = f.label;
+      if (/タスク概要|概要/.test(label)) {
+        taskSummary = f;
+        return;
+      }
+      // Highlight accent values (percentages, branch names etc.)
+      let valHtml = escHtml(f.value);
+      valHtml = valHtml.replace(/([\d,.]+%)/g, '<span class="rii-accent">$1</span>');
+      reportHtml += `<div class="report-info-item"><div class="rii-label">${escHtml(f.label)}</div><div class="rii-value">${valHtml}</div></div>`;
+    });
+    if (taskSummary) {
+      reportHtml += `<div class="report-info-full"><span class="rii-label">${escHtml(taskSummary.label)}:</span><span class="rii-value">${escHtml(taskSummary.value)}</span></div>`;
+    }
+    reportHtml += `</div></div>`;
+  }
+
+  // --- 2. Score table as redesigned table ---
+  // Extract score rows: | A. 重複作業 | /15 | **12** | reason |
+  // Also support: | A. 重複作業 | /15 | 12 | reason |
+  // And: | A. 重複作業 | /15 | 12/15 | reason |
+  const scoreRows = [];
+  let totalScore = null;
+  let totalMax = null;
+  const scoreRowRe = /\|\s*([A-H])\.\s*(.+?)\s*\|\s*\/(\d+)\s*\|\s*\*?\*?(\d+)(?:\/\d+)?\*?\*?\s*\|\s*(.*?)\s*\|/g;
+  const scoreRowRe2 = /\|\s*([A-H])\.\s*(.+?)\s*\|[^|]*?(\d+)\s*\/\s*(\d+)\s*\|[^|]*\|\s*(.*?)\s*\|/g;  // fallback: embedded score/max
+  let sm;
+  while ((sm = scoreRowRe.exec(evalText)) !== null) {
+    scoreRows.push({ id: sm[1], name: sm[2].replace(/\*\*/g, '').trim(), max: parseInt(sm[3]), score: parseInt(sm[4]), reason: sm[5].replace(/\*\*/g, '').trim() });
+  }
+  if (scoreRows.length === 0) {
+    while ((sm = scoreRowRe2.exec(evalText)) !== null) {
+      const s = parseInt(sm[3]), mx = parseInt(sm[4]);
+      if (mx < 10 || mx > 100) continue;
+      scoreRows.push({ id: sm[1], name: sm[2].replace(/\*\*/g, '').trim(), score: s, max: mx, reason: sm[5].replace(/\*\*/g, '').trim() });
+    }
+  }
+  // Extract total
+  const totalRe = /\*\*合計\*\*\s*\|\s*\*\*\/(\d+)\*\*\s*\|\s*\*\*(\d+)\*\*/;
+  const totalRe2 = /\*\*合計\*\*\s*\|\s*\*\*(\d+)\/(\d+)\*\*/;
+  let tm = evalText.match(totalRe);
+  if (tm) { totalMax = parseInt(tm[1]); totalScore = parseInt(tm[2]); }
+  else { tm = evalText.match(totalRe2); if (tm) { totalScore = parseInt(tm[1]); totalMax = parseInt(tm[2]); } }
+  // Fallback: compute from rows
+  if (totalScore === null && scoreRows.length > 0) {
+    totalScore = scoreRows.reduce((s, r) => s + r.score, 0);
+    totalMax = scoreRows.reduce((s, r) => s + r.max, 0);
+  }
+
+  // Build score ring (left) + score detail grid (right)
+  let scoreRingHtml = '';
+  let scoreDetailHtml = '';
+  if (totalScore !== null && totalMax > 0) {
+    const tpct = totalScore / totalMax;
+    const tc = tpct >= 0.75 ? '#4ec9b0' : tpct >= 0.5 ? '#dcdcaa' : '#f44747';
+    // SVG score ring - radius 50, circumference ≈ 314.2
+    const r = 50, circ = 2 * Math.PI * r;
+    const offset = circ - (tpct * circ);
+    const ratingLabel = tpct >= 0.8 ? '優秀' : tpct >= 0.65 ? '標準' : tpct >= 0.5 ? '要改善' : '要注意';
+    scoreRingHtml += `<div class="score-hero">`;
+    scoreRingHtml += `<span class="score-hero-label">総合効率スコア</span>`;
+    scoreRingHtml += `<div class="score-ring-wrap"><svg viewBox="0 0 120 120"><circle class="score-ring-bg" cx="60" cy="60" r="${r}"></circle><circle class="score-ring-fg" cx="60" cy="60" r="${r}" stroke="${tc}" stroke-dasharray="${circ.toFixed(1)}" stroke-dashoffset="${offset.toFixed(1)}"></circle></svg>`;
+    scoreRingHtml += `<div class="score-ring-text"><span class="ring-val" style="color:${tc}">${totalScore}</span><span class="ring-max">/ ${totalMax}</span></div></div>`;
+    scoreRingHtml += `<div class="score-hero-footer"><div class="score-hero-badge" style="background:${tc}18;color:${tc};border-color:${tc}30">総合評価：${ratingLabel}</div></div>`;
+    scoreRingHtml += `</div>`;
+  }
+
+  if (scoreRows.length > 0) {
+    scoreDetailHtml += `<div class="visual-section" style="margin:0"><div class="visual-section-title"><span class="sec-icon">&#127919;</span> 評価観点別詳細</div>`;
+    scoreDetailHtml += `<div class="score-detail-grid">`;
+    scoreRows.forEach(r => {
+      const pct = r.max > 0 ? (r.score / r.max) : 0;
+      const color = pct >= 0.8 ? '#4ec9b0' : pct >= 0.5 ? '#dcdcaa' : '#f44747';
+      scoreDetailHtml += `<div class="score-detail-item">`;
+      scoreDetailHtml += `<div class="sdi-header"><span class="sdi-name">${escHtml(r.name)}</span><span class="sdi-score"><span style="color:${color}">${r.score}</span> <span style="color:var(--fg-dim)">/ ${r.max}</span></span></div>`;
+      scoreDetailHtml += `<div class="sdi-bar"><div class="sdi-bar-fill" style="width:${(pct * 100).toFixed(1)}%;background:${color}"></div></div>`;
+      if (r.reason) scoreDetailHtml += `<div class="sdi-reason">${escHtml(r.reason)}</div>`;
+      scoreDetailHtml += `</div>`;
+    });
+    scoreDetailHtml += `</div></div>`;
+  }
+
+  // Layout: report on top, then score ring (left) + score detail (right)
+  if (reportHtml) {
+    html += reportHtml;
+  }
+  if (scoreRingHtml || scoreDetailHtml) {
+    html += `<div class="eval-score-layout">${scoreRingHtml}${scoreDetailHtml}</div>`;
+  }
+
+  // --- 3. Detected issues (検出された問題) ---
+  let issuesParsed = '';
+  const issuesMatch = evalText.match(/#{2,4}\s*検出された問題[^\n]*\n([\s\S]*?)(?=\n#{2,4}\s*改善提案|$)/);
+  if (issuesMatch) {
+    const issueText = issuesMatch[1].trim();
+    // Parse issues: lines starting with - **問題**: or numbered patterns
+    // Issues are separated by blocks of "- **問題**:", "- **影響**:", "- **改善策**:"
+    const issueBlocks = [];
+    let currentIssue = null;
+    const issueLines = issueText.split('\n');
+    for (let i = 0; i < issueLines.length; i++) {
+      const line = issueLines[i].trim();
+      if (!line) continue;
+      const problemMatch = line.match(/^[-*]\s*\*\*問題\*\*:\s*(.+)$/);
+      const impactMatch = line.match(/^[-*]\s*\*\*影響\*\*:\s*(.+)$/);
+      const fixMatch = line.match(/^[-*]\s*\*\*改善策\*\*:\s*(.+)$/);
+      // Also handle numbered issues: 1. **問題**: ...
+      const numProblemMatch = line.match(/^\d+\.\s*\*?\*?問題\*?\*?:\s*(.+)$/);
+      if (problemMatch || numProblemMatch) {
+        if (currentIssue) issueBlocks.push(currentIssue);
+        currentIssue = { problem: (problemMatch || numProblemMatch)[1], impact: '', fix: '' };
+      } else if (impactMatch && currentIssue) {
+        currentIssue.impact = impactMatch[1];
+      } else if (fixMatch && currentIssue) {
+        currentIssue.fix = fixMatch[1];
+      }
+    }
+    if (currentIssue) issueBlocks.push(currentIssue);
+
+    if (issueBlocks.length > 0) {
+      let issuesHtml = `<div class="visual-section"><div class="visual-section-title"><span class="sec-icon" style="color:#dcdcaa">&#9888;</span> 検出された主要な問題</div>`;
+      issueBlocks.forEach((issue, idx) => {
+        const severity = idx === 0 ? 'issue-critical' : 'issue-warning';
+        issuesHtml += `<div class="issue-card ${severity}">`;
+        issuesHtml += `<div class="issue-title"><span class="issue-badge">問題${idx + 1}</span><span class="issue-problem">${escHtml(issue.problem)}</span></div>`;
+        if (issue.impact || issue.fix) {
+          issuesHtml += `<div class="issue-meta">`;
+          if (issue.impact) issuesHtml += `<div><span class="issue-meta-label">影響:</span> <span class="issue-meta-value">${escHtml(issue.impact)}</span></div>`;
+          if (issue.fix) issuesHtml += `<div><span class="issue-meta-label">改善策:</span> <span class="issue-meta-value">${escHtml(issue.fix)}</span></div>`;
+          issuesHtml += `</div>`;
+        }
+        issuesHtml += `</div>`;
+      });
+      issuesHtml += `</div>`;
+      issuesParsed = issuesHtml;
+    } else {
+      // Fallback: render as markdown if parsing failed
+      issuesParsed = `<div class="visual-section"><div class="visual-section-title"><span class="sec-icon">&#9888;</span> 検出された問題</div>`;
+      issuesParsed += `<div class="eval-detail-body">${mdToHtml(issueText)}</div></div>`;
+    }
+  }
+
+  // --- 4. Improvement suggestions (改善提案) ---
+  let sugsParsed = '';
+  const suggestMatch = evalText.match(/#{2,4}\s*改善提案[^\n]*\n([\s\S]*)$/);
+  if (suggestMatch) {
+    const suggestText = suggestMatch[1].trim();
+    const suggestions = [];
+    let currentSug = null;
+    const sugLines = suggestText.split('\n');
+    for (let i = 0; i < sugLines.length; i++) {
+      const line = sugLines[i].trim();
+      if (!line) continue;
+      const sugMatch = line.match(/^(?:\d+\.|[-*])\s*\*\*(hook|rule|skill|command)\*\*\s*(?:→|[:：])\s*(.+)$/i);
+      if (sugMatch) {
+        if (currentSug) suggestions.push(currentSug);
+        currentSug = { category: sugMatch[1].toLowerCase(), text: sugMatch[2], detail: [] };
+      } else if (currentSug && /^[-*]\s+/.test(line)) {
+        currentSug.detail.push(line.replace(/^[-*]\s+/, ''));
+      } else if (currentSug && line) {
+        currentSug.detail.push(line);
+      }
+    }
+    if (currentSug) suggestions.push(currentSug);
+
+    const iconMap = { hook: '&#128279;', rule: '&#128220;', skill: '&#9889;', command: '&#9654;' };
+    if (suggestions.length > 0) {
+      sugsParsed += `<div class="visual-section"><div class="visual-section-title" style="color:var(--accent)"><span class="sec-icon">&#128161;</span> 推奨される改善策</div>`;
+      sugsParsed += `<div class="suggestion-list">`;
+      suggestions.forEach(sug => {
+        const iconCls = 'suggestion-icon suggestion-icon-' + (sug.category || 'default');
+        const icon = iconMap[sug.category] || '&#128161;';
+        sugsParsed += `<div class="suggestion-card">`;
+        sugsParsed += `<div class="${iconCls}">${icon}</div>`;
+        sugsParsed += `<div><div class="suggestion-title">${escHtml(sug.text)}</div>`;
+        if (sug.detail.length > 0) {
+          sugsParsed += `<div class="suggestion-body">${sug.detail.map(d => escHtml(d)).join('<br>')}</div>`;
+        }
+        sugsParsed += `</div></div>`;
+      });
+      sugsParsed += `</div></div>`;
+    } else {
+      sugsParsed += `<div class="visual-section"><div class="visual-section-title" style="color:var(--accent)"><span class="sec-icon">&#128161;</span> 改善提案</div>`;
+      sugsParsed += `<div class="eval-detail-body">${mdToHtml(suggestText)}</div></div>`;
+    }
+  }
+
+  // Combine issues + suggestions in side-by-side layout
+  if (issuesParsed && sugsParsed) {
+    html += `<div class="eval-bottom-row">${issuesParsed}${sugsParsed}</div>`;
+  } else {
+    html += issuesParsed + sugsParsed;
+  }
+
+  // If neither issues nor suggestions parsed, render the full eval as fallback
+  if (!issuesMatch && !suggestMatch && scoreRows.length === 0 && reportFields.length === 0) {
+    html += `<div class="eval-detail-section"><div class="eval-detail-body">${mdToHtml(evalText)}</div></div>`;
+  }
+
+  return html;
+}
+
+function renderVisualStats(statsText) {
+  let html = '';
+
+  // Extract key metrics
+  const inputTokens = statsText.match(/input_tokens合計:\s*([\d,]+)/);
+  const outputTokens = statsText.match(/output_tokens合計:\s*([\d,]+)/);
+  const cacheRate = statsText.match(/キャッシュ活用率:\s*([\d.]+)%/);
+  const totalEntries = statsText.match(/総エントリ数:\s*(\d+)/);
+  const userMsgs = statsText.match(/User発言数:\s*(\d+)/);
+  const asstMsgs = statsText.match(/Assistant発言数:\s*(\d+)/);
+
+  // --- Overview cards ---
+  if (inputTokens || totalEntries) {
+    html += `<div class="visual-section"><div class="visual-section-title"><span class="sec-icon">&#9632;</span> Overview</div>`;
+    html += `<div class="score-summary">`;
+    if (totalEntries) html += `<div class="score-card"><div class="score-value">${totalEntries[1]}</div><div class="score-label">Total Entries</div></div>`;
+    if (userMsgs) html += `<div class="score-card"><div class="score-value">${userMsgs[1]}</div><div class="score-label">User Messages</div></div>`;
+    if (asstMsgs) html += `<div class="score-card"><div class="score-value">${asstMsgs[1]}</div><div class="score-label">Assistant Messages</div></div>`;
+    if (inputTokens) html += `<div class="score-card"><div class="score-value" style="font-size:18px">${inputTokens[1]}</div><div class="score-label">Input Tokens</div></div>`;
+    if (outputTokens) html += `<div class="score-card"><div class="score-value" style="font-size:18px">${outputTokens[1]}</div><div class="score-label">Output Tokens</div></div>`;
+    if (cacheRate) {
+      const cr = parseFloat(cacheRate[1]);
+      const cls = cr >= 30 ? 'score-high' : cr >= 10 ? 'score-mid' : 'score-low';
+      html += `<div class="score-card ${cls}"><div class="score-value">${cacheRate[1]}%</div><div class="score-label">Cache Rate</div><div class="score-minibar"><div class="score-minibar-fill" style="width:${Math.min(100, cr)}%"></div></div></div>`;
+    }
+    html += `</div></div>`;
+  }
+
+  // --- Tool usage bar chart ---
+  const toolSection = statsText.match(/--- ツール使用回数[^-]*---\n([\s\S]*?)(?=\n---|\n={3,}|$)/);
+  if (toolSection) {
+    const toolLines = toolSection[1].trim().split('\n').filter(l => l.trim());
+    const tools = toolLines.map(l => {
+      const m = l.trim().match(/^(\d+)\s+(.+)$/);
+      return m ? { count: parseInt(m[1]), name: m[2].trim() } : null;
+    }).filter(Boolean);
+
+    if (tools.length > 0) {
+      const maxCount = tools[0].count;
+      const totalCalls = tools.reduce((s, t) => s + t.count, 0);
+      const colors = [
+        ['#569cd6','rgba(86,156,214,0.2)'],['#4ec9b0','rgba(78,201,176,0.2)'],['#dcdcaa','rgba(220,220,170,0.2)'],
+        ['#ce9178','rgba(206,145,120,0.2)'],['#c586c0','rgba(197,134,192,0.2)'],['#608b4e','rgba(96,139,78,0.2)'],
+        ['#d7ba7d','rgba(215,186,125,0.2)'],['#9cdcfe','rgba(156,220,254,0.2)'],['#f44747','rgba(244,71,71,0.2)'],
+        ['#b5cea8','rgba(181,206,168,0.2)']
+      ];
+      html += `<div class="visual-section"><div class="visual-section-title"><span class="sec-icon">&#9881;</span> Tool Usage <span style="font-weight:400;color:var(--fg);font-size:13px;margin-left:auto">${totalCalls} total calls</span></div>`;
+      tools.forEach((t, i) => {
+        const pct = Math.max(3, (t.count / maxCount) * 100);
+        const [fg] = colors[i % colors.length];
+        html += `<div class="stat-bar-row"><div class="stat-bar-label" title="${escHtml(t.name)}">${escHtml(t.name)}</div><div class="stat-bar-track"><div class="stat-bar-fill" style="width:${pct}%;background:${fg}"></div></div><div class="stat-bar-value" style="color:${fg}">${t.count}</div></div>`;
+      });
+      html += `</div>`;
+    }
+  }
+
+  // --- File read duplicates ---
+  const dupeSection = statsText.match(/重複読み込み（2回以上）:\n([\s\S]*?)(?=\n---|\n={3,}|$)/);
+  if (dupeSection) {
+    const dupeLines = dupeSection[1].trim().split('\n').filter(l => l.trim());
+    const dupes = dupeLines.map(l => {
+      const m = l.trim().match(/^(\d+)回\s+(.+)$/);
+      return m ? { count: parseInt(m[1]), file: m[2].trim() } : null;
+    }).filter(Boolean);
+
+    if (dupes.length > 0) {
+      html += `<div class="visual-section"><div class="visual-section-title"><span class="sec-icon">&#128196;</span> Duplicate Reads</div>`;
+      dupes.forEach(d => {
+        const badgeBg = d.count >= 5 ? '#f44747' : d.count >= 3 ? '#dcdcaa' : 'var(--bg-widget)';
+        const badgeFg = d.count >= 5 ? '#fff' : d.count >= 3 ? '#1e1e1e' : 'var(--fg)';
+        html += `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border)"><span style="display:inline-block;min-width:36px;text-align:center;padding:2px 8px;border-radius:4px;font-weight:700;font-size:13px;background:${badgeBg};color:${badgeFg}">${d.count}x</span><span style="word-break:break-all;font-family:Consolas,monospace;font-size:13px;color:var(--fg)">${escHtml(d.file)}</span></div>`;
+      });
+      html += `</div>`;
+    }
+  }
+
+  // --- Rework (手戻り) ---
+  const reworkSection = statsText.match(/--- D\. 手戻り検出[^-]*---\n([\s\S]*?)(?=\n---|\n={3,}|$)/);
+  if (reworkSection) {
+    const reworkLines = reworkSection[1].trim().split('\n').filter(l => l.trim() && l.trim() !== 'なし');
+    const reworks = reworkLines.map(l => {
+      const m = l.trim().match(/^(\d+)回\s+(.+)$/);
+      return m ? { count: parseInt(m[1]), file: m[2].trim() } : null;
+    }).filter(Boolean);
+
+    if (reworks.length > 0) {
+      html += `<div class="visual-section" style="border-color:rgba(244,71,71,0.2)"><div class="visual-section-title"><span class="sec-icon" style="color:#f44747">&#9888;</span> Rework (Multiple Writes)</div>`;
+      reworks.forEach(r => {
+        html += `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border)"><span style="display:inline-block;min-width:36px;text-align:center;padding:2px 8px;border-radius:4px;font-weight:700;font-size:13px;background:#f44747;color:#fff">${r.count}x</span><span style="word-break:break-all;font-family:Consolas,monospace;font-size:13px;color:var(--fg)">${escHtml(r.file)}</span></div>`;
+      });
+      html += `</div>`;
+    }
+  }
+
+  // --- Error / Retry ---
+  const errorCount = statsText.match(/エラー発生数:\s*(\d+)/);
+  const retryCount = statsText.match(/エラー→同一ツール即リトライ:\s*(\d+)/);
+  if (errorCount) {
+    const errs = parseInt(errorCount[1]);
+    const retries = retryCount ? parseInt(retryCount[1]) : 0;
+    html += `<div class="visual-section"><div class="visual-section-title"><span class="sec-icon">&#10060;</span> Errors &amp; Retries</div>`;
+    html += `<div class="score-summary">`;
+    html += `<div class="score-card ${errs === 0 ? 'score-high' : errs <= 3 ? 'score-mid' : 'score-low'}"><div class="score-value">${errs}</div><div class="score-label">Errors</div></div>`;
+    html += `<div class="score-card ${retries === 0 ? 'score-high' : 'score-low'}"><div class="score-value">${retries}</div><div class="score-label">Immediate Retries</div></div>`;
+    html += `</div></div>`;
+  }
+
+  // --- Planning (first 15 tools) ---
+  const planSection = statsText.match(/--- F\. 計画性[^-]*---\n([\s\S]*?)(?=\n---|\n={3,}|$)/);
+  if (planSection) {
+    const planLines = planSection[1].trim().split('\n').filter(l => l.trim());
+    if (planLines.length > 0) {
+      html += `<div class="visual-section"><div class="visual-section-title"><span class="sec-icon">&#128203;</span> Planning (First 15 Tool Calls)</div>`;
+      html += `<div style="display:flex;flex-wrap:wrap;gap:6px;padding:4px 0">`;
+      planLines.forEach((l, idx) => {
+        const toolName = l.trim().replace(/^\d+\.\s*/, '');
+        const isRead = /^(Read|Glob|Grep|Bash\(ls|Bash\(find|Bash\(cat)/.test(toolName);
+        const cls = isRead ? 'tool-tag tool-tag-read' : 'tool-tag tool-tag-write';
+        html += `<span class="${cls}"><span class="tag-num">${idx + 1}</span>${escHtml(toolName)}</span>`;
+      });
+      html += `</div></div>`;
+    }
+  }
+
+  // --- View range ---
+  const viewRange = statsText.match(/view_range使用率:\s*([\d.]+)%/);
+  const readTotal = statsText.match(/Read\/View合計:\s*(\d+)/);
+  const viewRangeCount = statsText.match(/view_range使用:\s*(\d+)/);
+  if (viewRange && readTotal) {
+    const pct = parseFloat(viewRange[1]);
+    const cls = pct >= 30 ? 'score-high' : pct >= 15 ? 'score-mid' : 'score-low';
+    html += `<div class="visual-section"><div class="visual-section-title"><span class="sec-icon">&#128270;</span> File Read Efficiency</div>`;
+    html += `<div class="score-summary">`;
+    html += `<div class="score-card"><div class="score-value">${readTotal[1]}</div><div class="score-label">Total Reads</div></div>`;
+    if (viewRangeCount) html += `<div class="score-card"><div class="score-value">${viewRangeCount[1]}</div><div class="score-label">With view_range</div></div>`;
+    html += `<div class="score-card ${cls}"><div class="score-value">${viewRange[1]}%</div><div class="score-label">view_range Rate</div><div class="score-minibar"><div class="score-minibar-fill" style="width:${Math.min(100, pct)}%"></div></div></div>`;
+    html += `</div></div>`;
+  }
+
+  return html;
+}
+
+function setStatus(msg) { statusBar.textContent = msg; }
+function setStatusSpinner(msg) { statusBar.innerHTML = '<span class="spinner"></span>' + msg; }
+
+// Load projects
+async function loadProjects() {
+  setStatus('Loading projects...');
+  try {
+    const res = await fetch('/api/projects');
+    projects = await res.json();
+    projectList.innerHTML = '';
+    for (let i = 0; i < projects.length; i++) {
+      const li = document.createElement('li');
+      li.textContent = projects[i].decoded;
+      li.title = projects[i].decoded;
+      li.onclick = () => selectProject(i);
+      projectList.appendChild(li);
+    }
+    setStatus(`${projects.length} projects found`);
+  } catch (e) {
+    setStatus(`Error: ${e.message}`);
+  }
+}
+
+async function selectProject(idx) {
+  selectedProjectIdx = idx;
+  selectedSessionIdx = -1;
+  // Update UI
+  const items = projectList.querySelectorAll('li');
+  items.forEach((li, i) => li.classList.toggle('selected', i === idx));
+
+  setStatus(`Loading sessions for ${projects[idx].decoded}...`);
+  try {
+    const res = await fetch(`/api/sessions/${encodeURIComponent(projects[idx].encoded)}`);
+    sessions = await res.json();
+    renderSessions();
+    setStatus(`${sessions.length} sessions`);
+  } catch (e) {
+    setStatus(`Error: ${e.message}`);
+  }
+}
+
+function renderSessions() {
+  sessionBody.innerHTML = '';
+  for (let i = 0; i < sessions.length; i++) {
+    const s = sessions[i];
+    const tr = document.createElement('tr');
+    tr.onclick = () => selectSession(i);
+    const d = new Date(s.modified);
+    const dateStr = d.getFullYear() + '-' +
+      String(d.getMonth()+1).padStart(2,'0') + '-' +
+      String(d.getDate()).padStart(2,'0') + ' ' +
+      String(d.getHours()).padStart(2,'0') + ':' +
+      String(d.getMinutes()).padStart(2,'0');
+    tr.innerHTML = `<td class="col-date">${dateStr}</td><td class="col-size">${s.formattedSize}</td><td class="col-msg" title="${escHtml(s.firstMessage)}">${escHtml(s.firstMessage)}</td>`;
+    sessionBody.appendChild(tr);
+  }
+}
+
+function selectSession(idx) {
+  selectedSessionIdx = idx;
+  const rows = sessionBody.querySelectorAll('tr');
+  rows.forEach((tr, i) => tr.classList.toggle('selected', i === idx));
+}
+
+function getSelectedSession() {
+  if (selectedSessionIdx >= 0 && selectedSessionIdx < sessions.length) {
+    return sessions[selectedSessionIdx];
+  }
+  if (sessions.length > 0) return sessions[0];
+  return null;
+}
+
+function updateSessionContext() {
+  const el = document.getElementById('sessionContext');
+  if (!el) return;
+
+  const s = getSelectedSession();
+  if (!s) {
+    el.textContent = 'Session: (none selected)';
+    return;
+  }
+
+  const project = s.projectName || '(unknown project)';
+  const sessionId = s.sessionId || '(unknown session)';
+  el.textContent = `Session: ${project} / ${sessionId}`;
+}
+
+function hydrateSessionFromStorage() {
+  const raw = sessionStorage.getItem(STORAGE_SELECTED_SESSION);
+  if (!raw) return false;
+
+  try {
+    const stored = JSON.parse(raw);
+    if (!stored || (!stored.jsonlPath && !stored.folderPath)) return false;
+    sessions = [stored];
+    selectedSessionIdx = 0;
+    renderSessions();
+    selectSession(0);
+    updateSessionContext();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function goToSessions() {
+  window.location.href = '/';
+}
+async function onAnalyze() { await runAnalysis(true); }
+async function onStatsOnly() { await runAnalysis(false); }
+
+async function runAnalysis(withEvaluation) {
+  if (running) return;
+  const session = getSelectedSession();
+  if (!session) {
+    // Try latest session globally
+    try {
+      const res = await fetch('/api/latest-session');
+      const latest = await res.json();
+      if (!latest) {
+        alert('セッションが見つかりません。');
+        return;
+      }
+      await doAnalysis(latest, withEvaluation);
+    } catch (e) {
+      alert(`Error: ${e.message}`);
+    }
+    return;
+  }
+  await doAnalysis(session, withEvaluation);
+}
+
+async function doAnalysis(session, withEvaluation) {
+  if (session) {
+    sessions = [session];
+    selectedSessionIdx = 0;
+    sessionStorage.setItem(STORAGE_SELECTED_SESSION, JSON.stringify(session));
+    updateSessionContext();
+  }
+  running = true;
+  analyzeBtn.disabled = true;
+  statsBtn.disabled = true;
+
+  try {
+    const pathPayload = session.folderPath
+      ? { folderPath: session.folderPath }
+      : { jsonlPath: session.jsonlPath };
+
+    if (!withEvaluation) {
+      setStatusSpinner('Analyzing session...');
+      const res = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(pathPayload),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      currentResult = data.statsText;
+      resultText.textContent = data.statsText;
+      renderVisualResult(data.statsText);
+      setStatus('Stats generated (no evaluation)');
+    } else {
+      setStatusSpinner('Running Claude evaluation (this may take a minute)...');
+      const res = await fetch('/api/evaluate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...pathPayload,
+          model: modelSelect.value,
+          sessionId: session.sessionId,
+          projectName: session.projectName,
+        }),
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      if (data.evalError) {
+        currentResult = `=== EVALUATION ERROR ===\n\n${data.evalError}\n\n=== STATISTICS ===\n\n${data.statsText}`;
+        resultText.textContent = currentResult;
+        renderVisualResult(currentResult);
+        setStatus(`Evaluation error: ${data.evalError}`);
+      } else {
+        currentResult = `=== EVALUATION ===\n\n${data.evalResult}\n\n=== STATISTICS ===\n\n${data.statsText}`;
+        resultText.textContent = currentResult;
+        renderVisualResult(currentResult);
+        const maxPts = data.evalResult && data.evalResult.includes('/100') ? 100 : data.evalResult && data.evalResult.includes('/80') ? 80 : 60;
+        const scoreMsg = data.score ? `Done. Score: ${data.score}/${maxPts}` : 'Done.';
+        setStatus(scoreMsg);
+      }
+    }
+  } catch (e) {
+    setStatus(`Error: ${e.message}`);
+    alert(e.message);
+  } finally {
+    running = false;
+    analyzeBtn.disabled = false;
+    statsBtn.disabled = false;
+  }
+}
+
+function onCopy() {
+  if (!currentResult) {
+    setStatus('Nothing to copy');
+    return;
+  }
+  navigator.clipboard.writeText(currentResult).then(() => {
+    setStatus('Copied to clipboard');
+  }).catch(() => {
+    // Fallback
+    const ta = document.createElement('textarea');
+    ta.value = currentResult;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    setStatus('Copied to clipboard');
+  });
+}
+
+// Help
+function onHelp() { document.getElementById('helpModal').classList.add('active'); }
+function closeHelp() { document.getElementById('helpModal').classList.remove('active'); }
+
+// History
+async function onHistory() {
+  switchResultTab('history');
+  await loadHistoryTab();
+}
+
+function buildHistoryResultText(record) {
+  if (!record) return '';
+  if (record.result_text && String(record.result_text).trim()) {
+    return String(record.result_text);
+  }
+
+  const chunks = [];
+  if (record.evaluation_result) {
+    chunks.push(`=== EVALUATION ===\n\n${record.evaluation_result}`);
+  }
+
+  if (record.stats_text) {
+    chunks.push(`=== STATISTICS ===\n\n${record.stats_text}`);
+  } else if (record.stats_summary) {
+    chunks.push(`=== STATISTICS ===\n\n${record.stats_summary}`);
+  }
+
+  return chunks.join('\n\n').trim();
+}
+
+function buildHistoryDetailText(record) {
+  return buildHistoryResultText(record) || '';
+}
+
+function openHistoryItem(idx) {
+  const r = historyRecords[idx];
+  if (!r) return;
+
+  selectHistoryItem(idx);
+
+  currentResult = buildHistoryResultText(r);
+  if (!currentResult) {
+    alert('この履歴には表示できるデータがありません。');
+    return;
+  }
+
+  resultText.textContent = currentResult;
+  renderVisualResult(currentResult);
+  switchResultTab('visual');
+  const contextEl = document.getElementById('sessionContext');
+  if (contextEl) {
+    contextEl.textContent = `History: ${r.project || '(unknown project)'} / ${r.session_id || '-'}`;
+  }
+
+  setStatus(`Loaded history: ${r.project || '(unknown project)'} / ${r.session_id || '-'}`);
+}
+
+function openHistorySelected() {
+  if (historySelectedIdx < 0) {
+    alert('履歴を選択してください。');
+    return;
+  }
+  openHistoryItem(historySelectedIdx);
+}
+
+async function loadHistoryTab() {
+  try {
+    const res = await fetch('/api/history');
+    historyRecords = await res.json();
+  } catch {
+    historyRecords = [];
+  }
+  historySelectedIdx = -1;
+  renderHistory();
+}
+
+async function openHistoryFromStorage() {
+  const raw = sessionStorage.getItem(STORAGE_OPEN_HISTORY_RECORD);
+  if (!raw) return false;
+
+  sessionStorage.removeItem(STORAGE_OPEN_HISTORY_RECORD);
+
+  let target = null;
+  try {
+    target = JSON.parse(raw);
+  } catch {
+    return false;
+  }
+
+  await loadHistoryTab();
+  if (!historyRecords.length) return false;
+
+  let idx = historyRecords.findIndex((r) =>
+    (target.timestamp ? r.timestamp === target.timestamp : true)
+    && (target.session_id ? r.session_id === target.session_id : true)
+    && (target.project ? r.project === target.project : true)
+  );
+
+  if (idx < 0 && target.session_id) {
+    idx = historyRecords.findIndex((r) => r.session_id === target.session_id);
+  }
+
+  if (idx < 0) return false;
+
+  openHistoryItem(idx);
+  return true;
+}
+
+function closeHistory() {
+  // no-op (kept for Escape key handler compatibility)
+}
+
+function renderHistory() {
+  const body = document.getElementById('historyBody');
+  body.innerHTML = '';
+  for (let i = 0; i < historyRecords.length; i++) {
+    const r = historyRecords[i];
+    const tr = document.createElement('tr');
+    tr.onclick = () => selectHistoryItem(i);
+    tr.ondblclick = () => openHistoryItem(i);
+
+    let dateStr = '';
+    try {
+      const d = new Date(r.timestamp);
+      dateStr = d.getFullYear() + '-' +
+        String(d.getMonth()+1).padStart(2,'0') + '-' +
+        String(d.getDate()).padStart(2,'0') + ' ' +
+        String(d.getHours()).padStart(2,'0') + ':' +
+        String(d.getMinutes()).padStart(2,'0');
+    } catch { dateStr = (r.timestamp || '').slice(0, 16); }
+
+    const evalMax = (r.evaluation_result && r.evaluation_result.includes('/100')) ? 100 : (r.evaluation_result && r.evaluation_result.includes('/80')) ? 80 : 60;
+    const scoreStr = r.score_total != null ? `${r.score_total}/${evalMax}` : '-';
+    const sessionId = r.session_id || '';
+    const sid = sessionId.length > 12 ? `${sessionId.slice(0, 12)}...` : sessionId;
+    tr.innerHTML = `<td>${dateStr}</td><td title="${escHtml(r.project)}">${escHtml(r.project)}</td><td title="${escHtml(sessionId)}">${escHtml(sid)}</td><td>${scoreStr}</td>`;
+    body.appendChild(tr);
+  }
+
+  const detail = document.getElementById('historyDetail');
+  detail.textContent = historyRecords.length
+    ? '履歴を選択すると詳細が表示されます。ダブルクリックまたは「Open in Visual」で Visual タブへ復元できます。'
+    : '履歴がありません。';
+}
+
+function selectHistoryItem(idx) {
+  historySelectedIdx = idx;
+  const rows = document.getElementById('historyBody').querySelectorAll('tr');
+  rows.forEach((tr, i) => tr.classList.toggle('selected', i === idx));
+  const r = historyRecords[idx];
+  document.getElementById('historyDetail').textContent = buildHistoryDetailText(r);
+}
+
+function copyHistoryDetail() {
+  const text = document.getElementById('historyDetail').textContent;
+  if (text) navigator.clipboard.writeText(text);
+}
+
+async function deleteHistorySelected() {
+  if (historySelectedIdx < 0) return;
+  const r = historyRecords[historySelectedIdx];
+  if (!confirm(`この評価を削除しますか?\n${r.project} (${(r.timestamp||'').slice(0,16)})`)) return;
+  try {
+    await fetch(`/api/history/${historySelectedIdx}`, { method: 'DELETE' });
+    historyRecords.splice(historySelectedIdx, 1);
+    historySelectedIdx = -1;
+    renderHistory();
+  } catch (e) {
+    alert(`Error: ${e.message}`);
+  }
+}
+function escHtml(s) {
+  return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// --- Open Session (OS folder dialog) ---
+async function onOpenFile() {
+  if (running) return;
+
+  setStatusSpinner('Opening folder dialog...');
+  try {
+    const dlgRes = await fetch('/api/open-folder-dialog', { method: 'POST' });
+    const dlgData = await dlgRes.json();
+    if (dlgData.error) throw new Error(dlgData.error);
+    if (dlgData.cancelled) {
+      setStatus('Cancelled');
+      return;
+    }
+
+    // Ask: Analyze or Stats Only?
+    const displayName = dlgData.sessionId || 'selected folder';
+    const mode = confirm(
+      `"${displayName}" を開きます。\n\nOK = Analyze (Claude評価あり)\nCancel = Stats Only`
+    );
+
+    const session = {
+      jsonlPath: dlgData.jsonlPath || null,
+      folderPath: dlgData.folderPath || null,
+      sessionId: dlgData.sessionId,
+      projectName: dlgData.projectName,
+      subagentsOnly: dlgData.subagentsOnly || false,
+    };
+    await doAnalysis(session, mode);
+  } catch (e) {
+    setStatus(`Error: ${e.message}`);
+  }
+}
+
+// Keyboard: Escape to close modal
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { closeHistory(); closeHelp(); }
+});
+
+// Init
+const savedModel = sessionStorage.getItem(STORAGE_MODEL);
+if (savedModel && ['sonnet', 'opus', 'haiku'].includes(savedModel)) {
+  modelSelect.value = savedModel;
+}
+modelSelect.addEventListener('change', () => {
+  sessionStorage.setItem(STORAGE_MODEL, modelSelect.value);
+});
+
+hydrateSessionFromStorage();
+updateSessionContext();
+
+// Check if we're opening a history record from index.html
+const hasHistoryOpen = sessionStorage.getItem(STORAGE_OPEN_HISTORY_RECORD);
+const requestedAction = sessionStorage.getItem(STORAGE_REQUESTED_ACTION);
+
+if (hasHistoryOpen && !requestedAction) {
+  // History view mode: hide action buttons and History tab
+  enterHistoryViewMode();
+  openHistoryFromStorage().then(ok => {
+    if (!ok) setStatus('History record not found');
+  });
+} else if (requestedAction === 'analyze' || requestedAction === 'stats') {
+  sessionStorage.removeItem(STORAGE_REQUESTED_ACTION);
+  runAnalysis(requestedAction === 'analyze');
+} else {
+  setStatus('Ready');
+}
+
+function enterHistoryViewMode() {
+  // Hide Analyze, Stats Only, Open Session buttons
+  analyzeBtn.style.display = 'none';
+  statsBtn.style.display = 'none';
+  document.getElementById('openFileBtn').style.display = 'none';
+  // Hide History tab button (keep DOM for renderHistory compatibility)
+  document.querySelector('.result-tab[data-tab="history"]').style.display = 'none';
+}
+</script>
+
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+

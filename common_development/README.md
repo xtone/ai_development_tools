@@ -19,6 +19,7 @@
 | **video-keyframe-analyzer** | 動画からキーフレームを抽出してコスト効率的に分析（API コスト93%削減） |
 | **lessons-md-manager** | CLAUDE.mdの「Lessons Learned」セクションを管理。セッション中の学びを自動抽出・蓄積 |
 | **review-feedback-learner** | PRレビューで受けた指摘をCLAUDE.mdのルールとして蓄積。レビュアーの暗黙知をチーム資産に |
+| **evaluate-session** | セッションの効率を7観点100点満点でスコアリング。Web UIでセッション選択→分析→改善提案（郡嶋 開発） |
 
 ## スキル詳細
 
@@ -77,6 +78,34 @@ PRレビューで受けた指摘をCLAUDE.mdのルールとして蓄積するス
 
 詳細: [skills/review-feedback-learner/README.md](./skills/review-feedback-learner/README.md)
 
+### evaluate-session
+
+郡嶋が開発した、Claude Codeセッションの効率を分析・スコアリングするWebツール。セッションログ（JSONL）を解析し、7観点100点満点で「無駄の有無」を評価する。
+
+**起動方法:**
+```bash
+cd <plugin-dir>/skills/evaluate-session/app && npm install && npm start
+```
+
+**評価の7観点:**
+| 観点 | 配点 | 内容 |
+|---|---|---|
+| A. 重複作業 | /15 | 同一ファイル重複読み込み、書き直し、subagent重複 |
+| B. トークン効率 | /15 | トークン量、キャッシュ活用率 |
+| C. 目的外作業 | /20 | ユーザー指示と無関係な操作 |
+| D. 初動の的確さ | /15 | タスクに適した初手か |
+| E. エラー回復効率 | /10 | 原因分析なしの即リトライ |
+| F. 不要な探索 | /15 | 不要なファイル読み込み・過剰検索 |
+| G. モデル選定 | /10 | タスクに対するモデル適切性 |
+
+**スコア目安:** 平均50〜65点。70点超えは本当に無駄のないセッションのみ。
+
+**必要環境:**
+- Node.js 18以上
+- Claude CLI（Analyzeモードのみ。Stats Onlyは不要）
+
+詳細: [skills/evaluate-session/SKILL.md](./skills/evaluate-session/SKILL.md)
+
 ## ディレクトリ構造
 
 ```
@@ -93,9 +122,16 @@ common_development/
 │   ├── lessons-md-manager/
 │   │   ├── SKILL.md
 │   │   └── README.md
-│   └── review-feedback-learner/
+│   ├── review-feedback-learner/
+│   │   ├── SKILL.md
+│   │   └── README.md
+│   └── evaluate-session/
 │       ├── SKILL.md
-│       └── README.md
+│       └── app/              # Node.js Webアプリ
+│           ├── package.json
+│           ├── bin/cli.js
+│           ├── src/
+│           └── public/
 └── README.md
 ```
 
