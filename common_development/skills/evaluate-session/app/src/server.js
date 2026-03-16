@@ -6,11 +6,21 @@
 const express = require("express");
 const path = require("path");
 const fs = require("fs");
+const os = require("os");
 const { execSync } = require("child_process");
 const sessionFinder = require("./session-finder");
 const analyzer = require("./analyzer");
 const evaluator = require("./evaluator");
 const history = require("./history");
+
+/**
+ * パストラバーサル防止: ~/.claude/ 配下のパスのみ許可
+ */
+function validatePath(targetPath) {
+  const allowedBase = path.join(os.homedir(), ".claude");
+  const resolved = path.resolve(targetPath);
+  return resolved.startsWith(allowedBase + path.sep) || resolved === allowedBase;
+}
 
 function createApp() {
   const app = express();
@@ -58,6 +68,10 @@ function createApp() {
     if (!jsonlPath && !folderPath) {
       return res.status(400).json({ error: "jsonlPath or folderPath is required" });
     }
+    const targetPath = jsonlPath || folderPath;
+    if (!validatePath(targetPath)) {
+      return res.status(403).json({ error: "Access denied: path must be under ~/.claude/" });
+    }
     try {
       const statsText = folderPath
         ? analyzer.analyzeSubagentsOnly(folderPath)
@@ -73,6 +87,10 @@ function createApp() {
     const { jsonlPath, folderPath, model, sessionId, projectName } = req.body;
     if (!jsonlPath && !folderPath) {
       return res.status(400).json({ error: "jsonlPath or folderPath is required" });
+    }
+    const targetPath = jsonlPath || folderPath;
+    if (!validatePath(targetPath)) {
+      return res.status(403).json({ error: "Access denied: path must be under ~/.claude/" });
     }
 
     try {

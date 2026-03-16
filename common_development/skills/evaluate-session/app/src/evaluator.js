@@ -256,9 +256,10 @@ function runEvaluation(statsText, model = null, targetProjectDir = null) {
 
     // 一時ファイルはos.tmpdir()に書き出してプロジェクトを汚染しない
     const tmpDir = os.tmpdir();
-    const statsFile = path.join(tmpDir, "_eval_stats.txt");
-    const rubricFile = path.join(tmpDir, "_eval_rubric.txt");
-    const promptFile = path.join(tmpDir, "_eval_prompt.txt");
+    const uid = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const statsFile = path.join(tmpDir, `_eval_stats_${uid}.txt`);
+    const rubricFile = path.join(tmpDir, `_eval_rubric_${uid}.txt`);
+    const promptFile = path.join(tmpDir, `_eval_prompt_${uid}.txt`);
 
     // 絶対パスでファイルを参照するプロンプト
     const rubricPath = rubricFile.replace(/\\/g, "/");
@@ -312,7 +313,7 @@ function runEvaluation(statsText, model = null, targetProjectDir = null) {
     const child = spawn("claude", args, {
       cwd: effectiveCwd,
       env,
-      shell: true,
+      shell: false,
       stdio: ["pipe", "pipe", "pipe"],
     });
 
