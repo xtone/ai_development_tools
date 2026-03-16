@@ -1,0 +1,32 @@
+{
+  "name": "session-evaluator",
+  "version": "1.0.0",
+  "description": "Claude Code セッションの効率を分析・評価するWebツール",
+  "bin": {
+    "session-evaluator": "./bin/cli.js"
+  },
+  "scripts": {
+    "start": "node bin/cli.js",
+    "dev": "node bin/cli.js --port 3456"
+  },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "session",
+    "evaluator",
+    "analyzer"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.21.0",
+    "open": "^10.1.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "bin/",
+    "src/",
+    "public/"
+  ]
+}

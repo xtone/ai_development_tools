@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session Evaluator - Sessions</title>
+<style>
+  :root {
+    --bg: #1e1e1e;
+    --bg-secondary: #252526;
+    --bg-widget: #333333;
+    --fg: #d4d4d4;
+    --fg-dim: #858585;
+    --accent: #569cd6;
+    --accent-hover: #6cb3f0;
+    --border: #3e3e3e;
+    --select-bg: #264f78;
+    --select-fg: #ffffff;
+    --status-bg: #181818;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Segoe UI', 'SF Pro Text', -apple-system, sans-serif;
+    font-size: 13px;
+    background: var(--bg);
+    color: var(--fg);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    flex-shrink: 0;
+  }
+
+  button {
+    font-family: inherit;
+    font-size: 13px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 5px 14px;
+    cursor: pointer;
+    background: var(--bg-widget);
+    color: var(--fg);
+    transition: background 0.15s;
+  }
+  button:hover { background: var(--accent); color: var(--bg); }
+
+  .btn-accent {
+    background: var(--accent);
+    color: var(--bg);
+    font-weight: 600;
+    border-color: var(--accent);
+    padding: 6px 16px;
+  }
+  .btn-accent:hover { background: var(--accent-hover); }
+
+  .toolbar-spacer { flex: 1; }
+
+  select {
+    font-family: inherit;
+    font-size: 13px;
+    background: var(--bg-widget);
+    color: var(--fg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 5px 8px;
+    cursor: pointer;
+  }
+  select:focus { outline: 1px solid var(--accent); }
+
+  label { color: var(--fg-dim); margin-right: 4px; }
+
+  .main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 0 12px 8px;
+    overflow: hidden;
+    gap: 8px;
+  }
+
+  .top-pane {
+    display: flex;
+    gap: 8px;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .panel {
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .panel-header {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent);
+    padding: 6px 10px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+
+  .panel-body {
+    flex: 1;
+    overflow-y: auto;
+    background: var(--bg-secondary);
+  }
+
+  .project-panel { flex: 0 0 320px; min-width: 240px; }
+  .session-panel { flex: 1; }
+  .history-panel { flex: 0 0 38%; min-height: 220px; }
+
+  .project-list {
+    list-style: none;
+  }
+  .project-list li {
+    padding: 5px 10px;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    direction: rtl;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  .project-list li:hover { background: var(--bg-widget); }
+  .project-list li.selected { background: var(--select-bg); color: var(--select-fg); }
+
+  .session-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+  .session-table th {
+    background: var(--bg-widget);
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 8px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+  .session-table td {
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .session-table tr:hover td { background: var(--bg-widget); }
+  .session-table tr.selected td { background: var(--select-bg); color: var(--select-fg); }
+
+  .col-date { width: 140px; }
+  .col-size { width: 70px; }
+  .col-msg { }
+
+  .history-layout {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+  }
+
+  .history-toolbar {
+    display: flex;
+    gap: 8px;
+    padding: 8px;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-secondary);
+  }
+
+  .history-content {
+    display: flex;
+    gap: 8px;
+    padding: 8px;
+    min-height: 0;
+    flex: 1;
+    background: var(--bg-secondary);
+  }
+
+  .history-table-wrap {
+    flex: 0 0 55%;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+  }
+
+  .history-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+  .history-table th {
+    background: var(--bg-widget);
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 8px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
+  .history-table td {
+    padding: 4px 8px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 12px;
+  }
+  .history-table tr.history-main:hover td { background: var(--bg-widget); cursor: pointer; }
+  .history-table tr.history-main.selected td { background: var(--select-bg); color: var(--select-fg); }
+  .history-table tr.history-sub td {
+    padding: 0 8px 4px;
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--fg-dim);
+  }
+  .history-table tr.history-sub:hover td { background: var(--bg-widget); cursor: pointer; }
+  .history-table tr.history-sub.selected td { background: var(--select-bg); color: var(--select-fg); }
+  .history-main + .history-sub td { border-top: none; }
+  .history-main td { border-bottom: none; }
+
+  .history-open-btn {
+    padding: 2px 10px;
+    font-size: 12px;
+    line-height: 1.3;
+  }
+
+  .history-detail {
+    flex: 1;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 10px;
+    background: var(--bg);
+    font-family: 'Consolas', 'Menlo', monospace;
+    font-size: 12px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+  }
+
+  .status-bar {
+    border-top: 1px solid var(--border);
+    background: var(--status-bg);
+    color: var(--fg-dim);
+    padding: 4px 10px;
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+
+  .spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--fg-dim);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <button class="btn-accent" onclick="onAnalyze()">&#x25B6; Analyze</button>
+  <button onclick="onStatsOnly()">Stats Only</button>
+  <button onclick="onOpenFile()">Open Session...</button>
+  <div class="toolbar-spacer"></div>
+  <label for="modelSelect">Model:</label>
+  <select id="modelSelect">
+    <option value="sonnet" selected>sonnet</option>
+    <option value="opus">opus</option>
+    <option value="haiku">haiku</option>
+  </select>
+</div>
+
+<div class="main">
+  <div class="top-pane">
+    <div class="panel project-panel">
+      <div class="panel-header">Projects</div>
+      <div class="panel-body">
+        <ul class="project-list" id="projectList"></ul>
+      </div>
+    </div>
+
+    <div class="panel session-panel">
+      <div class="panel-header">Sessions</div>
+      <div class="panel-body">
+        <table class="session-table">
+          <thead>
+            <tr>
+              <th class="col-date">Date</th>
+              <th class="col-size">Size</th>
+              <th class="col-msg">First Message</th>
+            </tr>
+          </thead>
+          <tbody id="sessionBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel history-panel">
+    <div class="panel-header">History</div>
+    <div class="history-layout">
+      <div class="history-toolbar">
+        <button onclick="loadHistoryPane()">Refresh</button>
+        <button onclick="copyHistoryDetail()">Copy Detail</button>
+        <button onclick="deleteHistorySelected()">Delete Selected</button>
+      </div>
+      <div class="history-content">
+        <div class="history-table-wrap">
+          <table class="history-table">
+            <thead>
+              <tr>
+                <th style="width:130px">Date</th>
+                <th>Project</th>
+                <th style="width:120px">Session ID</th>
+                <th style="width:70px">Score</th>
+                <th style="width:80px">Open</th>
+              </tr>
+            </thead>
+            <tbody id="historyBody"></tbody>
+          </table>
+        </div>
+        <div class="history-detail" id="historyDetail">履歴を選択すると詳細が表示されます。Open ボタンで Results 画面へ移動できます。</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="status-bar" id="statusBar">Ready</div>
+
+<script>
+const STORAGE_SELECTED_SESSION = 'sessionEvaluator.selectedSession';
+const STORAGE_REQUESTED_ACTION = 'sessionEvaluator.requestedAction';
+const STORAGE_MODEL = 'sessionEvaluator.model';
+const STORAGE_OPEN_HISTORY_RECORD = 'sessionEvaluator.openHistoryRecord';
+
+let projects = [];
+let sessions = [];
+let selectedProjectIdx = -1;
+let selectedSessionIdx = -1;
+let historyRecords = [];
+let historySelectedIdx = -1;
+
+const projectList = document.getElementById('projectList');
+const sessionBody = document.getElementById('sessionBody');
+const historyBody = document.getElementById('historyBody');
+const historyDetail = document.getElementById('historyDetail');
+const statusBar = document.getElementById('statusBar');
+const modelSelect = document.getElementById('modelSelect');
+
+function escHtml(s) {
+  return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function setStatus(msg) {
+  statusBar.textContent = msg;
+}
+
+function setStatusSpinner(msg) {
+  statusBar.innerHTML = '<span class="spinner"></span>' + msg;
+}
+
+async function loadProjects() {
+  setStatus('Loading projects...');
+  try {
+    const res = await fetch('/api/projects');
+    projects = await res.json();
+    projectList.innerHTML = '';
+
+    for (let i = 0; i < projects.length; i++) {
+      const li = document.createElement('li');
+      li.textContent = projects[i].decoded;
+      li.title = projects[i].decoded;
+      li.onclick = () => selectProject(i);
+      projectList.appendChild(li);
+    }
+
+    setStatus(`${projects.length} projects found`);
+  } catch (e) {
+    setStatus(`Error: ${e.message}`);
+  }
+}
+
+async function selectProject(idx) {
+  selectedProjectIdx = idx;
+  selectedSessionIdx = -1;
+
+  const items = projectList.querySelectorAll('li');
+  items.forEach((li, i) => li.classList.toggle('selected', i === idx));
+
+  setStatus(`Loading sessions for ${projects[idx].decoded}...`);
+  try {
+    const res = await fetch(`/api/sessions/${encodeURIComponent(projects[idx].encoded)}`);
+    sessions = await res.json();
+    renderSessions();
+
+    if (sessions.length > 0) {
+      selectSession(0);
+    }
+
+    setStatus(`${sessions.length} sessions`);
+  } catch (e) {
+    setStatus(`Error: ${e.message}`);
+  }
+}
+
+function renderSessions() {
+  sessionBody.innerHTML = '';
+
+  for (let i = 0; i < sessions.length; i++) {
+    const s = sessions[i];
+    const tr = document.createElement('tr');
+    tr.onclick = () => selectSession(i);
+
+    const d = new Date(s.modified);
+    const dateStr = d.getFullYear() + '-' +
+      String(d.getMonth()+1).padStart(2,'0') + '-' +
+      String(d.getDate()).padStart(2,'0') + ' ' +
+      String(d.getHours()).padStart(2,'0') + ':' +
+      String(d.getMinutes()).padStart(2,'0');
+
+    tr.innerHTML = `<td class="col-date">${dateStr}</td><td class="col-size">${s.formattedSize}</td><td class="col-msg" title="${escHtml(s.firstMessage)}">${escHtml(s.firstMessage)}</td>`;
+    sessionBody.appendChild(tr);
+  }
+}
+
+function selectSession(idx) {
+  selectedSessionIdx = idx;
+  const rows = sessionBody.querySelectorAll('tr');
+  rows.forEach((tr, i) => tr.classList.toggle('selected', i === idx));
+}
+
+function getSelectedSession() {
+  if (selectedSessionIdx >= 0 && selectedSessionIdx < sessions.length) {
+    return sessions[selectedSessionIdx];
+  }
+  return null;
+}
+
+function ensureSelectedSession() {
+  const selected = getSelectedSession();
+  if (selected) {
+    return selected;
+  }
+
+  alert('セッションを選択してください。');
+  setStatus('Select a session first');
+  return null;
+}
+
+function persistAndOpenResults(session, action) {
+  sessionStorage.setItem(STORAGE_SELECTED_SESSION, JSON.stringify(session));
+  sessionStorage.setItem(STORAGE_REQUESTED_ACTION, action);
+  sessionStorage.setItem(STORAGE_MODEL, modelSelect.value);
+  window.location.href = '/results.html';
+}
+
+async function onAnalyze() {
+  const selected = ensureSelectedSession();
+  if (!selected) return;
+  persistAndOpenResults(selected, 'analyze');
+}
+
+async function onStatsOnly() {
+  const selected = ensureSelectedSession();
+  if (!selected) return;
+  persistAndOpenResults(selected, 'stats');
+}
+
+async function onOpenFile() {
+  setStatusSpinner('Opening folder dialog...');
+  try {
+    const dlgRes = await fetch('/api/open-folder-dialog', { method: 'POST' });
+    const dlgData = await dlgRes.json();
+    if (dlgData.error) throw new Error(dlgData.error);
+    if (dlgData.cancelled) {
+      setStatus('Cancelled');
+      return;
+    }
+
+    const displayName = dlgData.sessionId || 'selected folder';
+    const mode = confirm(`"${displayName}" を開きます。\n\nOK = Analyze (Claude評価あり)\nCancel = Stats Only`);
+
+    const session = {
+      jsonlPath: dlgData.jsonlPath || null,
+      folderPath: dlgData.folderPath || null,
+      sessionId: dlgData.sessionId,
+      projectName: dlgData.projectName,
+      subagentsOnly: dlgData.subagentsOnly || false,
+    };
+
+    persistAndOpenResults(session, mode ? 'analyze' : 'stats');
+  } catch (e) {
+    setStatus(`Error: ${e.message}`);
+    alert(`Error: ${e.message}`);
+  }
+}
+
+function buildHistoryResultText(record) {
+  if (!record) return '';
+  if (record.result_text && String(record.result_text).trim()) {
+    return String(record.result_text);
+  }
+
+  const chunks = [];
+  if (record.evaluation_result) {
+    chunks.push(`=== EVALUATION ===\n\n${record.evaluation_result}`);
+  }
+  if (record.stats_text) {
+    chunks.push(`=== STATISTICS ===\n\n${record.stats_text}`);
+  } else if (record.stats_summary) {
+    chunks.push(`=== STATISTICS ===\n\n${record.stats_summary}`);
+  }
+
+  return chunks.join('\n\n').trim();
+}
+
+function buildHistoryDetailText(record) {
+  return buildHistoryResultText(record) || '';
+}
+
+async function loadHistoryPane() {
+  try {
+    const res = await fetch('/api/history');
+    historyRecords = await res.json();
+  } catch {
+    historyRecords = [];
+  }
+
+  historySelectedIdx = -1;
+  renderHistory();
+}
+
+function extractTaskSummary(r) {
+  if (r.task_summary) return r.task_summary;
+  // 既存レコード: stats_text / stats_summary から初回メッセージを抽出
+  const statsSrc = r.stats_text || r.stats_summary || r.result_text || '';
+  const m1 = statsSrc.match(/初回ユーザーメッセージ: (.+)/);
+  if (m1) return m1[1].trim().slice(0, 200);
+  // evaluation_result から **タスク概要** を抽出
+  const evalSrc = r.evaluation_result || '';
+  const m2 = evalSrc.match(/\*\*タスク概要\*\*[:：]\s*(.+)/);
+  if (m2) return m2[1].trim().replace(/^`+|`+$/g, '').slice(0, 200);
+  return '';
+}
+
+function renderHistory() {
+  historyBody.innerHTML = '';
+
+  for (let i = 0; i < historyRecords.length; i++) {
+    const r = historyRecords[i];
+
+    // 1行目: メイン情報
+    const tr = document.createElement('tr');
+    tr.className = 'history-main';
+    tr.onclick = () => selectHistoryItem(i);
+
+    let dateStr = '';
+    try {
+      const d = new Date(r.timestamp);
+      dateStr = d.getFullYear() + '-' +
+        String(d.getMonth()+1).padStart(2,'0') + '-' +
+        String(d.getDate()).padStart(2,'0') + ' ' +
+        String(d.getHours()).padStart(2,'0') + ':' +
+        String(d.getMinutes()).padStart(2,'0');
+    } catch {
+      dateStr = (r.timestamp || '').slice(0, 16);
+    }
+
+    const evalMax = (r.evaluation_result && r.evaluation_result.includes('/100')) ? 100 : (r.evaluation_result && r.evaluation_result.includes('/80')) ? 80 : 60;
+    const scoreStr = r.score_total != null ? `${r.score_total}/${evalMax}` : '-';
+    const sessionId = r.session_id || '';
+    const sid = sessionId.length > 12 ? `${sessionId.slice(0, 12)}...` : sessionId;
+
+    tr.innerHTML = `<td>${dateStr}</td><td title="${escHtml(r.project)}">${escHtml(r.project)}</td><td title="${escHtml(sessionId)}">${escHtml(sid)}</td><td>${scoreStr}</td><td><button class="history-open-btn" onclick="event.stopPropagation();openHistoryResult(${i})">Open</button></td>`;
+    historyBody.appendChild(tr);
+
+    // 2行目: タスク概要
+    const tr2 = document.createElement('tr');
+    tr2.className = 'history-sub';
+    tr2.onclick = () => selectHistoryItem(i);
+    const summary = extractTaskSummary(r);
+    const td2 = document.createElement('td');
+    td2.colSpan = 5;
+    td2.textContent = summary || '(no summary)';
+    td2.title = summary;
+    td2.style.overflow = 'hidden';
+    td2.style.textOverflow = 'ellipsis';
+    td2.style.whiteSpace = 'nowrap';
+    tr2.appendChild(td2);
+    historyBody.appendChild(tr2);
+  }
+
+  historyDetail.textContent = historyRecords.length
+    ? '履歴を選択すると詳細が表示されます。'
+    : '履歴がありません。';
+}
+
+function selectHistoryItem(idx) {
+  historySelectedIdx = idx;
+  const rows = historyBody.querySelectorAll('tr');
+  rows.forEach((tr, i) => {
+    // 各レコードは2行(main + sub)なので、idx*2 と idx*2+1 を選択
+    const isSelected = (i === idx * 2 || i === idx * 2 + 1);
+    tr.classList.toggle('selected', isSelected);
+  });
+
+  const r = historyRecords[idx];
+  historyDetail.textContent = buildHistoryDetailText(r);
+}
+function openHistoryResult(idx) {
+  const r = historyRecords[idx];
+  if (!r) return;
+
+  const target = {
+    timestamp: r.timestamp || '',
+    session_id: r.session_id || '',
+    project: r.project || '',
+  };
+
+  sessionStorage.setItem(STORAGE_OPEN_HISTORY_RECORD, JSON.stringify(target));
+  sessionStorage.removeItem(STORAGE_REQUESTED_ACTION);
+  sessionStorage.setItem(STORAGE_MODEL, modelSelect.value);
+  window.location.href = '/results.html';
+}
+
+function copyHistoryDetail() {
+  const text = historyDetail.textContent;
+  if (text) {
+    navigator.clipboard.writeText(text);
+    setStatus('History detail copied');
+  }
+}
+
+async function deleteHistorySelected() {
+  if (historySelectedIdx < 0) {
+    alert('履歴を選択してください。');
+    return;
+  }
+
+  const r = historyRecords[historySelectedIdx];
+  if (!confirm(`この評価を削除しますか?\n${r.project} (${(r.timestamp || '').slice(0,16)})`)) {
+    return;
+  }
+
+  try {
+    await fetch(`/api/history/${historySelectedIdx}`, { method: 'DELETE' });
+    historyRecords.splice(historySelectedIdx, 1);
+    historySelectedIdx = -1;
+    renderHistory();
+    setStatus('History deleted');
+  } catch (e) {
+    alert(`Error: ${e.message}`);
+  }
+}
+
+const savedModel = sessionStorage.getItem(STORAGE_MODEL);
+if (savedModel && ['sonnet', 'opus', 'haiku'].includes(savedModel)) {
+  modelSelect.value = savedModel;
+}
+modelSelect.addEventListener('change', () => {
+  sessionStorage.setItem(STORAGE_MODEL, modelSelect.value);
+});
+
+loadProjects();
+loadHistoryPane();
+</script>
+
+</body>
+</html>
+
+
