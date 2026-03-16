@@ -46,6 +46,11 @@ function createApp() {
   // セッション一覧
   app.get("/api/sessions/:projectEncoded", (req, res) => {
     try {
+      const projectsDir = path.join(os.homedir(), ".claude", "projects");
+      const resolved = path.resolve(projectsDir, req.params.projectEncoded);
+      if (!resolved.startsWith(projectsDir + path.sep) && resolved !== projectsDir) {
+        return res.status(403).json({ error: "Access denied: invalid project path" });
+      }
       const sessions = sessionFinder.getSessions(req.params.projectEncoded);
       const result = sessions.map((s) => ({
         sessionId: s.sessionId,
@@ -68,8 +73,10 @@ function createApp() {
     if (!jsonlPath && !folderPath) {
       return res.status(400).json({ error: "jsonlPath or folderPath is required" });
     }
-    const targetPath = jsonlPath || folderPath;
-    if (!validatePath(targetPath)) {
+    if (jsonlPath && !validatePath(jsonlPath)) {
+      return res.status(403).json({ error: "Access denied: path must be under ~/.claude/" });
+    }
+    if (folderPath && !validatePath(folderPath)) {
       return res.status(403).json({ error: "Access denied: path must be under ~/.claude/" });
     }
     try {
@@ -88,8 +95,10 @@ function createApp() {
     if (!jsonlPath && !folderPath) {
       return res.status(400).json({ error: "jsonlPath or folderPath is required" });
     }
-    const targetPath = jsonlPath || folderPath;
-    if (!validatePath(targetPath)) {
+    if (jsonlPath && !validatePath(jsonlPath)) {
+      return res.status(403).json({ error: "Access denied: path must be under ~/.claude/" });
+    }
+    if (folderPath && !validatePath(folderPath)) {
       return res.status(403).json({ error: "Access denied: path must be under ~/.claude/" });
     }
 
