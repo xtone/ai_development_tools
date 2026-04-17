@@ -56,7 +56,13 @@ jobs:
         run: npx -y skills add xtone/ai_development_tools --skill pr-triage --agent claude-code --yes
 
       - name: Run Triage with Haiku
-        uses: anthropics/claude-code-action@v1
+        # サードパーティ action は commit SHA による immutable 参照で利用する
+        # （GitHub 公式の Security hardening ガイドラインで推奨）:
+        # https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-third-party-actions
+        # pin 先 cd77b50d は PR #115 (2026-03-16) 時点でグリーンだった動作確認済み
+        # リビジョン。更新は互換性確認後に手動で bump する。@v1 等のタグ参照には
+        # 戻さない（過去の tag drift 事例: PR #117）。
+        uses: anthropics/claude-code-action@cd77b50d2b0808657f8e6774085c8bf54484351c # v1
         env:
           ANTHROPIC_VERTEX_PROJECT_ID: ${{ steps.auth.outputs.project_id }}
           CLOUD_ML_REGION: global
@@ -139,7 +145,8 @@ jobs:
           npx -y skills add vercel-labs/agent-skills --skill vercel-react-best-practices --agent claude-code --yes
 
       - name: Run Claude Code PR Review via Vertex AI
-        uses: anthropics/claude-code-action@v1
+        # 上記 triage ジョブと同一 SHA を pin（詳細は上のコメント参照）
+        uses: anthropics/claude-code-action@cd77b50d2b0808657f8e6774085c8bf54484351c # v1
         env:
           ANTHROPIC_VERTEX_PROJECT_ID: ${{ steps.auth.outputs.project_id }}
           CLOUD_ML_REGION: global
