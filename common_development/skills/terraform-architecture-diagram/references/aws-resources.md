@@ -79,6 +79,18 @@ AWSアイコンには2種類のスタイルがある。サービスごとに正�
 | aws_docdb_cluster | documentdb_with_mongodb_compatibility | B | #5A30B5 | sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#5A30B5;strokeColor=#ffffff;html=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.documentdb_with_mongodb_compatibility |
 | aws_neptune_cluster | neptune | B | #5A30B5 | sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#5A30B5;strokeColor=#ffffff;html=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.neptune |
 
+### エッジラベル: Aurora / RDS レプリケーション
+
+Aurora クラスタの Writer → Reader 間や RDS レプリカへのレプリケーション線のラベルは、Terraform の属性で判定する：
+
+| Terraform 属性の状態 | ラベル |
+|---------------------|-------|
+| `replica_source_identifier` が設定されている（別リージョン/別アカウントのレプリカ） | `replica_master_user_secret` |
+| `manage_master_user_password = true` のみで単一クラスタ内の Writer/Reader 構成 | `Aurora replication` |
+| その他 | `replication` |
+
+**重要**: `replica_master_user_secret` は Terraform の属性名でもあり、別リージョン/別アカウントレプリケーション時の IAM DB 認証用シークレット管理機能を指す。単一クラスタ内の Writer/Reader 構成のレプリケーション線にこのラベルを付けるのは誤り。
+
 ## Messaging & Integration
 
 | Terraform Resource | Icon Name | Type | fillColor | Style |

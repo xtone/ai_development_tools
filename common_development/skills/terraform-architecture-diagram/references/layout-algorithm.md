@@ -653,6 +653,20 @@ Amplifyコンテナ:
   - waypoint経由で接続し、「User Traffic」ラベルを付与
 ```
 
+### 9.6 デプロイ方式の描画ルール（Blue/Green）
+
+CodeDeploy による Blue/Green デプロイメントを示す矢印（赤色 `strokeColor=#e74c3c`）は、**明示的に Blue/Green デプロイ対象となっている ECS サービスのみ** に接続する。ECS クラスタ全体や、同じクラスタ内の Worker / Video Worker 等 Rolling Update のサービスには引かない。
+
+判定条件（ECS service の Terraform 属性で判定）:
+
+| `deployment_controller.type` | デプロイ方式 | Blue/Green 矢印 |
+|------------------------------|-------------|----------------|
+| `"CODE_DEPLOY"` | Blue/Green | 引く（赤 `#e74c3c`）|
+| `"ECS"` または未設定 | Rolling Update | 引かない |
+| `"EXTERNAL"` | 外部管理 | 引かない |
+
+**注意**: 一つの CodeDeploy アプリが複数の ECS サービスを管理する場合でも、`deployment_controller.type == "CODE_DEPLOY"` を持つサービスにのみ矢印を引く。同一クラスタ内に混在する Rolling Update のサービスに誤って B/G 矢印を引かないこと。
+
 ---
 
 ## 10. 色分けルール

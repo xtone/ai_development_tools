@@ -239,6 +239,19 @@ edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;
 
 接続が重ならないよう、異なるポートに分散させる。
 
+**必須: 全エッジに exit/entry を明示する**
+
+auto-routing（`exitX/exitY/entryX/entryY` の省略）は禁止。省略すると drawio が自動で近接ポートを選ぶが、source と target の間に他ノードがある場合、線が他ノード近傍を通過して「どのノードから出ている線か」が視覚的に曖昧になり、レビュアーに誤読される（例: `CloudFront Public → S3 Assets` の線が途中で `CloudFront Admin` のアイコン付近を通過し「Admin → S3」と誤読された実例あり）。
+
+source → target の座標関係から方向を決めて割り当てる：
+
+| 位置関係 | exit (source) | entry (target) |
+|---------|---------------|----------------|
+| source が上 | `exitY=1` | `entryY=0` |
+| source が下 | `exitY=0` | `entryY=1` |
+| source が左 | `exitX=1` | `entryX=0` |
+| source が右 | `exitX=0` | `entryX=1` |
+
 ### waypointsの追加
 
 ```xml
