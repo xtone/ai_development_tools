@@ -655,26 +655,36 @@ Amplifyコンテナ:
 
 ### 9.6 CloudFront の origin 階層化
 
-CloudFront Distribution の `origin` ブロックで参照される origin リソース（Firebase Hosting、S3、ALB 等）は、**CloudFront のアイコン配下**に視覚的に配置する。横並びや別エリアに散らさない。
+CloudFront Distribution の `origin` ブロックで参照される origin リソース（Firebase Hosting、S3、ALB 等）は、**CloudFront との関連が視覚的に明確になる位置**に配置する。配置位置は、CloudFront の他の下方向エッジとの衝突を考慮して決定する。
+
+**配置の優先順位（重要 — 直下配置の落とし穴回避）:**
+
+CloudFront から他の下方向エッジ（ALB や managed services への接続）がある場合、origin を「真下」に置くと、CloudFront → ALB 等の縦線が origin アイコンを貫通する視覚衝突が発生する。以下の優先順位で配置を決定する：
+
+| 優先 | 配置 | 適用条件 | エッジ exit/entry |
+|------|------|---------|------------------|
+| 1（推奨） | CloudFront の **右隣（横並び）** | CloudFront に下方向エッジが他にもある場合（ALB origin 等） | `cf → origin`: exitX=1, exitY=0.5 → entryX=0, entryY=0.5 |
+| 2 | CloudFront の **真下** | CloudFront から下方向エッジが origin への 1 本のみの場合 | `cf → origin`: exitX=0.5, exitY=1 → entryX=0.5, entryY=0 |
+| 3 | CloudFront の **左隣** | 右隣に他のリソースがあり配置不可の場合 | `cf → origin`: exitX=0, exitY=0.5 → entryX=1, entryY=0.5 |
 
 **判定条件:**
-- CloudFront の `default_cache_behavior.target_origin_id` が指す origin → **デフォルトオリジン**として CloudFront の真下に配置
-- `ordered_cache_behavior.target_origin_id` が指す origin → デフォルトオリジンの隣（横並び）に配置
-- origin が外部サービス（Firebase Hosting 等）の場合: Terraform 管理外でも「外部オリジン」として明示的にアイコン化して CloudFront 配下に置く
+- `default_cache_behavior.target_origin_id` が指す origin → **デフォルトオリジン**として上記優先順位で配置
+- `ordered_cache_behavior.target_origin_id` が指す origin → デフォルトオリジンの隣に追加
+- origin が外部サービス（Firebase Hosting 等）の場合: Terraform 管理外でも「外部オリジン」として明示的にアイコン化
 
-**配置ルール:**
+**配置例（CloudFront に複数下方向エッジがある場合 — 優先1適用）:**
 ```
-CloudFront (Public)                    ← y=60
-  ├── Firebase Hosting (default)       ← y=140 (CloudFront 真下、中央)
-  ├── S3 Assets (ordered: /images/*)   ← y=140 (Firebase の右)
-  └── ALB (ordered: /api/client/*)     ← ALB は VPC 内の通常位置を使用
+        CloudFront (Public) ─── Firebase Hosting (default origin, 横並び)
+              │                  ↑ exitX=1, exitY=0.5 → entryX=0, entryY=0.5
+              ├──→ ALB (/api/client/*)        ← VPC 内通常位置
+              └──→ S3 Assets (signed cookie)  ← managed 行（waypoint で迂回、§drawio-xml-guide.md）
 ```
 
-**エッジスタイル:**
-- `CloudFront → default origin`: 太線（`strokeWidth=3`、`DATA_FLOW` 色）+ ラベル `default origin`
+**エッジスタイル（共通）:**
+- `CloudFront → default origin`: **太線（`strokeWidth=3`）** + `DATA_FLOW` 色 + ラベル `default origin`（hierarchy を強調）
 - `CloudFront → ordered origin`: 通常太さ（`strokeWidth=2`）+ ラベル（path pattern、例: `/images/*`）
 
-CloudFront が origin として参照するリソースは VPC 外部のマネージドサービスであることが多い。VPC 内のリソース（ALB 等）の場合は、CloudFront から該当リソースへのエッジのみ引き、配置は通常の VPC 配置ルールに従う。
+CloudFront が origin として参照する VPC 内リソース（ALB 等）の場合は、CloudFront から該当リソースへのエッジのみ引き、配置は通常の VPC 配置ルールに従う（origin を CloudFront 隣に複製しない）。
 
 ### 9.7 ECS service の Multi-AZ 表現
 

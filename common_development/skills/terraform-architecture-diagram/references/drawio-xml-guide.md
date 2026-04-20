@@ -203,6 +203,50 @@ SVGデータは [gcp-svg-icons.md](gcp-svg-icons.md) を参照。
 
 エッジラベルにHTMLマークアップでフォントサイズを変更しない。デフォルトのフォントサイズは11pxで、そのまま使用する。
 
+### エッジラベルの可読性確保（必須）
+
+エッジラベルが他のアイコン・ノードラベル・別エッジのラベルと重なると、テキストが交錯して判読不能になる。以下を必ず実施する：
+
+**1. 全エッジラベルに白背景を必須付与**
+
+`value` を持つ全エッジに `fontBackgroundColor=#ffffff` を style に必ず追加する。これによりラベル文字が白背景の上に描画され、他要素と重なっても判読可能になる。
+
+```xml
+<!-- 必須: fontBackgroundColor=#ffffff -->
+<mxCell id="e1" value="image pull" edge="1" parent="1" source="ecs_api_a" target="ecr"
+        style="edgeStyle=orthogonalEdgeStyle;rounded=1;...;fontBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0">
+```
+
+**2. 長距離エッジのラベルは source 寄りに配置**
+
+`abs(source_y - target_y) > 600` の長距離エッジでは、デフォルトの中央配置だとラベルが他要素（VPC 内のノード等）と重なりやすい。`<mxPoint as="offset"/>` で source 寄り 30% 地点に配置する：
+
+```xml
+<mxCell id="e1" value="signed cookie" edge="1" ...>
+  <mxGeometry relative="1" as="geometry">
+    <Array as="points">
+      <mxPoint x="760" y="1310"/>
+      <mxPoint x="130" y="1310"/>
+    </Array>
+    <mxPoint x="-280" y="0" as="offset"/>  <!-- 中央から source 側へ 280px シフト -->
+  </mxGeometry>
+</mxCell>
+```
+
+`offset` の x 値: 負値で source 側、正値で target 側へシフト（単位: px）。waypoint の中央点から計算してシフト量を決める。
+
+**3. 冗長な多行ラベル禁止**
+
+ノードラベルとエッジラベルともに、副情報を改行 (`&#xa;`) で追加しない。Terraform から読み取れる属性（`PostgreSQL Serverless v2`、`(/images/*, /videos/*)` 等）は **ラベルから削除する**。
+
+| 悪い例 | 良い例 |
+|-------|--------|
+| `Aurora Writer&#xa;PostgreSQL Serverless v2` | `Aurora Writer` |
+| `signed cookie&#xa;(/images/*, /videos/*)` | `signed cookie` |
+| `RunTask (4am JST)` | `RunTask` |
+
+エッジラベルは「何の通信か」が一目で分かる最短表現に留める。属性詳細を図に残したい場合は、ユーザー要望に応じて注釈セル（[layout-algorithm.md §11](layout-algorithm.md) 参照）で提示できるが、**デフォルトでは注釈セルを追加しない**（情報密度を上げると図全体の認知負荷が増えるため）。
+
 ### 基本設定
 
 全エッジに以下を適用：
@@ -251,6 +295,32 @@ source → target の座標関係から方向を決めて割り当てる：
 | source が下 | `exitY=0` | `entryY=1` |
 | source が左 | `exitX=1` | `entryX=0` |
 | source が右 | `exitX=0` | `entryX=1` |
+
+**長距離エッジへの waypoint 必須**
+
+`abs(source_y - target_y) > 600` かつ source と target を直線結合すると他ノード（特に同じ tier の隣接ノード）を跨ぐ場合、`<Array as="points">` で **明示的な waypoint** を追加して経路を制御する。auto-routing に任せると中間ノードの近傍を通過し、視覚的に「中間ノードから出ている線」と誤読される。
+
+waypoint 座標決定ルール:
+- 1点目 x = source の bottom port x（垂直に下がる）
+- 1点目 y = `min(target_y - 30, VPC_bottom + 30)`（VPC を回避し target 直前で水平移動）
+- 2点目 x = target の top port x
+- 2点目 y = 1点目 y と同じ
+
+例: cf_public (730, 200) → s3_assets (100, 1340)（y距離 1140px、間に VPC（y=440〜1290）と cf_admin が存在）
+
+```xml
+<mxCell id="e_cfpublic_s3assets" ... source="cf_public" target="s3_assets"
+        style="...;exitX=0.5;exitY=1;entryX=0.5;entryY=0">
+  <mxGeometry relative="1" as="geometry">
+    <Array as="points">
+      <mxPoint x="760" y="1310"/>   <!-- VPC 直下、左方向へ折り返す前 -->
+      <mxPoint x="130" y="1310"/>   <!-- target 列上で下方向へ折り返す前 -->
+    </Array>
+  </mxGeometry>
+</mxCell>
+```
+
+これにより線は「cf_public 真下に下がる → VPC 下端を水平移動 → s3_assets 真上に降りる」という決定論的経路になり、cf_admin の近傍を通過しない。
 
 ### waypointsの追加
 
