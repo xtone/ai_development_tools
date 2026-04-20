@@ -100,8 +100,28 @@ Aurora クラスタの Writer → Reader 間や RDS レプリカへのレプリ�
 | aws_kinesis_stream | kinesis | B | #8C4FFF | sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#8C4FFF;strokeColor=#ffffff;html=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.kinesis |
 | aws_kinesis_firehose_delivery_stream | kinesis_data_firehose | B | #8C4FFF | sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#8C4FFF;strokeColor=#ffffff;html=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.kinesis_data_firehose |
 | aws_mq_broker | mq | B | #E7157B | sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#E7157B;strokeColor=#ffffff;html=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.mq |
-| aws_eventbridge_rule | eventbridge | B | #E7157B | sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#E7157B;strokeColor=#ffffff;html=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.eventbridge |
+| aws_cloudwatch_event_rule | eventbridge | B | #E7157B | sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#E7157B;strokeColor=#ffffff;html=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.eventbridge |
+| aws_cloudwatch_event_target | (edgeのみ描画) | — | — | Rule/Schedulerからの接続先を表現するためのリソース。独立アイコンは作らず、`aws_cloudwatch_event_rule` または `aws_scheduler_schedule` から `arn` で指定されたターゲット（ECSタスク、SNSトピック等）へのエッジを生成する |
+| aws_scheduler_schedule | eventbridge | B | #E7157B | sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#E7157B;strokeColor=#ffffff;html=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.eventbridge |
 | aws_sfn_state_machine | step_functions | B | #E7157B | sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#E7157B;strokeColor=#ffffff;html=1;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.step_functions |
+
+### EventBridge Scheduler と Rule の区別
+
+EventBridge には2系統のリソースがあり、**それぞれ別アイコン + 別ラベル**で描画する。どちらか片方だけを描画して両方を兼ねさせることはしない。
+
+| Terraform リソース | 役割 | 推奨ラベル |
+|-------------------|------|-----------|
+| `aws_scheduler_schedule` | 定期実行（cron/rate 式で ECS RunTask 等をスケジュール） | `EventBridge Scheduler` |
+| `aws_cloudwatch_event_rule` + `aws_cloudwatch_event_target` | イベントパターン検知（ECS state change, S3 event 等からSNS/Lambda等へ） | `EventBridge Rule` |
+
+**判定条件**:
+- `aws_scheduler_schedule` リソースがある → Scheduler アイコンを側方 (side) に配置
+- `aws_cloudwatch_event_rule` + `aws_cloudwatch_event_target` がある → Rule アイコンを managed に配置
+- 両方ある場合はそれぞれ別アイコンで描画（共通化しない）
+
+**エッジの描画**:
+- Scheduler: Scheduler → Target（ECS, Lambda 等、`aws_cloudwatch_event_target.arn` の示す先）
+- Rule: Source（Event source）→ Rule → Target（SNS, Lambda 等）。`event_pattern` に含まれる source からエッジを引く（例: `ecs.amazonaws.com` なら ECS サービスから Rule へ）
 
 ## Security & IAM
 

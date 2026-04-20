@@ -406,9 +406,32 @@ CONSOLE_ACCESS = "edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jetty
 REPLICATION = "edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#C925D1;strokeWidth=1;dashed=1;endArrow=classic"
 
 STORAGE_FLOW = "edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#7AA116;strokeWidth=2;endArrow=classic"
+
+IMAGE_PULL = "edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#e74c3c;strokeWidth=1;dashed=1;endArrow=classic"
 ```
 
 エッジにはポート番号をラベルとして付与する（例: 「Port 3000」「Port 5432」）。
+
+### CI/CD 関連エッジの線種分類
+
+CI/CD パイプラインに関わるエッジは、**制御フロー（trigger）とデータフロー（image pull / artifact upload）を線種で区別する**。同じ赤系統の線が交差するとトリガ元と Pull 元が混同されるため。
+
+| エッジの意味 | 使用スタイル | 線種 |
+|-------------|-------------|------|
+| CodePipeline → CodeBuild / CodeDeploy（トリガ） | `DEPLOY_FLOW` | 赤実線 太 |
+| CodeBuild → ECR（push）| `DEPLOY_FLOW` | 赤実線 太 |
+| ECS Task Definition `image` → ECR（image pull） | `IMAGE_PULL` | **赤点線 細** |
+| CodePipeline → S3 Artifacts（成果物保存） | `STORAGE_FLOW` | 緑実線 |
+| EventBridge Scheduler → ECS Task（RunTask）| `DEPLOY_FLOW` | 赤実線 太 |
+
+**ラベル付与の原則**:
+- トリガ系: `trigger`, `deploy`, `run` 等の動詞ラベル
+- Pull/Data 系: `image pull`, `artifact upload`, `put/get` 等のデータ方向を示すラベル
+
+**判定ルール**:
+- `aws_codepipeline.*.action` で参照されているリソース → trigger（実線）
+- `aws_ecs_task_definition.container_definitions[*].image` が ECR リポジトリを指す → pull（点線）
+- `aws_s3_bucket` が CodePipeline の `artifact_store` である → artifact upload（緑実線）
 
 ### タイトルスタイル
 

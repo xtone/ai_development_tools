@@ -653,7 +653,46 @@ Amplifyコンテナ:
   - waypoint経由で接続し、「User Traffic」ラベルを付与
 ```
 
-### 9.6 デプロイ方式の描画ルール（Blue/Green）
+### 9.6 CloudFront の origin 階層化
+
+CloudFront Distribution の `origin` ブロックで参照される origin リソース（Firebase Hosting、S3、ALB 等）は、**CloudFront のアイコン配下**に視覚的に配置する。横並びや別エリアに散らさない。
+
+**判定条件:**
+- CloudFront の `default_cache_behavior.target_origin_id` が指す origin → **デフォルトオリジン**として CloudFront の真下に配置
+- `ordered_cache_behavior.target_origin_id` が指す origin → デフォルトオリジンの隣（横並び）に配置
+- origin が外部サービス（Firebase Hosting 等）の場合: Terraform 管理外でも「外部オリジン」として明示的にアイコン化して CloudFront 配下に置く
+
+**配置ルール:**
+```
+CloudFront (Public)                    ← y=60
+  ├── Firebase Hosting (default)       ← y=140 (CloudFront 真下、中央)
+  ├── S3 Assets (ordered: /images/*)   ← y=140 (Firebase の右)
+  └── ALB (ordered: /api/client/*)     ← ALB は VPC 内の通常位置を使用
+```
+
+**エッジスタイル:**
+- `CloudFront → default origin`: 太線（`strokeWidth=3`、`DATA_FLOW` 色）+ ラベル `default origin`
+- `CloudFront → ordered origin`: 通常太さ（`strokeWidth=2`）+ ラベル（path pattern、例: `/images/*`）
+
+CloudFront が origin として参照するリソースは VPC 外部のマネージドサービスであることが多い。VPC 内のリソース（ALB 等）の場合は、CloudFront から該当リソースへのエッジのみ引き、配置は通常の VPC 配置ルールに従う。
+
+### 9.7 ECS service の Multi-AZ 表現
+
+ECS service が複数 AZ にまたがってデプロイされる場合、**アイコン描画方法を `network_configuration.subnets` と AZ pinning の有無で決定する**。
+
+**判定条件:**
+
+| ECS service の属性 | 描画方法 |
+|-------------------|---------|
+| `network_configuration.subnets` が複数 AZ のサブネットを含み、`desired_count` が subnet 数と一致しない（例: subnets=[a, d], desired_count=1） | **1 アイコンを VPC 直下（AZ 横断）に配置**。注釈「両 AZ にまたがり最大 N タスク」を追加 |
+| `network_configuration.subnets` が複数 AZ、`desired_count` が subnet 数と一致（例: subnets=[a, d], desired_count=2） | 各 AZ に 1 アイコンずつ配置（現行の per-AZ 表現） |
+| `network_configuration.subnets` が単一 AZ のみ | 該当 AZ に 1 アイコン配置 |
+
+**重要**: ECS service 自体には「どの AZ にタスクが割り当てられるか」を固定する機能はない（`capacity_provider_strategy` 等での間接的制御を除く）。`desired_count=1` で subnets に複数 AZ を指定した場合、**どちらか一方の AZ** に配置されるが、それは ECS scheduler の判断であり設計的には AZ 横断。AZ ごとに別アイコンを描くのは誤り。
+
+スケールアウト時の AZ 決定も同様に ECS 任せ。`primary/scale-out` のように AZ 固定で描画してはならない。
+
+### 9.8 デプロイ方式の描画ルール（Blue/Green）
 
 CodeDeploy による Blue/Green デプロイメントを示す矢印（赤色 `strokeColor=#e74c3c`）は、**明示的に Blue/Green デプロイ対象となっている ECS サービスのみ** に接続する。ECS クラスタ全体や、同じクラスタ内の Worker / Video Worker 等 Rolling Update のサービスには引かない。
 
@@ -773,7 +812,8 @@ Terraformリソースから機械的に導出できない情報は、LLMの推�
 |---|---|---|---|
 | 青実線: データフロー | `#0066CC` | 実線 | `DATA_FLOW` |
 | 緑実線: ストレージアクセス | `#7AA116` | 実線 | `STORAGE_FLOW` |
-| 赤実線: CI/CDデプロイ | `#e74c3c` | 実線 | `DEPLOY_FLOW` |
+| 赤実線: CI/CDデプロイ・トリガ | `#e74c3c` | 実線 | `DEPLOY_FLOW` |
+| 赤破線: イメージPull・データ取得 | `#e74c3c` | 破線 | `IMAGE_PULL` |
 | 茶実線: コンソール/管理アクセス | `#8B4513` | 実線 | `CONSOLE_ACCESS` |
 | 灰破線: 依存・ポーリング | `#666666` | 破線 | `DEPENDENCY` |
 | 紫破線: DBレプリケーション | `#C925D1` | 破線 | `REPLICATION` |
