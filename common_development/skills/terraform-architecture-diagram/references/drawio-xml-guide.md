@@ -203,6 +203,36 @@ SVGデータは [gcp-svg-icons.md](gcp-svg-icons.md) を参照。
 
 エッジラベルにHTMLマークアップでフォントサイズを変更しない。デフォルトのフォントサイズは11pxで、そのまま使用する。
 
+### エッジラベル付与の判定基準（必須）
+
+エッジラベルは **原則省略する**。線の意味は線色・線種（[layout-algorithm.md §11.5 凡例](layout-algorithm.md) 参照）と target アイコンで判別可能なため、ラベルを付けると情報重複と視認性低下を招く。
+
+以下の条件のいずれかに該当する場合のみラベルを追加する：
+
+| 残す条件 | 例 |
+|---------|-----|
+| **URL path / 識別子 / 主従区別** | `/api/client/*`, `default origin` |
+| **port 情報**（複数ポートが収束/分岐する場合） | `:3000`, `:5432` |
+| **デプロイ方式の差別化**（同色線で複数戦略がある場合） | `Blue/Green`（Rolling と区別）|
+| **認証/セキュリティ機構**（凡例だけでは伝わらない特殊事項）| `signed cookie` |
+| **特定の実行アクション**（汎用語ではない動詞） | `RunTask`（scheduled execution）|
+
+**削除すべきラベル例:**
+
+| 理由 | 例 |
+|------|-----|
+| 線色/線種から自明 | `HTTPS`（青実線）, `image pull`（赤破線）, `Aurora replication`（紫破線）, `replication` |
+| 汎用的な動詞 | `put/get`, `poll`, `webhook`, `trigger build`, `trigger deploy`, `push image` |
+| target アイコンから自明 | `origin`（→ ALB）, `logs`（→ S3 ALB Logs）, `alert`（→ SNS）, `DLQ alarm`, `failure event`, `master_user_secret`, `DB credentials`, `artifacts` |
+
+**判定の優先順位:**
+
+1. 線色/線種＋target アイコンで意味が一意に決まる → **省略**
+2. 同一 source/target 間に複数 edge がある → **区別のためラベル必要**
+3. URL path / port / 識別子等の routing info → **必要**
+
+ラベル省略を前提とするため、**凡例（[layout-algorithm.md §11.5](layout-algorithm.md)）の網羅性が必須**。図中で使う全線色・線種が凡例に列挙されていない場合、読み手が線の意味を判別不能になる。
+
 ### エッジラベルの可読性確保（必須）
 
 エッジラベルが他のアイコン・ノードラベル・別エッジのラベルと重なると、テキストが交錯して判読不能になる。以下を必ず実施する：
