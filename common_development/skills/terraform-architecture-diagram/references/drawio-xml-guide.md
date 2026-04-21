@@ -203,33 +203,71 @@ SVGデータは [gcp-svg-icons.md](gcp-svg-icons.md) を参照。
 
 エッジラベルにHTMLマークアップでフォントサイズを変更しない。デフォルトのフォントサイズは11pxで、そのまま使用する。
 
-### エッジラベル付与の判定基準（必須）
+### エッジラベル付与の判定基準（必須・whitelist 方式）
 
-エッジラベルは **原則省略する**。線の意味は線色・線種（[layout-algorithm.md §11.5 凡例](layout-algorithm.md) 参照）と target アイコンで判別可能なため、ラベルを付けると情報重複と視認性低下を招く。
+エッジラベルは **絶対省略**。例外は以下の **厳密な whitelist のみ**。リストに無いラベルは「具体的な action だから」「重要だから」「データの流れを示すから」等の理由で **個別判断による追加を絶対に行わない**。
 
-以下の条件のいずれかに該当する場合のみラベルを追加する：
+#### ✅ 許可される唯一のラベル種別（whitelist）
 
-| 残す条件 | 例 |
-|---------|-----|
-| **URL path / 識別子 / 主従区別** | `/api/client/*`, `default origin` |
-| **port 情報**（複数ポートが収束/分岐する場合） | `:3000`, `:5432` |
-| **デプロイ方式の差別化**（同色線で複数戦略がある場合） | `Blue/Green`（Rolling と区別）|
-| **認証/セキュリティ機構**（凡例だけでは伝わらない特殊事項）| `signed cookie` |
-| **特定の実行アクション**（汎用語ではない動詞） | `RunTask`（scheduled execution）|
+ラベルは **構造情報のみ許可**。実装情報（ポート番号、認証機構、設定階層等）は接続の有無を変えないため、線では表現せず別ドキュメント（IAM 設計書、セキュリティ仕様等）で扱う。
 
-**削除すべきラベル例:**
+| 種別 | 形式 | 具体例 | 適用条件 |
+|------|------|--------|---------|
+| **URL path pattern** | `/path/*` 形式 | `/api/client/*`, `/admin/*` | route の区別が必要な場合（同じ宛先でも path で分岐するロジックは構造情報） |
+| **Deploy method** | 固定文字列 | `Blue/Green`, `Rolling`, `Canary` | 同色線（赤実線）で複数のデプロイ戦略が混在する場合のみ（デプロイトポロジは構造情報） |
+| **AWS API call name**（Terraform リソースに紐づく specific call） | API 名そのまま | `RunTask`（aws_scheduler_schedule の target_action）, `Invoke`（lambda 直接呼び出し）| 一般的なデータフローではなく、Terraform で明示的に定義された specific API call の場合のみ（コントロールプレーン操作は構造情報） |
 
-| 理由 | 例 |
-|------|-----|
-| 線色/線種から自明 | `HTTPS`（青実線）, `image pull`（赤破線）, `Aurora replication`（紫破線）, `replication` |
-| 汎用的な動詞 | `put/get`, `poll`, `webhook`, `trigger build`, `trigger deploy`, `push image` |
-| target アイコンから自明 | `origin`（→ ALB）, `logs`（→ S3 ALB Logs）, `alert`（→ SNS）, `DLQ alarm`, `failure event`, `master_user_secret`, `DB credentials`, `artifacts` |
+#### ⛔ 絶対に追加してはならないラベル（exhaustive list）
 
-**判定の優先順位:**
+以下は「データの流れを示す」「具体的な動詞」「target アイコンの補足」「実装詳細」のいずれであっても、ラベルとして追加してはならない。**例外なし**：
 
-1. 線色/線種＋target アイコンで意味が一意に決まる → **省略**
-2. 同一 source/target 間に複数 edge がある → **区別のためラベル必要**
-3. URL path / port / 識別子等の routing info → **必要**
+- **TCP/UDP ポート番号**: `:3000`, `:5432`, `:443`, `:80` 等（実装詳細。線の存在と方向で接続は明示済み）
+- **認証/セキュリティ機構**: `signed cookie`, `mTLS`, `OAuth`, `IAM auth`, `API key` 等（実装詳細。アクセス制御は IAM 設計書/セキュリティ仕様で扱う）
+- **Origin priority**: `default origin`, `primary origin` 等（CloudFront の `default_cache_behavior` origin は太線 `strokeWidth=3` で hierarchy を表現する。ラベル不要）
+- **線色・線種から自明な動詞**: `HTTPS`, `HTTP`, `image pull`, `push`, `push image`, `pull`, `poll`, `get`, `put`, `put/get`, `read`, `write`, `request`, `response`, `connect`, `access`
+- **凡例で意味が確定している関係性**: `Aurora replication`, `replication`, `data flow`, `dependency`, `notification`, `event`, `failure event`, `state change`
+- **target アイコンから自明な機能**: `origin`（→ ALB）, `logs`（→ S3 Logs）, `alert`（→ SNS）, `DLQ alarm`, `master_user_secret`（→ Secrets Manager）, `DB credentials`, `artifacts`, `cache`
+- **CI/CD パイプラインの動詞**: `webhook`, `trigger build`, `trigger deploy`, `trigger`, `build`, `deploy`, `source`
+- **集約された複数リソースの内訳**: `(api, auth-proxy, video-gen)` のような括弧書きリスト
+
+判断に迷った場合は **省略する**（凡例＋線色＋線太さ＋target アイコンで読み手は理解できる）。
+
+#### whitelist 適用例（softbank-ourpick prod の場合）
+
+許可される 3 個のラベル：
+- `/api/client/*` × 1（CloudFront Public → ALB のルーティング分岐）
+- `RunTask` × 1（EventBridge Scheduler → ECS Batch のコントロールプレーン操作）
+- `Blue/Green` × 1（CodeDeploy → ECS API のデプロイトポロジ）
+
+合計 3 個。これ以外のエッジはすべて value="" で生成すること。
+
+**CloudFront → default origin** は太線（`strokeWidth=3`）で hierarchy を表現（[layout-algorithm.md §9.6](layout-algorithm.md) 参照、ラベルは付与しない）。
+
+#### ⛔ 同一 whitelist ラベル文字列の図全体での出現回数は 1 回のみ
+
+同じ操作を表す edge が複数本存在する場合（例: EventBridge Scheduler から ECS Worker と ECS Video Worker への 2 本の RunTask edge）、**ラベル文字列を付与するのは 1 本のみ。残りの edge は `value=""` で生成する**。
+
+理由: 同じ単語のラベルが図上に 2 箇所以上表示されると、読み手は「これは別の操作か？」と混乱する。同操作なら 1 回の表示で十分。
+
+**判定 pseudo code:**
+```
+edges_by_label = group_edges_by(value)  # whitelist label 文字列でグループ化
+for label, edges in edges_by_label:
+    if len(edges) > 1:
+        # source ID アルファベット順で先頭 1 本のみ value 維持
+        edges_sorted = sort_by(edges, source_id)
+        for edge in edges_sorted[1:]:
+            edge.value = ""  # ラベル文字列を消す（edge 自体は残す）
+```
+
+**違反例 / 修正例:**
+
+| 違反 | 修正 |
+|------|------|
+| `<mxCell ... source="eventbridge" target="ecs_worker" value="RunTask">` + `<mxCell ... source="eventbridge" target="ecs_video" value="RunTask">` | 1 本目: `value="RunTask"` 維持 / 2 本目: `value=""` |
+| `<mxCell ... source="codedeploy" target="ecs_api_a" value="Blue/Green">` + `<mxCell ... source="codedeploy" target="ecs_api_d" value="Blue/Green">`（B-1 集約後に残った場合） | 1 本目: `value="Blue/Green"` / 2 本目: `value=""` |
+
+**注意**: B-1 (エッジ集約) は **同一 source resource type → 同一 target ID** の per-AZ 重複を集約する規則。本ルールは **同一 whitelist label** が複数 edge にまたがる場合のラベル重複排除規則。両者は別の制約なので、両方適用する。
 
 ラベル省略を前提とするため、**凡例（[layout-algorithm.md §11.5](layout-algorithm.md)）の網羅性が必須**。図中で使う全線色・線種が凡例に列挙されていない場合、読み手が線の意味を判別不能になる。
 
@@ -247,12 +285,33 @@ SVGデータは [gcp-svg-icons.md](gcp-svg-icons.md) を参照。
         style="edgeStyle=orthogonalEdgeStyle;rounded=1;...;fontBackgroundColor=#ffffff;exitX=0.5;exitY=1;entryX=0.5;entryY=0">
 ```
 
-**2. 長距離エッジのラベルは source 寄りに配置**
+**2. エッジラベル位置は source/target/中継ノードとの関係で決定する**
+
+エッジラベルはデフォルトで edge 中央配置だが、これが他要素（中継ノード、別エッジのラベル、VPC 内アイコン等）と重なると判読不能になる。以下のルールで `<mxPoint as="offset"/>` を必ず指定する。
+
+##### (2a) 中継ノード横切りの場合は target 寄り 70% 地点へ offset
+
+エッジが source → target の経路途中で **他のアイコンを横切る場合**（典型: CodeDeploy → ECS API のエッジが ECS Worker を横切る）、ラベルが中継ノードの真上に来てしまい、視覚的に「中継ノードに紐づいたラベル」と誤認される。
+
+判定基準: edge の経路上に source / target 以外の他 vertex の bounding box（幅・高さ）と交差する区間がある場合、または source と target の間に距離 ≥ 200px 離れた他 vertex がある場合。
+
+対応: ラベルを **target 寄り 30% 地点（中央から target 側へ 30%）** に offset する。
+
+```xml
+<!-- CodeDeploy → ECS API (ECS Worker を横切る経路) の例 -->
+<mxCell id="e_cd_api" value="Blue/Green" edge="1" source="codedeploy" target="ecs_api_d" ...>
+  <mxGeometry relative="1" as="geometry">
+    <mxPoint x="200" y="0" as="offset"/>  <!-- 中央から target 側へ 200px シフト → ECS API 直近に表示 -->
+  </mxGeometry>
+</mxCell>
+```
+
+##### (2b) 長距離エッジのラベルは source 寄りに配置
 
 `abs(source_y - target_y) > 600` の長距離エッジでは、デフォルトの中央配置だとラベルが他要素（VPC 内のノード等）と重なりやすい。`<mxPoint as="offset"/>` で source 寄り 30% 地点に配置する：
 
 ```xml
-<mxCell id="e1" value="signed cookie" edge="1" ...>
+<mxCell id="e1" value="/api/client/*" edge="1" ...>
   <mxGeometry relative="1" as="geometry">
     <Array as="points">
       <mxPoint x="760" y="1310"/>
@@ -265,15 +324,60 @@ SVGデータは [gcp-svg-icons.md](gcp-svg-icons.md) を参照。
 
 `offset` の x 値: 負値で source 側、正値で target 側へシフト（単位: px）。waypoint の中央点から計算してシフト量を決める。
 
-**3. 冗長な多行ラベル禁止**
+##### 適用優先順位
 
-ノードラベルとエッジラベルともに、副情報を改行 (`&#xa;`) で追加しない。Terraform から読み取れる属性（`PostgreSQL Serverless v2`、`(/images/*, /videos/*)` 等）は **ラベルから削除する**。
+1. (2a) 中継ノード横切りがある → target 寄り 30% 地点へ offset（中継ノードとの誤関連を防ぐ）
+2. (2b) (2a) に該当せず長距離エッジの場合 → source 寄り 30% 地点へ offset
+3. それ以外（短距離・直線エッジ） → offset なし（中央配置）
 
-| 悪い例 | 良い例 |
+**3. 多行ラベル & 同一行内括弧書き補足情報の絶対禁止（例外なし）**
+
+ノードラベル・エッジラベルともに、以下 2 種類のラベルを **絶対に作成してはならない**。例外なし。1 ラベル = 1 行・最短表現。
+
+- **(3a) 改行を含むラベル**: `&#xa;`、`<br>`、`\n` 等
+- **(3b) 同一行内の括弧書き補足情報**: デプロイ方式、バージョン、属性リスト、状態説明等を `(...)` で付記
+
+「集約された複数リソースの内訳をラベルで明示する」「バージョン情報を併記する」「URL pattern を補足する」「実行時刻を併記する」「デプロイ方式を併記する」等の動機があっても、**両方禁止**。詳細を残したい場合は、ユーザー要望に応じて注釈セル（[layout-algorithm.md §11](layout-algorithm.md) 参照）で提示する（**デフォルトでは注釈セルを追加しない**）。
+
+#### 括弧書きの「識別子」と「補足情報」の区別
+
+(3b) は **同一リソースタイプの複数インスタンスを区別するための識別子のみ例外** として許可する。識別子か補足情報かは以下の基準で機械的に判定:
+
+| 区分 | 形式 | 例 | 許可/禁止 |
+|------|------|-----|----------|
+| **識別子（許可）** | カッコ内が **1 単語**で、同一 resource type の複数インスタンスを区別する目的 | `CloudFront (Public)` / `CloudFront (Admin)`, `CodeBuild (api)` / `CodeBuild (Migration)`, `Aurora (Writer)` / `Aurora (Reader)` | ✅ 許可 |
+| **補足情報（禁止）** | カッコ内がデプロイ方式・バージョン・属性リスト・状態説明等 | `ALB (Blue/Green)`, `CodePipeline (V2)`, `S3 (assets, signed)`, `ECR (api, auth-proxy)`, `RDS (Multi-AZ)` | ❌ 禁止 |
+
+**判定 pseudo code:**
+```
+if value matches r'\((Public|Admin|API|Migration|Writer|Reader|primary|secondary)\)':
+    OK  # 単語限定の識別子
+elif value matches r'\([^)]+\)':
+    VIOLATION  # それ以外の括弧書きは補足情報
+```
+
+#### 違反例 / 修正例
+
+| 悪い例（絶対禁止） | 良い例 |
 |-------|--------|
 | `Aurora Writer&#xa;PostgreSQL Serverless v2` | `Aurora Writer` |
-| `signed cookie&#xa;(/images/*, /videos/*)` | `signed cookie` |
+| `/api/client/*&#xa;(also: /admin/*)` | `/api/client/*` |
 | `RunTask (4am JST)` | `RunTask` |
+| `ECR&#xa;(api, auth-proxy, video-gen)` | `ECR` |
+| `GitHub&#xa;xtone/repo (branch: main)` | `GitHub` |
+| `CloudFront (Public)&#xa;Frontend + S3 OAC` | `CloudFront (Public)` |
+| `CodePipeline (V2)&#xa;Source(CodeStar) → Build → Migration → Deploy` | `CodePipeline` |
+| `ALB (Blue/Green)` ← Blue/Green は edge ラベルで表現済み | `ALB` |
+| `S3 (assets, signed)` ← 補足情報 | `S3 Assets` ← 識別子化なら 1 単語で |
+| `CodePipeline (V2)` ← バージョン情報 | `CodePipeline` |
+| `RDS (Multi-AZ)` ← 構成情報 | `RDS` ← Multi-AZ 配置は図上の AZ コンテナで表現 |
+| `ECR (api, auth-proxy)` ← 属性リスト | `ECR` |
+
+**チェック方法**:
+- 改行検出: `grep "&#xa;" *.drawio | grep "value="`
+- 括弧書き補足情報検出: `grep -E 'value="[^"]+\([^)]+\)"' *.drawio | grep -vE 'value="[^"]+\((Public|Admin|API|Migration|Writer|Reader|primary|secondary)\)"'`
+
+いずれかにヒットがあれば違反。
 
 エッジラベルは「何の通信か」が一目で分かる最短表現に留める。属性詳細を図に残したい場合は、ユーザー要望に応じて注釈セル（[layout-algorithm.md §11](layout-algorithm.md) 参照）で提示できるが、**デフォルトでは注釈セルを追加しない**（情報密度を上げると図全体の認知負荷が増えるため）。
 
@@ -381,6 +485,74 @@ waypoint 座標決定ルール:
 
 - 同一コンテナ内の接続: `parent="コンテナID"`
 - 異なるコンテナを跨ぐ接続: `parent="1"`（ルート）
+
+### ライン重複・被りの回避（必須）
+
+`exitX/exitY/entryX/entryY` を指定していても、複数エッジが同じ目標点に集中すると線が重なって判読不能になる。以下 3 ルールを必須適用する。
+
+#### B-1. エッジ集約原則（同一 resource type pair は 1 本に集約）
+
+同一 **source resource type → 同一 target resource ID** の複数エッジは **必ず 1 本に集約**する。per-AZ で同じ接続を複数本描かない。
+
+| パターン | 違反例（per-AZ で重複） | 正しい配置（集約） |
+|---------|------------------------|-------------------|
+| ALB → ECS API | `alb → ecs_api_a` (`:3000`) + `alb → ecs_api_d` (`:3000`) の 2 本（同ラベル重複） | `alb → ecs_api_a` 1 本のみ（subnets[0] AZ）。同 service type の他 AZ ノードへの接続は省略 |
+| ECS API → Aurora Writer | `ecs_api_a → aurora_writer` + `ecs_api_d → aurora_writer` の 2 本 | `ecs_api_a → aurora_writer` 1 本のみ（subnets[0] AZ） |
+| ECS Worker → SQS | `ecs_worker_a → sqs` + `ecs_worker_d → sqs` の 2 本 | `ecs_worker_a → sqs` 1 本のみ |
+
+**判定 pseudo code:**
+```
+edges_by_pair = group_edges_by(source.resource_type, target.id)
+for pair, edges in edges_by_pair:
+    if len(edges) > 1:
+        keep_only(edges[0])  # subnets[0] AZ の 1 本のみ残す
+        delete(edges[1:])
+```
+
+**理由**: per-AZ ノードは「同じ service type が多重 AZ にある」事実を示すための表現であり、エッジは「service type 単位の論理接続」を示す。論理接続は 1 本で十分。
+
+#### B-2. Entry/Exit Point 分散
+
+同一 target に異なる source から複数エッジが入る場合、entry point の Y 座標を分散させて重なりを防ぐ。
+
+| target に入る本数 | entry point Y 座標（または X 座標） |
+|------------------|-----------------------------------|
+| 1 | `0.5` |
+| 2 | `0.33`, `0.67` |
+| 3 | `0.25`, `0.5`, `0.75` |
+| 4+ | `0.2`, `0.4`, `0.6`, `0.8`, ... （等分） |
+
+source 側からの exit point も同様に分散。
+
+例: Aurora Writer に 3 本のエッジが入る場合
+```xml
+<!-- Edge 1: ECS API → Aurora Writer -->
+<mxCell ... entryX="0" entryY="0.25" .../>
+<!-- Edge 2: ECS Worker → Aurora Writer -->
+<mxCell ... entryX="0" entryY="0.5" .../>
+<!-- Edge 3: ECS Video Worker → Aurora Writer -->
+<mxCell ... entryX="0" entryY="0.75" .../>
+```
+
+#### B-3. Waypoint で swimlane 化
+
+縦方向に複数エッジが平行に並ぶ場合（例: VPC 内の複数 service → 最下段マネージドサービス）、それぞれのエッジに `±15px` ずつ x オフセットの waypoint を追加して swimlane 化し、線同士の重なりを物理的に回避する。
+
+```xml
+<mxGeometry relative="1" as="geometry">
+  <Array as="points">
+    <mxPoint x="500" y="800"/>  <!-- source 側 swimlane offset -->
+    <mxPoint x="500" y="900"/>  <!-- target 側 swimlane offset -->
+  </Array>
+</mxGeometry>
+```
+
+**判定基準**: 同方向（縦/横）に並走するエッジが 2 本以上ある場合、必ず waypoint を追加し、それぞれ x（または y）座標を **15px 以上ずらす**。
+
+#### 自己検証 grep
+
+- 重複エッジ検出: `grep 'edge="1"' file.drawio | grep -oE 'source="[^"]+" target="[^"]+"' | sort | uniq -c | awk '$1 > 1'` （ヒットがあれば B-1 違反）
+- 同一 entry point に複数エッジ: `grep 'edge="1"' file.drawio | grep -oE 'target="[^"]+" .* entryY="[^"]+"' | sort | uniq -c | awk '$1 > 1'` （ヒットがあれば B-2 違反）
 
 ---
 

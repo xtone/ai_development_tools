@@ -47,7 +47,9 @@ AWSアイコンには2種類のスタイルがある。サービスごとに正�
 
 | Terraform Resource | Icon Name | Type | fillColor | Style |
 |-------------------|-----------|------|-----------|-------|
-| aws_internet_gateway | internet_gateway | A | #8C4FFF | sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#8C4FFF;strokeColor=none;html=1;shape=mxgraph.aws4.internet_gateway |
+| aws_internet_gateway ⚠️ 通常 skip | internet_gateway | A | #8C4FFF | sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#8C4FFF;strokeColor=none;html=1;shape=mxgraph.aws4.internet_gateway |
+
+⚠️ `aws_internet_gateway` は配線的存在のため [layout-algorithm.md §4.1](layout-algorithm.md) の `skip` 分類。public subnet に NAT Gateway がある時点で IGW の存在は暗黙的に示される。アイコン化するとインバウンドフロー（User → CloudFront → ALB）の視線を阻害する。**例外なく省略**。
 | aws_nat_gateway | nat_gateway | A | #8C4FFF | sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#8C4FFF;strokeColor=none;html=1;shape=mxgraph.aws4.nat_gateway |
 | aws_lb / aws_alb | application_load_balancer | A | #8C4FFF | sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#8C4FFF;strokeColor=none;html=1;shape=mxgraph.aws4.application_load_balancer |
 | aws_elb | classic_load_balancer | A | #8C4FFF | sketch=0;outlineConnect=0;fontColor=#232F3E;fillColor=#8C4FFF;strokeColor=none;html=1;shape=mxgraph.aws4.classic_load_balancer |
@@ -154,19 +156,13 @@ EventBridge には2系統のリソースがあり、**それぞれ別アイコ�
 
 ## 3rd Party Services
 
-CI/CDパイプラインのソースプロバイダ等、AWS外のサービスアイコン。
+CI/CDパイプラインのソースプロバイダ（GitHub）等、AWS 外のサービスアイコンは **[external-service-icons.md](external-service-icons.md) に集約** されている。AWS / GCP どちらの構成でも参照可能な共通カタログ。
 
-**重要**: `mxgraph.signs.tech.*` 等のシェイプはDraw.io Desktop版で標準有効化されていないライブラリに属するため、fallback描画で単色の四角形になる。GCPアイコンと同様にSVGデータURI埋め込み形式を使用する。
+詳細・SVG データ・配置ルールは [external-service-icons.md](external-service-icons.md) を参照。
 
-| Service | Style |
-|---------|-------|
-| GitHub | `shape=image;aspect=fixed;imageAspect=0;image=data:image/svg+xml,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA5OCA5NiI+PHBhdGggZmlsbD0iIzI0MjkyRiIgZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik00OC44NTQgMEMyMS44MzkgMCAwIDIyIDAgNDkuMjE3YzAgMjEuNzU2IDEzLjk5MyA0MC4xNzIgMzMuNDA1IDQ2LjY5IDIuNDI3LjQ5IDMuMzE2LTEuMDU5IDMuMzE2LTIuMzYyIDAtMS4xNDEtLjA4LTUuMDUyLS4wOC05LjEyNy0xMy41OSAyLjkzNC0xNi40Mi01Ljg2Ny0xNi40Mi01Ljg2Ny0yLjE4NC01LjcwNC01LjQyLTcuMTctNS40Mi03LjE3LTQuNDQ4LTMuMDE1LjMyNC0zLjAxNS4zMjQtMy4wMTUgNC45MzQuMzI2IDcuNTIzIDUuMDUyIDcuNTIzIDUuMDUyIDQuMzY3IDcuNDk2IDExLjQwNCA1LjM3OCAxNC4yMzUgNC4wNzQuNDA0LTMuMTc4IDEuNjk5LTUuMzc4IDMuMDc0LTYuNi0xMC44MzktMS4xNDEtMjIuMjQzLTUuMzc4LTIyLjI0My0yNC4yODMgMC01LjM3OCAxLjk0LTkuNzc4IDUuMDE0LTEzLjItLjQ4NS0xLjIyMi0yLjE4NC02LjI3NS40ODYtMTMuMDM4IDAgMCA0LjEyNS0xLjMwNCAxMy40MjYgNS4wNTJhNDYuOTcgNDYuOTcgMCAwIDEgMTIuMjE0LTEuNjNjNC4xMjUgMCA4LjMzLjU3MSAxMi4yMTMgMS42MyA5LjMwMi02LjM1NiAxMy40MjctNS4wNTIgMTMuNDI3LTUuMDUyIDIuNjcgNi43NjMuOTcgMTEuODE2LjQ4NSAxMy4wMzggMy4xNTUgMy40MjIgNS4wMTUgNy44MjIgNS4wMTUgMTMuMiAwIDE4LjkwNS0xMS40MDQgMjMuMDYtMjIuMzI0IDI0LjI4MyAxLjc4IDEuNTQ4IDMuMzE2IDQuNDgxIDMuMzE2IDkuMTI2IDAgNi42LS4wOCAxMS44OTctLjA4IDEzLjUyNiAwIDEuMzA0Ljg5IDIuODUzIDMuMzE2IDIuMzY0IDE5LjQxMi02LjUyIDMzLjQwNS0yNC45MzUgMzMuNDA1LTQ2LjY5MUM5Ny43MDcgMjIgNzUuNzg4IDAgNDguODU0IDB6Ii8+PC9zdmc+;labelPosition=center;verticalLabelPosition=bottom;align=center;verticalAlign=top` |
+**主な対象**: GitHub, Firebase Hosting, （将来追加候補）Slack / Datadog / PagerDuty / Stripe 等
 
-サイズ: 48x48 推奨。ラベルは [drawio-xml-guide.md](drawio-xml-guide.md#10-ラベル配置パターン) のとおり別の `text` セルで配置する。
-
-**⚠️ 重要（drawioスタイル構文の落とし穴）**: `image=data:image/svg+xml;base64,...` と書くと、`;base64,` 部分が drawio のスタイル区切り文字 `;` と衝突してスタイルが分断され、画像が描画されない。必ず `image=data:image/svg+xml,<base64データ>` と記述する（`;base64` を省略。drawio は拡張仕様として base64 をそのまま解釈する）。
-
-**配置ルール**: CodePipelineのソースが GitHub の場合、CI/CD コンテナ内の先頭（CodePipelineの上）に配置し、GitHub → CodePipeline のデプロイエッジ（赤）で接続する。
+**必須ルール**: `mxgraph.signs.tech.*` や plain 矩形での代替表現は禁止。必ず SVG 埋め込み形式で描画する。
 
 ## Other Services
 
@@ -203,3 +199,37 @@ CI/CDパイプラインのソースプロバイダ等、AWS外のサービスア
 ## Groups (for containing resources)
 
 コンテナスタイルは [drawio-xml-guide.md](drawio-xml-guide.md) セクション5を参照。
+
+---
+
+## ⛔ resIcon 命名規則の絶対遵守
+
+drawio の `resIcon` 属性には、上記対応表に記載された **正規 shape 名のみ** を使用する。AWS の正式リソース名やフルネーム表記、その他の派生形を使うと drawio が shape を解決できず、**アイコンが描画されず単色矩形のみ表示**される（ECR ピンク矩形問題等）。
+
+### 禁止される派生命名
+
+LLM が「より正式名らしい」名前を推測で生成しがちなパターン。**以下は全て禁止**:
+
+| ❌ 誤った派生名（生成すると描画失敗） | ✅ 正規 shape 名（aws-resources.md 対応表のもの） |
+|--------------------------------------|---------------------------------------------------|
+| `mxgraph.aws4.elastic_container_registry` | `mxgraph.aws4.ecr` |
+| `mxgraph.aws4.elastic_container_service` | `mxgraph.aws4.fargate` (または対応表記載のもの) |
+| `mxgraph.aws4.simple_storage_service` | `mxgraph.aws4.s3` |
+| `mxgraph.aws4.simple_queue_service` | `mxgraph.aws4.sqs` |
+| `mxgraph.aws4.simple_notification_service` | `mxgraph.aws4.sns` |
+| `mxgraph.aws4.elastic_load_balancer` / `elastic_load_balancing_v2` | `mxgraph.aws4.application_load_balancer` |
+| `mxgraph.aws4.relational_database_service` | `mxgraph.aws4.rds` |
+| `mxgraph.aws4.aws_lambda` | `mxgraph.aws4.lambda` |
+| `mxgraph.aws4.cloudwatch_logs` | `mxgraph.aws4.cloudwatch_2` |
+
+### 同様に fillColor も対応表どおりに
+
+`fillColor` も category 色を推測せず、**aws-resources.md 対応表に記載された色コード** をそのまま使用する。LLM が ECR を Application Integration 系の `#E7157B` ピンクに誤分類するケースが頻発するため注意:
+
+| Resource | ❌ 誤った色 | ✅ 正規色 |
+|----------|------------|----------|
+| ECR | `#E7157B` (Application Integration ピンク) | `#ED7100` (Containers オレンジ) |
+| ECS / Fargate | 任意の派生色 | `#ED7100` (Containers オレンジ) |
+| Lambda | 任意の派生色 | `#ED7100` (Containers/Compute オレンジ) |
+
+**判定方法**: aws-resources.md 対応表の「Style」列をそのままコピー & ペーストする。フィールド単位で書き直さない。

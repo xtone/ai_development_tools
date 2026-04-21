@@ -29,7 +29,7 @@
 | 1 | 60 | エッジサービス | Route53, CloudFront, WAF, ACM, API Gateway |
 | 2 | 320 | VPCコンテナ | VPC全体を囲むコンテナ |
 | 3 | VPC相対: 40 | AZコンテナ | Availability Zone |
-| 4 | AZ相対: 40 | パブリックサブネット | NAT Gateway, Bastion Host, IGW |
+| 4 | AZ相対: 40 | パブリックサブネット | NAT Gateway, Bastion Host |
 | 5 | AZ相対: 160 | プライベートサブネット | ALB, ECS, RDS, Aurora, Lambda |
 | 6 | VPC下部+40 | マネージドサービス | ECR, Secrets Manager, CloudWatch, S3, KMS |
 | Side | x = VPC右端+100 | サイドサービス | CI/CD, 外部連携 |
@@ -46,6 +46,30 @@
 | 5 | Zone相対: 160 | プライベートサブネット | Cloud Run, GKE, Cloud SQL |
 | 6 | VPC下部+40 | マネージドサービス | Cloud Storage, Artifact Registry, Secret Manager |
 | Side | x = VPC右端+100 | サイドサービス | Cloud Build, Cloud Source Repositories |
+
+### Tier 5（プライベートサブネット）内の縦方向配置順（必須）
+
+プライベートサブネット内の Tier 5 はさらに 2 段に細分化する。Compute と Database を **同じ y で横並びに配置することを禁止**（視覚的階層が崩れ、データフローが読みづらくなるため）。
+
+| ゾーン | y 座標（subnet 相対） | 対象リソース |
+|-------|---------------------|------------|
+| 上段（Compute） | y=50 〜 130 | ECS service, Lambda function, EC2 instance, Fargate task |
+| 下段（Database / Cache） | y=220 〜 300 | Aurora instance, RDS instance, ElastiCache cluster, DocumentDB, Neptune |
+
+**配置例（priv_sub 内、AWS）:**
+
+```
+priv_sub (480x430)
+  ┌──────────────────────────────────┐
+  │ [ECS API] [ECS Worker] [Batch]   │  ← y=50 (Compute 上段)
+  │                                  │
+  │                                  │
+  │       [Aurora Writer]            │  ← y=220 (Database 下段)
+  │                                  │
+  └──────────────────────────────────┘
+```
+
+❌ 禁止例: `[ECS API] [ECS Worker] [Aurora Writer]` を同じ y で横並び。
 
 ---
 
@@ -195,7 +219,7 @@ RESOURCE_CLASSIFICATION = {
 
     # Tier 4: パブリックサブネットリソース
     "public": [
-        "aws_nat_gateway", "aws_internet_gateway",
+        "aws_nat_gateway",
         "google_compute_router", "google_compute_router_nat"
     ],
 
@@ -248,10 +272,14 @@ RESOURCE_CLASSIFICATION = {
     ],
 
     # 図示省略（デフォルト）
+    # 「配線的存在」= 単独のサービス境界を持たず、他リソース（public subnet や route table）
+    # の存在自体がその存在を暗黙的に示すもの。ルーティング用の接続点でありアイコン化すると
+    # データフローの読み取りを阻害するため省略する。
     "skip": [
         "aws_iam_*", "aws_iam_role_policy_attachment",
         "aws_security_group", "aws_security_group_rule",
         "aws_route_table*", "aws_route",
+        "aws_internet_gateway",
         "aws_lb_listener*", "aws_lb_target_group*",
         "google_project_iam_*", "google_service_account",
         "google_compute_firewall"
@@ -590,12 +618,13 @@ GCP Cloud コンテナ（右側）
 
 ### 9.1 グルーピング判定ルール
 
-| グループ種別 | 判定条件 | コンテナスタイル |
-|-------------|---------|---------------|
-| Multi-AZサービス | 同一リソースタイプが複数AZに存在 | `rounded=1;strokeColor=#ED7100;dashed=1;fillColor=none;` |
-| Single AZサービス | 同一AZ内で密接に関連するリソース群 | `rounded=1;strokeColor=#147EBA;dashed=1;fillColor=none;` |
-| DBクラスタ | Aurora Cluster、RDS Multi-AZ | `rounded=1;strokeColor=#5A30B5;dashed=1;fillColor=none;` |
-| ECSクラスタ | ECS Service + Task Definition | `rounded=1;strokeColor=#ED7100;dashed=1;fillColor=none;` |
+| グループ種別 | 判定条件 | コンテナスタイル | コンテナラベル |
+|-------------|---------|---------------|---------------|
+| Multi-AZサービス | 同一リソースタイプが複数AZに存在 | `rounded=1;strokeColor=#ED7100;dashed=1;fillColor=none;` | サービス名 |
+| Single AZサービス | 同一AZ内で密接に関連するリソース群 | `rounded=1;strokeColor=#147EBA;dashed=1;fillColor=none;` | サービス名 |
+| DBクラスタ | Aurora Cluster、RDS Multi-AZ | `rounded=1;strokeColor=#5A30B5;dashed=1;fillColor=none;` | クラスタ名 |
+| ECSクラスタ | ECS Service + Task Definition | `rounded=1;strokeColor=#ED7100;dashed=1;fillColor=none;` | クラスタ名 |
+| **CI/CD グループ**（必須） | aws_codepipeline / aws_codebuild_project / aws_codedeploy_app / aws_codedeploy_deployment_group のいずれかが存在 | `rounded=1;strokeColor=#C925D1;dashed=1;fillColor=none;` | `CI/CD`（固定）|
 
 ### 9.2 グルーピングの配置ルール
 
@@ -674,33 +703,99 @@ CloudFront から他の下方向エッジ（ALB や managed services への接�
 
 **配置例（CloudFront に複数下方向エッジがある場合 — 優先1適用）:**
 ```
-        CloudFront (Public) ─── Firebase Hosting (default origin, 横並び)
+        CloudFront (Public) ━━━ Firebase Hosting (太線で default origin を表現、横並び)
               │                  ↑ exitX=1, exitY=0.5 → entryX=0, entryY=0.5
-              ├──→ ALB (/api/client/*)        ← VPC 内通常位置
-              └──→ S3 Assets (signed cookie)  ← managed 行（waypoint で迂回、§drawio-xml-guide.md）
+              ├──→ ALB                       ← VPC 内通常位置（path pattern ラベル `/api/client/*` のみ付与）
+              └──→ S3 Assets                 ← managed 行（waypoint で迂回、§drawio-xml-guide.md。ラベルなし）
 ```
 
 **エッジスタイル（共通）:**
-- `CloudFront → default origin`: **太線（`strokeWidth=3`）** + `DATA_FLOW` 色 + ラベル `default origin`（hierarchy を強調）
-- `CloudFront → ordered origin`: 通常太さ（`strokeWidth=2`）+ ラベル（path pattern、例: `/images/*`）
+- `CloudFront → default origin`: **太線（`strokeWidth=3`）** + `DATA_FLOW` 色（hierarchy を線太さで表現、ラベルなし）
+- `CloudFront → ordered origin`: 通常太さ（`strokeWidth=2`）。path pattern による分岐がある場合のみ `/api/client/*` 等の URL path pattern ラベルを付与（whitelist 準拠）。それ以外（認証機構、origin priority 等）のラベル付与は禁止
+
+#### ⛔ 絶対必須: 全 origin への接続エッジ生成
+
+CloudFront Distribution の `origin` ブロックに記載されている **全 origin リソース**（`default_cache_behavior.target_origin_id` および全 `ordered_cache_behavior.target_origin_id` が指す origin）について、**CloudFront → origin のエッジを必ず生成する**。配置ルール（上記優先順位）はあくまで「アイコンをどこに置くか」であり、**エッジ生成は別の必須ルール**。
+
+| 違反例 | 正しい生成 |
+|--------|-----------|
+| Firebase Hosting と ALB のエッジは引かれているが、S3 Assets origin へのエッジが欠落 | 全 origin に対してエッジを生成（Firebase Hosting / ALB / S3 Assets の 3 本） |
+| エッジ実体なし、宙浮きラベルだけ残存 | エッジ実体（`<mxCell edge="1" source="cf_public" target="s3_assets" value="" ...>`）を必ず付与（ラベル不要・空文字列で OK）|
+
+**判定 pseudo code:**
+
+```
+for cf in cloudfront_distributions:
+    origins = collect_origins(cf)  # default + all ordered
+    for origin in origins:
+        if origin not in edges_from(cf):
+            ERROR: "CloudFront → {origin} edge missing"
+```
+
+「origin のアイコンを配置したから視覚的に分かる」「凡例で示唆できる」等の理由でエッジ省略を絶対禁止。**1 origin = 1 edge**。
 
 CloudFront が origin として参照する VPC 内リソース（ALB 等）の場合は、CloudFront から該当リソースへのエッジのみ引き、配置は通常の VPC 配置ルールに従う（origin を CloudFront 隣に複製しない）。
 
 ### 9.7 ECS service の Multi-AZ 表現
 
-ECS service が複数 AZ にまたがってデプロイされる場合、**アイコン描画方法を `network_configuration.subnets` と AZ pinning の有無で決定する**。
+ECS service が複数 AZ にまたがってデプロイされる場合、**アイコン描画方法を `network_configuration.subnets` と `desired_count` の関係で決定する**。
 
 **判定条件:**
 
 | ECS service の属性 | 描画方法 |
 |-------------------|---------|
-| `network_configuration.subnets` が複数 AZ のサブネットを含み、`desired_count` が subnet 数と一致しない（例: subnets=[a, d], desired_count=1） | **1 アイコンを VPC 直下（AZ 横断）に配置**。注釈「両 AZ にまたがり最大 N タスク」を追加 |
-| `network_configuration.subnets` が複数 AZ、`desired_count` が subnet 数と一致（例: subnets=[a, d], desired_count=2） | 各 AZ に 1 アイコンずつ配置（現行の per-AZ 表現） |
+| `network_configuration.subnets` が複数 AZ、`desired_count` が subnet 数と一致（例: subnets=[a, d], desired_count=2） | 各 AZ に 1 アイコンずつ配置（per-AZ 表現） |
+| `network_configuration.subnets` が複数 AZ のサブネットを含み、`desired_count` が subnet 数と一致しない（例: subnets=[a, d], desired_count=1） | **`subnets` リストの先頭 AZ に 1 アイコン配置**（他の ECS service と同じ配置パターン）。直下に italic 注釈「※ subnets=[a,d] / desired_count=N / 両AZにまたがり最大Nタスク」を追加 |
 | `network_configuration.subnets` が単一 AZ のみ | 該当 AZ に 1 アイコン配置 |
 
-**重要**: ECS service 自体には「どの AZ にタスクが割り当てられるか」を固定する機能はない（`capacity_provider_strategy` 等での間接的制御を除く）。`desired_count=1` で subnets に複数 AZ を指定した場合、**どちらか一方の AZ** に配置されるが、それは ECS scheduler の判断であり設計的には AZ 横断。AZ ごとに別アイコンを描くのは誤り。
+**設計意図**: ECS service 自体には「どの AZ にタスクが割り当てられるか」を固定する機能はないため、設計的には「AZ 横断」配置である。しかし図の表現としては:
 
-スケールアウト時の AZ 決定も同様に ECS 任せ。`primary/scale-out` のように AZ 固定で描画してはならない。
+1. AZ 横断を示すために独立配置（VPC 直下や AZ 間中央）すると、レイアウトが破綻する（縦方向の空白、エッジの宙浮き、他リソースとの距離不均衡）。
+2. **「実 runtime 配置」を示す**方が、図として誤解を招かない。`desired_count=1` で複数 AZ subnet を指定した service は実運用では結局どちらか 1 AZ に配置されるため、図でも 1 AZ 内に置く。
+3. 「AZ 横断の可能性」は注釈テキストで補完。
+
+`subnets` リストの**先頭要素**を配置先 AZ として機械的に選択する（LLM 判断の余地を排除）。
+
+#### ⛔ 絶対禁止: 重複配置
+
+`desired_count` と subnet 数が一致しない場合（典型: `desired_count=1`、`subnets=[a, d]` の Video Worker パターン）、**両 AZ private subnet に重複してアイコンを配置することを絶対禁止**。
+
+| 違反例 | 正しい配置 |
+|--------|-----------|
+| `priv_sub_a` 内に `ecs_video_a` + `priv_sub_d` 内に `ecs_video_d` の 2 アイコン | `priv_sub_a` 内（subnets リスト先頭の AZ）に `ecs_video` 1 アイコン + 注釈テキスト |
+
+「対称性のため両 AZ に配置」「視覚的バランスのため」等の理由で重複配置することも禁止。**1 service = 1 icon**（desired_count=subnet 数の場合を除く）。
+
+#### ⛔ 絶対禁止: AZ コンテナ外配置
+
+Multi-AZ Spanning な ECS service を、**AZ コンテナの外（VPC 直下、最下段マネージド層、図の独立位置等）に配置することを絶対禁止**。配置先は必ず `subnets` リスト先頭の AZ コンテナ内 Private Subnet。
+
+| 違反例 | 正しい配置 |
+|--------|-----------|
+| `parent="vpc"`（AZ コンテナと並列）に Video Worker を配置 | `parent="priv_sub_a"`（AZ コンテナ内 Private Subnet 子要素）に配置 |
+| `parent="1"` / `parent="root"`（VPC 外）に配置 | `parent="priv_sub_a"` に配置 |
+| 図の最下段（S3/SQS と同じ高さ）に Video Worker を配置 | `priv_sub_a` の Tier 5 上段（ECS API/Worker と同列）に配置 |
+
+判定 pseudo code:
+
+```
+if subnets.len() > 1 and desired_count == subnets.len():
+    for az in subnets:
+        place icon in az's private subnet (parent=priv_sub_<az>)
+elif subnets.len() > 1 and desired_count != subnets.len():
+    target_az = subnets[0]  # リスト先頭を機械的に選択
+    place ONE icon with parent=priv_sub_<target_az>
+    add annotation note: "※ subnets=[...] / desired_count=N / 両AZにまたがり最大Nタスク"
+elif subnets.len() == 1:
+    place icon in the single AZ's private subnet
+```
+
+**配置パターン統一の利点**:
+- 全 ECS service が同じ配置パターン（AZ コンテナ内 Private Subnet 子要素）になり、LLM の判断分岐が削減される
+- レイアウト座標体系（§1）と整合し、独立配置による空白問題が発生しない
+- エッジ接続元/先が AZ 内に収まり、`exit/entry` 計算が単純化される
+
+**自己検証 grep**: 生成 XML 中の ECS service mxCell について、parent 属性が必ず Private Subnet コンテナの ID（`priv_sub_*` または同等の命名）であること。`parent="vpc"` / `parent="1"` / `parent="root"` は違反。
 
 ### 9.8 デプロイ方式の描画ルール（Blue/Green）
 
@@ -715,6 +810,52 @@ CodeDeploy による Blue/Green デプロイメントを示す矢印（赤色 `s
 | `"EXTERNAL"` | 外部管理 | 引かない |
 
 **注意**: 一つの CodeDeploy アプリが複数の ECS サービスを管理する場合でも、`deployment_controller.type == "CODE_DEPLOY"` を持つサービスにのみ矢印を引く。同一クラスタ内に混在する Rolling Update のサービスに誤って B/G 矢印を引かないこと。
+
+### 9.9 CI/CD グループコンテナ（必須）
+
+`aws_codepipeline` / `aws_codebuild_project` / `aws_codedeploy_app` / `aws_codedeploy_deployment_group` のいずれかが Terraform に存在する場合、**必ず CI/CD グループコンテナで囲む**。再現性確保のため LLM の任意判断ではなく rule として強制する。
+
+**コンテナ仕様:**
+
+```
+スタイル: rounded=1;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#C925D1;dashed=1;verticalAlign=top;align=left;spacingLeft=10;fontColor=#C925D1;fontSize=12;container=1;pointerEvents=0;collapsible=0
+ラベル: CI/CD（固定文字列、変更禁止）
+配置位置: VPC 右側（x = VPC 右端 + 100 以降）
+サイズ: コンテナ内リソース数に応じて動的計算（幅 約180px、高さ 約540px が目安）
+```
+
+**含めるリソース（全て CI/CD コンテナ内に配置）:**
+
+| リソース | 配置 |
+|---------|------|
+| GitHub（external、source）| コンテナ内最上部（external-service-icons.md の SVG で描画） |
+| `aws_codepipeline` | GitHub の下 |
+| `aws_codebuild_project` | CodePipeline の下（複数ある場合は縦に並べる）|
+| `aws_codedeploy_app` / deployment_group | CodeBuild の下 |
+
+**S3 Artifacts は CI/CD コンテナ外**: `aws_s3_bucket`（CodePipeline の `artifact_store`）は managed 行に配置（`§Tier 6`）。CodePipeline → S3 Artifacts のエッジは container 跨ぎで描画（緑実線 `STORAGE_FLOW`）。
+
+**配置例:**
+
+```
+VPC（x=80〜1180）              CI/CD container（x=1300〜1480）
+                                ┌─ CI/CD ──────────┐
+                                │  GitHub           │
+                                │     ↓             │
+                                │  CodePipeline     │
+                                │     ↓             │
+                                │  CodeBuild        │
+                                │     ↓             │
+                                │  CodeDeploy       │
+                                └───────────────────┘
+
+CodeDeploy → ECS API（VPC 内）への Blue/Green エッジは container 跨ぎ。
+CodePipeline → S3 Artifacts（managed 行）への artifacts エッジも container 跨ぎ。
+```
+
+**注意**:
+- 「CI/CD container は付けない」「右側配置だけで十分」のような判断は禁止。**コンテナは必須**
+- ラベル「CI/CD」は他の文字列（`CI/CD Pipeline`、`Build/Deploy` 等）に変更しない（再現性確保のため固定）
 
 ---
 
