@@ -1,7 +1,7 @@
 {
     "name": "development-workflows",
     "description": "開発ワークフロー向けスキル群（コードレビュー、PRトリアージ、Figma仕様抽出など）",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "owner": {
         "name": "TOYOTA, Yoichi",
         "email": "y.toyota@xtone.co.jp"

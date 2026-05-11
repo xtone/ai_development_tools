@@ -2,6 +2,24 @@
 
 各ステップが生成する Markdown の骨組み。`{{ ... }}` はプレースホルダ、`<!-- 説明 -->` は実装メモ。
 
+## 目次
+
+- ID 命名規則（再掲）
+- ファイル別テンプレート
+  - `docs/pages/<slug>.md`（Step 2 / 3 / 8 / 11 / 13）
+  - `docs/pages/README.md`（Step 1 / 6b）
+  - `docs/use-cases.md`（Step 4）
+  - `docs/actors.md`（Step 5）
+  - `docs/data-model.md`（Step 7）
+  - `docs/components.md`（Step 10）
+  - `docs/reviews/coverage-review.md`（Step 6a）
+  - `docs/reviews/data-model-review.md`（Step 9）
+  - `docs/reviews/components-review.md`（Step 12）
+- 横断ルール
+  - 共通スタイル規約
+  - 集約ルール（重要）
+  - 客観抽出と推測補完の境界
+
 ## ID 命名規則（再掲）
 
 | 対象 | ID 形式 | 例 |
