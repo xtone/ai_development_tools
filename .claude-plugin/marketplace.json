@@ -63,7 +63,7 @@
             "name": "development-workflows",
             "source": "./development_workflows",
             "description": "開発ワークフロー向けスキル群（コードレビュー、PRトリアージ、Figma仕様抽出など）",
-            "version": "0.3.0",
+            "version": "0.4.0",
             "author": {
                 "name": "TOYOTA, Yoichi"
             }

@@ -1,7 +1,7 @@
 {
     "name": "development-workflows",
     "description": "開発ワークフロー向けスキル群（コードレビュー、PRトリアージ、Figma仕様抽出など）",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "owner": {
         "name": "TOYOTA, Yoichi",
         "email": "y.toyota@xtone.co.jp"
@@ -20,12 +20,12 @@
         {
             "name": "figma-spec-extractor",
             "source": "./skills/figma-spec-extractor",
-            "description": "Figmaのワイヤーフレームから仕様書一式（ページ・ユースケース・アクター・データモデル・コンポーネント・レビュー）を13ステップで段階的に抽出し、docs/配下にMarkdownで出力します。Figma MCPと連携し、ページ単位の並列サブエージェント実行で品質と効率を両立します。",
-            "version": "0.1.0",
+            "description": "Figmaのワイヤーフレームから仕様書一式（ページ・ユースケース・アクター・データモデル・コンポーネント・レビュー）を15ステップで段階的に抽出し、docs/配下にMarkdownで出力します。extensionモードでは既存リポジトリへの機能拡張時に既存モデル・ルーティング・ビューの再利用を優先し、Step 14のレビュー反復反映では質問ループで方針を確定しドキュメントに反映します。Figma MCPと連携し、ページ単位の並列サブエージェント実行で品質と効率を両立します。",
+            "version": "0.2.0",
             "author": {
                 "name": "TOYOTA, Yoichi"
             },
-            "tags": ["figma", "spec-extraction", "documentation", "wireframe", "use-case", "data-model", "atomic-design"]
+            "tags": ["figma", "spec-extraction", "documentation", "wireframe", "use-case", "data-model", "atomic-design", "extension-mode", "review-iteration"]
         }
     ]
 }
