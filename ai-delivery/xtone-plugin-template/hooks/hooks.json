@@ -1,15 +1,17 @@
 {
   "hooks": {
-    "PreToolUse": [
+    "UserPromptSubmit": [
       {
-        "matcher": "SlashCommand",
+        "matcher": "",
         "hooks": [
           {
             "type": "command",
             "command": "bash \"${CLAUDE_PLUGIN_ROOT}/hooks/pre-phase-transition.sh\""
           }
         ]
-      },
+      }
+    ],
+    "PreToolUse": [
       {
         "matcher": "Bash",
         "hooks": [
@@ -22,7 +24,7 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "SlashCommand",
+        "matcher": "Write|Edit",
         "hooks": [
           {
             "type": "command",

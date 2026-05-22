@@ -1,15 +1,18 @@
 #!/usr/bin/env bash
 # SCH-15 / TPL-21 — フェーズ移行前に未決判断ポイントを検出して警告する。
-# 起動: Claude Code PreToolUse(matcher: SlashCommand)。フェーズ移行系コマンド(/design /implement /test)のみ処理。
+# 起動: Claude Code UserPromptSubmit。ユーザーが直接 /design /implement /test を打った時に確実に発火する。
+#   ※ PreToolUse(SlashCommand) はユーザー直接タイプ時に発火しないため UserPromptSubmit を採用
+#     （PR #122 レビュー Major 指摘対応 / 社内 user_prompt_command_counter.js のパターン準拠）。
 # 方針: warn_and_document（T-002）。検出しても必ず exit 0（ブロックしない）。
-# 依存: jq（Hook 言語は Bash + jq に決定）。
+# 依存: jq。
 
 input="$(cat 2>/dev/null || true)"
-cmd="$(printf '%s' "$input" | jq -r '.tool_input.command // empty' 2>/dev/null || true)"
+prompt="$(printf '%s' "$input" | jq -r '.prompt // empty' 2>/dev/null || true)"
 
-# フェーズ移行系コマンドのみ対象。それ以外は何もしない。
+# プロンプト先頭のスラッシュコマンドを抽出（プラグイン接頭辞 /name:design にも対応）
+cmd="$(printf '%s' "$prompt" | sed -n 's#^[[:space:]]*\(/[^[:space:]]*\).*#\1#p')"
 case "$cmd" in
-  *"/design"*|*"/implement"*|*"/test"*) ;;
+  */design|*/implement|*/test|*:design|*:implement|*:test) ;;
   *) exit 0 ;;
 esac
 
