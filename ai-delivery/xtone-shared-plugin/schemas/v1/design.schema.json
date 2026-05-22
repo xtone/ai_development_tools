@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://xtone.dev/ai-delivery/schemas/v1/design.schema.json",
+  "$comment": "T-020 検証用の最小スタブ。正式な8フィールド定義は Notion I/O契約スキーマDB（FLD-, data_source_id: 0f997761-9259-4f76-9056-3f209e3a3afc）を真実の源とする。",
+  "title": "Design",
+  "description": "設計フェーズの成果物（T-011 の8フィールド）。designer Subagent が生成する。",
+  "type": "object",
+  "required": ["tech_stack", "undecided"],
+  "properties": {
+    "tech_stack": { "type": "array", "items": { "type": "string" } },
+    "architecture": { "type": "string" },
+    "modules": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+    "data_model": { "type": "object", "additionalProperties": true },
+    "api_design": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+    "decision_record": {
+      "type": "array",
+      "description": "本フェーズで下した判断の記録（decision-point.schema.json の decision_record に準拠）。",
+      "items": { "type": "object", "additionalProperties": true }
+    },
+    "adr_refs": { "type": "array", "items": { "type": "string" } },
+    "undecided": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^DP-[0-9]+$" }
+    }
+  },
+  "additionalProperties": true
+}

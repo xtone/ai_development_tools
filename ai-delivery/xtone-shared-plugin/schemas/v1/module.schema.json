@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://xtone.dev/ai-delivery/schemas/v1/module.schema.json",
+  "$comment": "T-020 検証用の最小スタブ。正式定義は Notion モジュールカタログスキーマDB（MCS-, data_source_id: a983ee9b-9f4c-4e76-810e-3ed7b1bb1462）を真実の源とする。",
+  "title": "Module",
+  "description": "モジュール1件。designer が tech_options を参照してスタックを推奨する単位（MOD-XXX）。",
+  "type": "object",
+  "required": ["id", "name"],
+  "properties": {
+    "id": { "type": "string", "pattern": "^MOD-[0-9]+$", "description": "モジュールID（例: MOD-01）" },
+    "name": { "type": "string" },
+    "description": { "type": "string" },
+    "tech_options": {
+      "type": "array",
+      "description": "技術選択肢。designer が推奨を提示し、最終決定は人間が行う（T-002）。",
+      "items": { "type": "string" }
+    },
+    "selected": { "type": "string", "description": "選定された技術（未決の間は空）" }
+  },
+  "additionalProperties": true
+}

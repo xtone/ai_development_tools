@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://xtone.dev/ai-delivery/schemas/v1/requirements.schema.json",
+  "$comment": "T-020 検証用の最小スタブ。正式な7フィールド定義は Notion I/O契約スキーマDB（FLD-, data_source_id: 0f997761-9259-4f76-9056-3f209e3a3afc）を真実の源とする。",
+  "title": "Requirements",
+  "description": "要件定義フェーズの成果物（T-011 の7フィールド）。requirements-analyst Subagent が生成する。",
+  "type": "object",
+  "required": ["project_name", "overview", "undecided"],
+  "properties": {
+    "project_name": { "type": "string" },
+    "overview": { "type": "string", "description": "何を/なぜ" },
+    "actors": { "type": "array", "items": { "type": "string" } },
+    "use_cases": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+    "functional_requirements": { "type": "array", "items": { "type": "string" } },
+    "non_functional_requirements": { "type": "array", "items": { "type": "string" } },
+    "undecided": {
+      "type": "array",
+      "description": "未決の判断ポイントID（DP-XXX）の一覧。空でないままフェーズ進行すると warn_and_document が発動する。",
+      "items": { "type": "string", "pattern": "^DP-[0-9]+$" }
+    }
+  },
+  "additionalProperties": true
+}

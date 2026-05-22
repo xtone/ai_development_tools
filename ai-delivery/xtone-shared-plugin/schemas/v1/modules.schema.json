@@ -1,0 +1,16 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://xtone.dev/ai-delivery/schemas/v1/modules.schema.json",
+  "$comment": "T-020 検証用の最小スタブ。正式定義は Notion I/O契約スキーマDB（FLD-）/ モジュールカタログスキーマDB（MCS-, data_source_id: a983ee9b-9f4c-4e76-810e-3ed7b1bb1462）を真実の源とする。",
+  "title": "Modules",
+  "description": "設計で選定したモジュールの一覧。各要素は module.schema.json に準拠する。",
+  "type": "object",
+  "required": ["modules"],
+  "properties": {
+    "modules": {
+      "type": "array",
+      "items": { "$ref": "module.schema.json" }
+    }
+  },
+  "additionalProperties": true
+}

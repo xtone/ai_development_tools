@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://xtone.dev/ai-delivery/schemas/v1/decision-point.schema.json",
+  "$comment": "T-020 検証用の最小スタブ。正式定義は Notion 判断ポイントスキーマDB（DPS-, data_source_id: fd4eec27-907d-4abc-9395-a3031ff9e10c）を真実の源とする。Subagent/Hook が status と decision_record を参照する中核スキーマ。",
+  "title": "DecisionPoint",
+  "description": "人間判断を要するポイント1件。warn_and_document の検出対象（T-002 本決定）。",
+  "type": "object",
+  "required": ["id", "title", "status"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^DP-[0-9]+$",
+      "description": "判断ポイントID（例: DP-03）"
+    },
+    "title": { "type": "string", "description": "判断ポイントの要約" },
+    "phase": {
+      "type": "string",
+      "enum": ["requirements", "design", "implementation", "test", "release", "cross-phase"],
+      "description": "発生フェーズ"
+    },
+    "domain": { "type": "string", "description": "関連ドメイン（任意）" },
+    "options": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "選択肢の一覧"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["undecided", "decided"],
+      "description": "undecided の間は pending-watcher / 各 Hook が警告として可視化する"
+    },
+    "decision_record": {
+      "type": "object",
+      "description": "決定の記録。status=decided では3要素すべて必須（T-002 decision_record トリオ）。",
+      "required": ["decided_by", "decided_at", "rationale"],
+      "properties": {
+        "decided_by": { "type": "string", "description": "決定者" },
+        "decided_at": { "type": "string", "format": "date-time", "description": "決定日時" },
+        "rationale": { "type": "string", "description": "決定理由" },
+        "adr_ref": { "type": "string", "description": "対応する ADR ファイルパス（任意）" }
+      }
+    }
+  },
+  "additionalProperties": true
+}

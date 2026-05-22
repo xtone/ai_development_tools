@@ -1,0 +1,25 @@
+# 品質ゲートルール（T-014 RULE-01〜18）の最小スタブ
+# 正式定義は Notion 品質ゲートルールDB（RULE-, data_source_id: daba3eea-af6d-4c02-8288-d1043009a28e）を真実の源とする。
+# すべて enforcement: warn_and_document（T-002 本決定 = 警告のみ・ブロックなし）。
+#
+# 実行担当（T-016 設計）:
+#   - schema_check / ci_hook 系  → pre-phase-transition Hook が実行
+#   - ai_subagent 系 (R-009/R-010/R-016/R-018) → reviewer Subagent が実行
+#   - pr_merge 系 (R-011/R-012/R-013/R-018)     → pre-pr-merge Hook が実行
+version: 1
+default_enforcement: warn_and_document
+rules:
+  - id: RULE-01
+    summary: requirements.schema.json が必須フィールドを満たす
+    check_type: schema_check
+    enforcement: warn_and_document
+  - id: RULE-09
+    summary: ドメイン特有の判断ポイント不足を検出
+    check_type: ai_subagent
+    enforcement: warn_and_document
+  - id: RULE-11
+    summary: PR description に未決事項が明示されている
+    check_type: pr_merge
+    enforcement: warn_and_document
+# NOTE: T-020 検証では全18ルールのうち代表3件のみをスタブとして定義。
+#       残りは T-014 成果物の取り込み時に追加する。

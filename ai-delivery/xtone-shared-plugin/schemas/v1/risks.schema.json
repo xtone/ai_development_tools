@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://xtone.dev/ai-delivery/schemas/v1/risks.schema.json",
+  "$comment": "T-020 検証用の最小スタブ。正式定義は Notion I/O契約スキーマDB（FLD-, data_source_id: 0f997761-9259-4f76-9056-3f209e3a3afc）を真実の源とする。",
+  "title": "Risks",
+  "description": "各フェーズで識別したリスクの一覧。",
+  "type": "object",
+  "required": ["risks"],
+  "properties": {
+    "risks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["summary"],
+        "properties": {
+          "summary": { "type": "string" },
+          "severity": { "type": "string", "enum": ["low", "medium", "high"] },
+          "mitigation": { "type": "string" },
+          "related_decision": { "type": "string", "pattern": "^DP-[0-9]+$" }
+        },
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true
+}
