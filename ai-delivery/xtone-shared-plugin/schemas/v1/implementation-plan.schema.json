@@ -1,0 +1,20 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://xtone.dev/ai-delivery/schemas/v1/implementation-plan.schema.json",
+  "$comment": "T-020 検証用の最小スタブ。正式な5フィールド定義は Notion I/O契約スキーマDB（FLD-, data_source_id: 0f997761-9259-4f76-9056-3f209e3a3afc）を真実の源とする。",
+  "title": "ImplementationPlan",
+  "description": "実装フェーズの計画（T-011 の5フィールド）。implementer Subagent が生成する。",
+  "type": "object",
+  "required": ["tasks", "undecided"],
+  "properties": {
+    "tasks": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+    "milestones": { "type": "array", "items": { "type": "string" } },
+    "dependencies": { "type": "array", "items": { "type": "string" } },
+    "test_plan": { "type": "string" },
+    "undecided": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^DP-[0-9]+$" }
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,29 @@
+# xtone-{{usecase}}-plugin — Claude Code 作業ガイド
+
+このプラグインは Xtone AIデリバリシステムの **{{usecase}}** ユースケースを担う。マスターテンプレ `xtone-plugin-template` から生成された。プロジェクト全体のルールは `../../CLAUDE.md` を参照。
+
+## 鉄則（ai-delivery 共通）
+
+1. **実装の根拠は Notion。** コードに「なぜ」を書かず、ID（CONV- / SKL- / DP- / SCH- 等）を参照する。
+2. **判断ポイントは気づいたその場で記録。** 後でまとめない。未決は `docs/pending-decisions.md` と判断ポイントカタログDB（DP-XXX）へ。
+3. **warn_and_document（T-002 本決定）。** CI / Hook / Subagent はすべて警告のみ・ブロックなし。
+4. **スキーマは編集しない。** `schemas/` は xtone-shared-plugin への symlink（Single Source of Truth, CONV-14）。
+
+## このプラグインのフロー
+
+```
+/req-collect → /design → /implement
+```
+
+各フェーズで補助コマンドを使う: `/decide`（判断記録）/ `/status`（進捗）/ `/next`（次アクション）/ `/pending-list`（未決一覧）/ `/skip-review`（AIレビュー）。
+
+## 構成
+
+| ディレクトリ | 内容 |
+|---|---|
+| `agents/` | 6 Subagent（requirements-analyst / designer / implementer / decision-recorder / pending-watcher / reviewer） |
+| `commands/` | 8 Slash Command |
+| `hooks/` | 4 Hook + hooks.json（pre-phase-transition / post-decision-record / pre-pr-merge / post-pr-merge） |
+| `skills/` | フェーズ別 Skill（SKILL.md.template から作成） |
+| `schemas/` | xtone-shared-plugin への symlink |
+| `docs/` | pending-decisions.md / adr/ |
