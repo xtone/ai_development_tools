@@ -1,6 +1,8 @@
 # AIデリバリシステム — Claude Code 作業ガイド
 
-> 背景・ディレクトリ構造は @README.md / Notion DB 一覧は @docs/notion-db-catalog.md / MCP 設定・運用・トラブルシューティングは @docs/mcp-setup-guide.md を参照。
+> 背景・ディレクトリ構造は @README.md / Notion DB 一覧は @docs/notion-db-catalog.md / MCP 設定・運用・トラブルシューティングは @docs/mcp-setup-guide.md / 実行環境・バージョン方針は @docs/environment-setup.md を参照。
+
+> **バージョン方針**: 言語・FW のバージョンは固定せず、公式の最新安定版を使う。特定バージョンが必要な場合のみ人間に確認（判断ポイント）。詳細は @docs/environment-setup.md。
 
 ## このリポジトリ（`ai-delivery/`）でやること
 

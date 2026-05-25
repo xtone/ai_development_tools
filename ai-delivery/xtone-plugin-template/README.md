@@ -4,6 +4,8 @@ Xtone **AIデリバリシステム**の Claude Code プラグイン用マスタ�
 
 > 完全な利用ガイドは Notion [共通テンプレ実装DB（正）](https://www.notion.so/67d335eab7004f828e7cc3313e266c2a) と `docs/template-usage-guide.md`（TPL-28）を参照。
 
+> **実行環境**: 言語・FW のバージョンは固定せず**公式の最新安定版**を使う。セットアップ手順とバージョン方針は [`../docs/environment-setup.md`](../docs/environment-setup.md)。`.ruby-version` 等には固定値を置かず、生成・着手時に最新を解決する。
+
 ## 提供物
 
 | カテゴリ | 件数 | 内容 |

@@ -9,6 +9,7 @@ Xtone の開発プロセスを **Claude Code プラグイン**で型化するプ
 | [CLAUDE.md](./CLAUDE.md) | Claude Code での作業ルール（鉄則・進め方・ID 体系） |
 | [docs/notion-db-catalog.md](./docs/notion-db-catalog.md) | 全 Notion DB の一覧と data_source_id、俯瞰ページ |
 | [docs/mcp-setup-guide.md](./docs/mcp-setup-guide.md) | MCP サーバー設定・トークン管理・WSL2・エラーハンドリング・トラブルシューティング |
+| [docs/environment-setup.md](./docs/environment-setup.md) | 実行環境のセットアップとバージョン方針（固定せず公式の最新安定版を使う） |
 | [docs/pending-decisions.md](./docs/pending-decisions.md) | 未決の判断ポイント（warn_and_document の出力先） |
 
 ## 真実の源（Source of Truth）は Notion にある
