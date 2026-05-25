@@ -51,7 +51,7 @@
 
 ## 4. 改善提案（要約）
 
-- **最優先（Rollout 前に対応推奨）**: F-2 スキーマ本実装 / F-3 firebase-auth-setup の運用詳細 / F-6 環境前提の明文化 / F-9 CONV-06・テンプレ skill 化。
+- **最優先（Rollout 前に対応推奨）**: F-2 スキーマ本実装 / F-3 firebase-auth-setup の運用詳細 / F-1 環境前提の明文化 / F-9 CONV-06・テンプレ skill 化。
 - **Rollout と並行可**: F-4 design の責務列 / F-5 MFA ガイド / F-6 検証スクリプト。
 - **任意**: F-7 退会済み再登録 DP の起票 / F-8 言語別実装テンプレ。
 
