@@ -34,9 +34,9 @@ ai-delivery/
 │   └── pending-decisions.md       #    判断ポイントの未決ログ
 ├── xtone-plugin-template/         # ⏳ T-019 マスターテンプレ（TPL-01〜30）
 │   ├── plugin.json.template
-│   ├── CLAUDE.md.template
 │   ├── .mcp.json.sample           #    MCP-15
 │   ├── .env.example
+│   ├── skills/plugin-guide/SKILL.md.template   # 運用ガイド（旧 CLAUDE.md, DP-27/CONV-06）
 │   ├── skills/SKILL.md.template   #    SKL-19
 │   ├── commands/                  #    TPL-13〜20（8コマンド）
 │   ├── agents/                    #    TPL-07〜12（6 Subagent）

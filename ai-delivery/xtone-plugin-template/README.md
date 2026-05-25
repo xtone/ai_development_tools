@@ -8,12 +8,12 @@ Xtone **AIデリバリシステム**の Claude Code プラグイン用マスタ�
 
 | カテゴリ | 件数 | 内容 |
 |---|---|---|
-| テンプレートファイル | 5 | plugin.json / CLAUDE.md / README / .mcp.json.sample / .env.example |
+| テンプレートファイル | 4 | plugin.json / README / .mcp.json.sample / .env.example（ルート CLAUDE.md は置かない＝DP-27） |
 | スキーマリンク | 1 | xtone-shared-plugin への symlink |
 | Subagent | 6 | requirements-analyst / designer / implementer / decision-recorder / pending-watcher / reviewer |
 | Slash Command | 8 | /req-collect /design /implement /decide /status /next /pending-list /skip-review |
 | Hook | 4 | pre-phase-transition / post-decision-record / pre-pr-merge / post-pr-merge |
-| Skill | 1 | SKILL.md.template |
+| Skill | 2 | plugin-guide/SKILL.md.template（運用ガイド＝旧 CLAUDE.md, CONV-06）/ SKILL.md.template（フェーズ別雛形） |
 | スクリプト | 2 | generate-plugin.sh / validate-plugin.sh |
 
 ## 新規プラグインの作成（手動コピー）
@@ -27,10 +27,12 @@ cd plugins/xtone-<usecase>-plugin
 rm -rf schemas
 ln -s ../../xtone-shared-plugin/schemas/v1 schemas
 
-# テンプレファイルを実体化
+# テンプレファイルを実体化（{{usecase}} を置換）
 mv .claude-plugin/plugin.json.template .claude-plugin/plugin.json
-mv CLAUDE.md.template CLAUDE.md      # {{usecase}} を置換
+mv skills/plugin-guide/SKILL.md.template skills/plugin-guide/SKILL.md   # 運用ガイド（旧 CLAUDE.md, DP-27）
+mv skills/SKILL.md.template skills/<phase>/<skill>/SKILL.md             # フェーズ別 Skill
 cp .env.example .env                  # トークンを設定
+# ルート CLAUDE.md は作らない（--strict 非対応 / DP-27）。人間向け概要は README.md に置く（任意）。
 ```
 
 `scripts/generate-plugin.sh`（TPL-26）で上記を自動化予定。
