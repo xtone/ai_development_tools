@@ -36,7 +36,7 @@ end
 
 ```ruby
 # app/adapters/auth/firebase_adapter.rb — Firebase 実装
-require "jwt"; require "net/http"; require "json"; require "openssl"
+require "jwt"; require "net/http"; require "json"; require "openssl"; require "stringio"
 
 module Auth
   class FirebaseAdapter < Adapter
@@ -51,8 +51,9 @@ module Auth
       decoded, _ = JWT.decode(id_token, nil, true,
         algorithms: ["RS256"],
         iss: "https://securetoken.google.com/#{@project_id}", verify_iss: true,
-        aud: @project_id, verify_aud: true, verify_expiration: true
+        aud: @project_id, verify_aud: true, verify_expiration: true, verify_iat: true
       ) { |h| public_key_for(h["kid"]) }
+      raise Auth::InvalidToken, "empty sub" if decoded["sub"].to_s.empty?  # Firebase 検証要件: uid 非空
       # 失効チェックは DB ベース（毎リクエスト HTTP を避ける）。下記「トークン失効」を参照。
       Auth::AuthUser.new(uid: decoded["sub"], email: decoded["email"],
                          provider: decoded.dig("firebase", "sign_in_provider"), claims: decoded)
@@ -194,7 +195,7 @@ private
 def access_token
   return @token[:value] if @token && Time.now < @token[:expires_at]
   cred = Google::Auth::ServiceAccountCredentials.make_creds(
-    json_key_io: File.open(ENV.fetch("GOOGLE_APPLICATION_CREDENTIALS")),
+    json_key_io: StringIO.new(File.read(ENV.fetch("GOOGLE_APPLICATION_CREDENTIALS"))),  # FD リーク回避
     scope: "https://www.googleapis.com/auth/identitytoolkit"
   )
   t = cred.fetch_access_token!
