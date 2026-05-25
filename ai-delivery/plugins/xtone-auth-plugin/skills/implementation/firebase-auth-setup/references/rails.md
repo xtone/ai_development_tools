@@ -3,13 +3,14 @@
 `firebase-auth-setup` スキルの **Rails 実装レシピ**。スキル本体（SKILL.md）の「実装契約（言語非依存）」を Rails/Ruby で満たす具体コード。契約（AuthAdapter ＋ 運用契約）は変えず、実装手段だけを示す。T-022 パイロット（`~/RubymineProjects/t-021-sample/`）で実証済み。
 
 - 対象: Rails 8（API モード）/ Ruby 3.1+（Rails 8 要件、環境前提は #129）
-- 依存: `jwt`（ID トークン検証）/ Admin 操作は Identity Toolkit REST API（Ruby 公式 Admin SDK は無いため REST で代替）
+- 依存: `jwt`（ID トークン検証）・`googleauth`（Admin REST の OAuth2 アクセストークン取得）/ Admin 操作は Identity Toolkit REST API（Ruby 公式 Admin SDK は無いため REST で代替）
 
 ## 1. セットアップ
 
 ```ruby
 # Gemfile
 gem "jwt", "~> 3.2"
+gem "googleauth"   # Admin REST の OAuth2 アクセストークン取得（退会削除・失効）
 ```
 
 - Firebase プロジェクトを作成し、サービスアカウント鍵を取得。`GOOGLE_APPLICATION_CREDENTIALS`（または ENV）で渡す。**コミット禁止**（`.gitignore` / Secrets）。
@@ -59,7 +60,16 @@ module Auth
       raise Auth::InvalidToken, e.message
     end
 
-    # ... delete_user / revoke / certs は下記「運用詳細」を参照
+    # ユーザー取得（Identity Toolkit REST accounts:lookup）
+    def get_user(uid)
+      res  = identitytoolkit_post("accounts:lookup", localId: [uid])
+      user = res.dig("users", 0)
+      raise Auth::Error, "user not found" unless user
+      Auth::AuthUser.new(uid: user["localId"], email: user["email"],
+                         provider: user.dig("providerUserInfo", 0, "providerId"), claims: user)
+    end
+
+    # delete_user / revoke / certs / identitytoolkit_post は下記「運用詳細」を参照
   end
 end
 ```
