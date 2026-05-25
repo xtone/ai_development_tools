@@ -13,7 +13,7 @@ description: Firebase Auth を任意のバックエンドに統合するスキ�
 
 > 設計方針: 言語が変わっても **契約は不変**、実装手段（SDK/コード）だけがレシピごとに変わる。Rails 固定にせず、Node/Laravel 等へ展開できる構造にする。
 
-> **スコープ: バックエンド（サーバ）専用。** ID トークン検証・JWT 認可・退会時の Admin SDK 削除・トークン失効など。フロントエンド（サインインUI・パスワード/メール変更・トークン保持・API への Bearer 付与）は対の [`firebase-auth-frontend`](../firebase-auth-frontend/SKILL.md) を参照。`responsibility_split` の **backend = 本スキル / client = firebase-auth-frontend / iaas = Firebase が提供**。
+> **スコープ: バックエンド（サーバ）専用。** ID トークン検証・JWT 認可・退会時の Admin SDK 削除・トークン失効など。フロントエンド（サインインUI・パスワード/メール変更・トークン保持・API への Bearer 付与）は対の [`firebase-auth-frontend`](../firebase-auth-frontend/SKILL.md) を参照。`responsibility_split` の **backend = 本スキル / client = firebase-auth-frontend / iaas = Firebase が提供**。MFA（多要素認証, DP-008）は client/backend/iaas 横断のため対の [`firebase-auth-mfa`](../firebase-auth-mfa/SKILL.md) に集約（本スキルが担う MFA 部分は「クレーム検証・管理者強制・変更時の失効」）。
 
 ## 入出力（スキーマ）
 
@@ -76,4 +76,4 @@ T-022 パイロット発見 F-3 / Issue #127 の解消。
 
 ## 判断ポイント（人間判断をスルーさせない）
 
-設計で未決のまま実装に来た判断（DP-008 MFA の有効化方法など）は実装で勝手に確定しない。`undecided` に残し `docs/pending-decisions.md` に起票する（T-002 warn_and_document）。
+設計で未決のまま実装に来た判断（DP-008 MFA の有効化方法など）は実装で勝手に確定しない。`undecided` に残し `docs/pending-decisions.md` に起票する（T-002 warn_and_document）。MFA の実装パターン（TOTP/SMS、管理者必須・一般オプトイン）は [`firebase-auth-mfa`](../firebase-auth-mfa/SKILL.md) スキルを参照する。

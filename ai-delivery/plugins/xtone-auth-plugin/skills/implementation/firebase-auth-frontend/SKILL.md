@@ -13,6 +13,8 @@ description: Firebase Auth をフロントエンド（クライアント）に�
 
 > 役割分担: **Firebase クライアント SDK** が認証フロー（サインイン・パスワード/メール変更等）を担い、**サーバ（firebase-auth-setup）** は ID トークンの検証のみ。フロントは取得した ID トークンを API に Bearer で渡す。
 
+> **MFA（多要素認証, DP-008）は本スキルの対象外。** 第2要素の登録（enrollment）・サインイン時の追加認証（challenge）も client 実装だが、backend/iaas にまたがる横断機能のため対の [`firebase-auth-mfa`](../firebase-auth-mfa/SKILL.md) に集約している。MFA を実装するときはそちらを参照。
+
 ## 入出力（スキーマ）
 
 - 入力: `schemas/design.schema.json`（`authentication` / `responsibility_split` の client 項目 / セッション戦略）
