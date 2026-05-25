@@ -72,6 +72,9 @@ module Authenticatable
   extend ActiveSupport::Concern
   included { before_action :authenticate!; attr_reader :current_user, :current_auth_user }
   private
+
+  # authn: トークン検証で current_auth_user を確立する。
+  # current_user は「ローカル DB に登録済みなら」設定される（初回ログインでは nil）。
   def authenticate!
     token = request.headers["Authorization"].to_s.delete_prefix("Bearer ")
     return render(json: { error: "no token" }, status: :unauthorized) if token.blank?
@@ -80,8 +83,18 @@ module Authenticatable
   rescue Auth::InvalidToken => e
     render json: { error: e.message }, status: :unauthorized
   end
+
+  # 登録済みユーザー必須のエンドポイントで使う before_action。
+  # Firebase 認証済みでもローカル DB 未登録（current_user=nil）なら 401 で弾く。
+  # ※ セッション確立（POST /auth/session）は current_auth_user から upsert するため本ガードは付けない。
+  def require_registered_user!
+    return if @current_user
+    render json: { error: "user not found" }, status: :unauthorized
+  end
 end
 ```
+
+登録済みユーザー必須のコントローラでは `before_action :require_registered_user!` を併用する（例: `AccountController`）。セッション確立コントローラ（`SessionsController#create`）は付けず、`current_auth_user` から `User.upsert_from_auth` で作成する。
 
 アダプタの選択は ENV で切替（差し替え可能設計, DP-007）:
 
