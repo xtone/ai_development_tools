@@ -9,18 +9,18 @@ description: クライアント要件の説明から認証関連要件を抽出�
 
 ## 概要
 
-クライアント要件の説明テキストから **認証モジュール（MOD-001）に関わる要件**を抽出し、`requirements.schema.json` の `use_cases` / `functional_requirements` / `non_functional_requirements` / `undecided` に反映する。要件定義フェーズ（`/req-collect`）の認証特化版。
+クライアント要件の説明テキストから **認証モジュール（MOD-001）に関わる要件**を抽出し、`requirements.schema.json`（T-011 本実装）の `scope` / `representative_use_cases` / `functional_requirements` / `non_functional_requirements` 等に反映する。要件定義フェーズ（`/req-collect`）の認証特化版。
 
 ## 入出力（スキーマ）
 
 - 入力: クライアント要件の説明テキスト
-- 出力: `schemas/requirements.schema.json`（7フィールド: project_name / overview / actors / use_cases / functional_requirements / non_functional_requirements / undecided）
+- 出力: `schemas/requirements.schema.json`（T-011 本実装。必須: scope / representative_use_cases / functional_requirements / non_functional_requirements / domain_tags / stakeholders / client_approval。warn_and_document 用に undecided を追加保持）
 
 スキーマは編集しない（`schemas/` は xtone-shared-plugin への symlink, CONV-14）。
 
 ## 抽出チェックリスト（認証ユースケース／T-004 スコープ）
 
-以下の有無・要否を必ず確認し、`use_cases` / `functional_requirements` に落とす。
+以下の有無・要否を必ず確認し、`representative_use_cases` / `functional_requirements` / `scope` に落とす。
 
 - [ ] メールアドレス + パスワード認証
 - [ ] メールアドレス + 一時トークン（パスワードレス）認証
@@ -41,7 +41,7 @@ description: クライアント要件の説明から認証関連要件を抽出�
 ## 手順
 
 1. 説明テキストを読み、上記チェックリストで認証要件を洗い出す。
-2. 7フィールドへマッピングする（`project_name` / `overview` は案件全体、認証は `use_cases` 等へ）。
+2. 各フィールドへマッピングする（`scope` で Must/Should/Could を振り分け、認証ユースケースは `representative_use_cases` / `functional_requirements` へ）。
 3. 不足・曖昧な点は人間に質問する。
 4. 人間判断が必要な点（スタック・MFA・dAccount 等）は勝手に決めず、`undecided` に `DP-007` / `DP-008` / `DP-015` を追加し、`docs/pending-decisions.md` に起票する。
 

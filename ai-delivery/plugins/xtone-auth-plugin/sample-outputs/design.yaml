@@ -1,38 +1,43 @@
 # 架空案件「みんなの読書会」の設計成果物（design.yaml サンプル）
 # firebase-auth-design スキル / authentication-architect の出力例。
-# schemas/design.schema.json 準拠（YAML 表現。CI では JSON に変換して検証可能）。
+# schemas/design.schema.json（T-011 本実装, #126）準拠。YAML 表現（同内容を JSON 化すれば jsonschema で検証可能）。
 
-tech_stack:
-  - "Firebase Auth"          # DP-007 採用（MVP 推奨）
-  - "Rails (API / JWT 認可)"
-  - "React (Web SPA)"
-  - "iOS / Android (ネイティブ)"
+architecture:
+  stack: "Rails 8 (API) + React (Web SPA) + iOS/Android"
+  cloud: "Firebase（認証）+ アプリサーバ（任意）"
+  db_type: "PostgreSQL（本番）/ SQLite（パイロット）"
+  rationale: >
+    認証は AuthAdapter インターフェース越しに呼び、Firebase 固有処理は FirebaseAuthAdapter
+    に閉じ込める(DP-007 差し替え可能設計)。バックエンド(Rails)は API ミドルウェアで
+    Firebase 発行の ID トークン(JWT)を検証してユーザーを解決。Web/アプリは ID トークンと
+    リフレッシュトークンを保持し API リクエストに Bearer 付与。セッションは ID トークン
+    TTL=1h、リフレッシュで更新、退会時は Firebase ユーザー削除 + サーバ側論理削除。
 
-architecture: |
-  認証は AuthAdapter インターフェース越しに呼び、Firebase 固有処理は FirebaseAuthAdapter
-  に閉じ込める(DP-007 差し替え可能設計)。バックエンド(Rails)は API ミドルウェアで
-  Firebase 発行の ID トークン(JWT)を検証してユーザーを解決。Web/アプリは ID トークンと
-  リフレッシュトークンを保持し、API リクエストに Bearer 付与。セッションは ID トークン
-  TTL=1h、リフレッシュで更新、退会時は Firebase ユーザー削除 + サーバ側論理削除。
+db_schema:
+  er_diagram_url: "https://www.figma.com/(架空)/minna-bookclub-er"
+  normalization_level: "3NF"
+  tables:
+    - { name: "users", columns: ["uid", "email", "providers", "mfa_enabled", "deleted_at"] }
 
-modules:
-  - id: "MOD-001"
-    name: "認証"
-    adapter: "AuthAdapter (FirebaseAuthAdapter を実装)"
+api_spec:
+  openapi_path: "docs/openapi.yaml"
+  style: "REST"
 
-data_model:
-  users:
-    - { field: "uid", note: "Firebase UID(主キー)" }
-    - { field: "email", note: "メールアドレス" }
-    - { field: "providers", note: "連携済み認証方式(password/google.com/apple.com)" }
-    - { field: "mfa_enabled", note: "MFA 有効フラグ(オプトイン)" }
-    - { field: "deleted_at", note: "退会(論理削除)" }
+authentication:
+  stack: "Firebase Auth"          # DP-007 採用（MVP 推奨、AuthAdapter で差し替え可能）
+  mfa_requirement: "optional"     # DP-008（運営管理者は必須、一般はオプトイン）
 
-api_design:
-  - { method: "POST", path: "/auth/session", note: "ID トークン検証→セッション確立" }
-  - { method: "DELETE", path: "/auth/session", note: "ログアウト" }
-  - { method: "POST", path: "/auth/link", note: "認証方式の追加(アカウント連携)" }
-  - { method: "DELETE", path: "/account", note: "退会" }
+adr_list:
+  - { id: "ADR-001", title: "認証スタックに Firebase Auth を採用", status: "accepted", path: "delivery/adr/ADR-001-auth-stack.md" }
+
+design_review_completed:
+  approved: true
+  approved_by: "豊田"
+  approved_at: "2026-05-25T10:00:00+09:00"
+
+domain_specific_checks:
+  dAccount: false       # DP-015 非該当（docomo 連携なし）
+  pci_dss: false        # DP-016 非該当（決済なし）
 
 decision_record:
   - dp_id: "DP-007"
@@ -44,7 +49,7 @@ decision_record:
       チームに Firebase 経験があり、メール/パスワードレス/OIDC を標準機能で満たせる。
       代替の Devise+OmniAuth はパスワードレスや Apple ログインで追加実装が増える。
       ベンダーロックイン懸念は AuthAdapter 層で差し替え可能にして緩和。
-    adr_ref: "docs/adr/ADR-001-auth-stack.md"
+    adr_ref: "delivery/adr/ADR-001-auth-stack.md"
   - dp_id: "DP-008"
     chosen: "オプトイン(運営管理者は必須)"
     decided_by: "豊田"
@@ -57,8 +62,5 @@ decision_record:
     decided_by: "豊田"
     decided_at: "2026-05-25T10:00:00+09:00"
     rationale: "docomo / dメニュー連携の予定がないため適用外。"
-
-adr_refs:
-  - "docs/adr/ADR-001-auth-stack.md"
 
 undecided: []

@@ -14,7 +14,7 @@ model: opus
 
 ## 入出力
 
-- 入力: `schemas/requirements.schema.json` 準拠の要件（特に `use_cases` / `non_functional_requirements` の認証関連）
+- 入力: `schemas/requirements.schema.json` 準拠の要件（特に `representative_use_cases` / `functional_requirements` / `non_functional_requirements` の認証関連）
 - 出力: `schemas/design.schema.json` 準拠の設計、必要に応じ `docs/adr/ADR-NNN.md`
 
 ## 検討する判断ポイント（必ず複数スタックを比較する）
