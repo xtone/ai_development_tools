@@ -52,7 +52,7 @@ module Auth
         iss: "https://securetoken.google.com/#{@project_id}", verify_iss: true,
         aud: @project_id, verify_aud: true, verify_expiration: true
       ) { |h| public_key_for(h["kid"]) }
-      raise Auth::InvalidToken, "revoked" if revoked?(decoded["sub"], decoded["auth_time"])
+      # 失効チェックは DB ベース（毎リクエスト HTTP を避ける）。下記「トークン失効」を参照。
       Auth::AuthUser.new(uid: decoded["sub"], email: decoded["email"],
                          provider: decoded.dig("firebase", "sign_in_provider"), claims: decoded)
     rescue JWT::DecodeError, OpenSSL::X509::CertificateError => e
@@ -80,6 +80,9 @@ module Authenticatable
     return render(json: { error: "no token" }, status: :unauthorized) if token.blank?
     @current_auth_user = AppAuth.adapter.verify_token(token)
     @current_user = User.active.find_by(uid: @current_auth_user.uid)
+    if @current_user && !@current_user.token_valid?(@current_auth_user.claims["auth_time"])
+      return render(json: { error: "token revoked" }, status: :unauthorized)  # DB 参照のみ（HTTP なし）
+    end
   rescue Auth::InvalidToken => e
     render json: { error: e.message }, status: :unauthorized
   end
@@ -139,18 +142,70 @@ end
 
 ### トークン失効 / リフレッシュ
 
-```ruby
-def revoke(uid)
-  # Identity Toolkit: validSince を現在時刻に更新 → 以後の古い ID トークンを失効扱い
-  identitytoolkit_post("accounts:update", localId: uid, validSince: Time.now.to_i.to_s)
-end
+**毎リクエストで HTTP を叩かない**ため、失効判定は DB で行う。User に `tokens_valid_after`（datetime）カラムを持ち、失効時に更新。検証時はこの DB 値と ID トークンの `auth_time` を比較するだけ（HTTP 不要）。IaaS 側のリフレッシュトークン失効は失効アクション時のみ呼ぶ。
 
-def revoked?(uid, auth_time)
-  auth_time && valid_since(uid) && auth_time < valid_since(uid)
+```ruby
+# db/migrate: add_column :users, :tokens_valid_after, :datetime
+
+class User < ApplicationRecord
+  # 退会・パスワード変更・MFA 変更・不正検知時に呼ぶ
+  def revoke_tokens!
+    update!(tokens_valid_after: Time.current)
+    AppAuth.adapter.revoke(uid)   # IaaS 側のリフレッシュトークンも失効（ベストエフォート）
+  end
+
+  # 検証時の失効判定（DB のみ・HTTP なし）。auth_time が失効時刻以降なら有効。
+  def token_valid?(auth_time)
+    tokens_valid_after.nil? || (auth_time.present? && Time.at(auth_time.to_i) >= tokens_valid_after)
+  end
 end
 ```
 
-退会・パスワード変更・MFA 変更・不正検知時に `revoke(uid)` を呼ぶ。
+```ruby
+# FirebaseAdapter#revoke — IaaS 側のリフレッシュトークンを失効（失効アクション時のみ・冪等）
+def revoke(uid)
+  identitytoolkit_post("accounts:update", localId: uid, validSince: Time.now.to_i.to_s)
+  true
+rescue NotFoundError
+  true
+end
+```
+
+### Admin REST ヘルパー（FirebaseAdapter private）
+
+Ruby に公式 Admin SDK が無いため、Admin 操作（削除・失効）は Identity Toolkit REST ＋ サービスアカウントの OAuth2 アクセストークンで行う。`NotFoundError` も定義する。
+
+```ruby
+class NotFoundError < Auth::Error; end
+
+private
+
+# サービスアカウント鍵から OAuth2 アクセストークンを取得（googleauth gem）。短命なのでキャッシュ。
+def access_token
+  return @token[:value] if @token && Time.now < @token[:expires_at]
+  cred = Google::Auth::ServiceAccountCredentials.make_creds(
+    json_key_io: File.open(ENV.fetch("GOOGLE_APPLICATION_CREDENTIALS")),
+    scope: "https://www.googleapis.com/auth/identitytoolkit"
+  )
+  t = cred.fetch_access_token!
+  @token = { value: t["access_token"], expires_at: Time.now + t["expires_in"].to_i - 30 }
+  @token[:value]
+end
+
+def identitytoolkit_post(method, **body)
+  uri = URI("https://identitytoolkit.googleapis.com/v1/projects/#{@project_id}/#{method}")
+  req = Net::HTTP::Post.new(uri)
+  req["Authorization"] = "Bearer #{access_token}"
+  req["Content-Type"]  = "application/json"
+  req.body = JSON.dump(body)
+  res = Net::HTTP.start(uri.host, uri.port, use_ssl: true) { |h| h.request(req) }
+  raise NotFoundError if res.code == "404"
+  raise Auth::Error, "identitytoolkit #{method}: #{res.code}" unless res.is_a?(Net::HTTPSuccess)
+  res.body.to_s.empty? ? {} : JSON.parse(res.body)
+end
+```
+
+退会・パスワード変更・MFA 変更・不正検知時に `user.revoke_tokens!` を呼ぶ（DB 更新＋ IaaS 失効）。
 
 ## 4. テスト（実 Firebase 不要）
 
