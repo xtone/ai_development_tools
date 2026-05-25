@@ -23,12 +23,18 @@ pin "firebase/auth", to: "https://www.gstatic.com/firebasejs/<latest>/firebase-a
 // app/javascript/auth/client.js
 import { initializeApp } from "firebase/app"
 import {
-  getAuth, signInWithEmailAndPassword, sendSignInLinkToEmail, isSignInWithEmailLink,
+  getAuth, setPersistence, inMemoryPersistence,
+  signInWithEmailAndPassword, sendSignInLinkToEmail, isSignInWithEmailLink,
   signInWithEmailLink, GoogleAuthProvider, OAuthProvider, signInWithPopup, linkWithPopup,
   sendPasswordResetEmail, updatePassword, updateEmail, signOut, onAuthStateChanged
 } from "firebase/auth"
 
 const auth = getAuth(initializeApp(window.FIREBASE_CONFIG))
+
+// XSS 配慮: トークンをメモリのみに保持（Firebase 既定の localStorage/indexedDB を使わない）。
+// 注意: リロードでセッションが切れるため、戦略B（クッキーセッション）と併用するか SSR でログイン状態を保持する（下記「セッション戦略」）。
+// 戦略B 採用時は browserSessionPersistence も選択肢。
+setPersistence(auth, inMemoryPersistence)
 
 export const AuthClient = {
   signInWithPassword: (email, pw) => signInWithEmailAndPassword(auth, email, pw),
@@ -40,6 +46,11 @@ export const AuthClient = {
   signOut: () => signOut(auth),
   getIdToken: (force = false) => auth.currentUser?.getIdToken(force),    // 期限切れは自動リフレッシュ
   onAuthStateChanged: (cb) => onAuthStateChanged(auth, cb),
+  withdraw: async () => {                                                // 退会（responsibility=shared）
+    const idToken = await auth.currentUser?.getIdToken(true)
+    await fetch("/account", { method: "DELETE", headers: { Authorization: `Bearer ${idToken}` } })
+    return signOut(auth)                                                 // サーバが論理削除＋Admin SDK 削除
+  },
 }
 ```
 

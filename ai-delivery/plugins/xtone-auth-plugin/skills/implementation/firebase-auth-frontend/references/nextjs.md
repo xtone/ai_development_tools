@@ -14,9 +14,13 @@ npm i firebase
 ```ts
 // lib/firebase.ts  ('use client' から利用)
 import { initializeApp, getApps } from "firebase/app"
-import { getAuth } from "firebase/auth"
+import { getAuth, setPersistence, inMemoryPersistence } from "firebase/auth"
 const app = getApps()[0] ?? initializeApp({ /* NEXT_PUBLIC_FIREBASE_* から */ })
 export const auth = getAuth(app)
+
+// XSS 配慮: トークンをメモリのみに保持（Firebase 既定の localStorage/indexedDB を使わない）。
+// 注意: リロードでセッションが切れる。BFF（経路B）で HttpOnly クッキーを使う場合は browserSessionPersistence も検討。
+setPersistence(auth, inMemoryPersistence)
 ```
 
 > Firebase の Web 設定（apiKey 等）は `NEXT_PUBLIC_FIREBASE_*` で渡す（公開前提値）。サービスアカウント鍵は **フロントに置かない**（backend のみ）。
@@ -43,6 +47,13 @@ export const AuthClient = {
   signOut: () => signOut(auth),
   getIdToken: (force = false) => (auth.currentUser ? getIdToken(auth.currentUser, force) : Promise.resolve(null)),
   onAuthStateChanged: (cb: Parameters<typeof onAuthStateChanged>[1]) => onAuthStateChanged(auth, cb),
+  withdraw: async () => {                                              // 退会（responsibility=shared）
+    const idToken = auth.currentUser ? await getIdToken(auth.currentUser, true) : null
+    await fetch(`${process.env.NEXT_PUBLIC_API_BASE}/account`, {
+      method: "DELETE", headers: { Authorization: `Bearer ${idToken}` },
+    })
+    return signOut(auth)                                              // サーバが論理削除＋Admin SDK 削除
+  },
 }
 ```
 
