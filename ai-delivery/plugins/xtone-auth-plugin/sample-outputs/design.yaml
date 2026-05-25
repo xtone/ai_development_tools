@@ -1,0 +1,64 @@
+# 架空案件「みんなの読書会」の設計成果物（design.yaml サンプル）
+# firebase-auth-design スキル / authentication-architect の出力例。
+# schemas/design.schema.json 準拠（YAML 表現。CI では JSON に変換して検証可能）。
+
+tech_stack:
+  - "Firebase Auth"          # DP-007 採用（MVP 推奨）
+  - "Rails (API / JWT 認可)"
+  - "React (Web SPA)"
+  - "iOS / Android (ネイティブ)"
+
+architecture: |
+  認証は AuthAdapter インターフェース越しに呼び、Firebase 固有処理は FirebaseAuthAdapter
+  に閉じ込める(DP-007 差し替え可能設計)。バックエンド(Rails)は API ミドルウェアで
+  Firebase 発行の ID トークン(JWT)を検証してユーザーを解決。Web/アプリは ID トークンと
+  リフレッシュトークンを保持し、API リクエストに Bearer 付与。セッションは ID トークン
+  TTL=1h、リフレッシュで更新、退会時は Firembase ユーザー削除 + サーバ側論理削除。
+
+modules:
+  - id: "MOD-001"
+    name: "認証"
+    adapter: "AuthAdapter (FirebaseAuthAdapter を実装)"
+
+data_model:
+  users:
+    - { field: "uid", note: "Firebase UID(主キー)" }
+    - { field: "email", note: "メールアドレス" }
+    - { field: "providers", note: "連携済み認証方式(password/google.com/apple.com)" }
+    - { field: "mfa_enabled", note: "MFA 有効フラグ(オプトイン)" }
+    - { field: "deleted_at", note: "退会(論理削除)" }
+
+api_design:
+  - { method: "POST", path: "/auth/session", note: "ID トークン検証→セッション確立" }
+  - { method: "DELETE", path: "/auth/session", note: "ログアウト" }
+  - { method: "POST", path: "/auth/link", note: "認証方式の追加(アカウント連携)" }
+  - { method: "DELETE", path: "/account", note: "退会" }
+
+decision_record:
+  - dp_id: "DP-007"
+    chosen: "Firebase Auth"
+    compared: ["Firebase Auth", "Devise+OmniAuth"]
+    decided_by: "豊田"
+    decided_at: "2026-05-25T10:00:00+09:00"
+    rationale: >
+      チームに Firebase 経験があり、メール/パスワードレス/OIDC を標準機能で満たせる。
+      代替の Devise+OmniAuth はパスワードレスや Apple ログインで追加実装が増える。
+      ベンダーロックイン懸念は AuthAdapter 層で差し替え可能にして緩和。
+    adr_ref: "docs/adr/ADR-001-auth-stack.md"
+  - dp_id: "DP-008"
+    chosen: "オプトイン(運営管理者は必須)"
+    decided_by: "豊田"
+    decided_at: "2026-05-25T10:00:00+09:00"
+    rationale: >
+      一般ユーザーに必須化すると離脱リスク。運営管理者は権限が強いため必須、
+      一般・ホストはオプトインで UX とセキュリティを両立。
+  - dp_id: "DP-015"
+    chosen: "非該当(スコープ外)"
+    decided_by: "豊田"
+    decided_at: "2026-05-25T10:00:00+09:00"
+    rationale: "docomo / dメニュー連携の予定がないため適用外。"
+
+adr_refs:
+  - "docs/adr/ADR-001-auth-stack.md"
+
+undecided: []

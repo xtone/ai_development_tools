@@ -1,0 +1,9 @@
+{
+  "name": "xtone-auth-plugin",
+  "version": "0.1.0",
+  "description": "ユーザー認証とセッション管理を型化する Xtone AIデリバリプラグイン（MVP: Firebase Auth、IaaS 差し替え可能設計）。MOD-001 認証モジュール。",
+  "author": {
+    "name": "Xtone"
+  },
+  "keywords": ["auth", "firebase", "xtone", "ai-delivery"]
+}
