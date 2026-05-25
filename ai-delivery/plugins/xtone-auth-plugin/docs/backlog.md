@@ -15,6 +15,7 @@ T-022 内部パイロット（[pilot-report.md](./pilot-report.md)）で発見�
 | **B-07** | [#132](https://github.com/xtone/ai_development_tools/issues/132) | Tooling | Med | `validate-plugin.sh`（TPL-27）/ `generate-plugin.sh`（TPL-26）の整備。delivery 成果物の **スキーマ検証**を自動化 | TPL-26/27 | F-6 |
 | **B-08** | [#133](https://github.com/xtone/ai_development_tools/issues/133) | Decision | Low | 新規 DP「**退会済みアカウントの再登録ポリシー**」を判断ポイントカタログに起票（本実装は 403 拒否で仮対応）。pending-decisions に起票済み | DP（新規候補）| F-7 |
 | **B-09** | [#134](https://github.com/xtone/ai_development_tools/issues/134) | Plugin（任意） | Low | **言語別の実装テンプレ**（例: Rails 向け AuthAdapter コード雛形）をスキルに同梱し実装を加速 | SKL- | F-8 |
+| **B-10** | [#141](https://github.com/xtone/ai_development_tools/issues/141) | Architecture | Med | **フロントエンド認証実装スキル新設**（`firebase-auth-frontend` ＋ hotwire/nextjs レシピ）。#130 で責務分類した `client` 側の実装ガイドが欠落（firebase-auth-setup は backend 専用）。セッション戦略は判断ポイント扱い | SKL- / #130 | #130 レビュー後 |
 
 ## 優先度の考え方
 
