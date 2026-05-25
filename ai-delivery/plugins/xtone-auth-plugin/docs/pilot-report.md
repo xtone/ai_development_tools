@@ -67,6 +67,7 @@
 ## 6. 関連
 
 - 訂正バックログ: [`backlog.md`](./backlog.md)
+- **再検証（再パイロット）**: [`re-pilot-report.md`](./re-pilot-report.md)（2026-05-25。High 解消後に医療案件×MFA required×Next.js+Rails で再ドッグフードし、穴が塞がったことを実証）
 - 未決判断ポイント: [`pending-decisions.md`](./pending-decisions.md)
 - サンプルアプリ: `~/RubymineProjects/t-021-sample/`（`delivery/` にプラグイン成果物）
 - 関連タスク: T-022 / T-021 / T-004 / T-002 / T-005、判断ポイント DP-007/008/015/027
