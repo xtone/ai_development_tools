@@ -25,18 +25,37 @@ setPersistence(auth, inMemoryPersistence)
 
 > Firebase の Web 設定（apiKey 等）は `NEXT_PUBLIC_FIREBASE_*` で渡す（公開前提値）。サービスアカウント鍵は **フロントに置かない**（backend のみ）。
 
+```bash
+# .env.local（例。値は Firebase コンソールの Web アプリ設定から）
+NEXT_PUBLIC_FIREBASE_API_KEY=...
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=<project>.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=<project>
+NEXT_PUBLIC_FIREBASE_APP_ID=...
+NEXT_PUBLIC_API_BASE=http://localhost:3000   # Rails API のオリジン
+```
+
 ## 2. AuthClient（契約の実装）
 
 ```ts
 // lib/auth-client.ts  ('use client')
 import { auth } from "./firebase"
 import {
-  signInWithEmailAndPassword, GoogleAuthProvider, OAuthProvider, signInWithPopup, linkWithPopup,
+  signInWithEmailAndPassword, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink,
+  GoogleAuthProvider, OAuthProvider, signInWithPopup, linkWithPopup,
   sendPasswordResetEmail, updatePassword, updateEmail, signOut, onAuthStateChanged, getIdToken
 } from "firebase/auth"
 
 export const AuthClient = {
   signInWithPassword: (e: string, p: string) => signInWithEmailAndPassword(auth, e, p),
+  signInWithEmailLink: (email: string) => sendSignInLinkToEmail(auth, email, {
+    url: `${window.location.origin}/auth/email-link`,   // ActionCodeSettings — 要件に合わせて変更
+    handleCodeInApp: true,
+  }),
+  completeEmailLink: () => {
+    if (!isSignInWithEmailLink(auth, window.location.href)) return Promise.reject(new Error("invalid link"))
+    const email = window.localStorage.getItem("emailForSignIn")   // 送信時に保存した email
+    return signInWithEmailLink(auth, email!, window.location.href)
+  },
   signInWithOIDC: (id: "google" | "apple") =>
     signInWithPopup(auth, id === "apple" ? new OAuthProvider("apple.com") : new GoogleAuthProvider()),
   linkProvider: (id: "google" | "apple") =>

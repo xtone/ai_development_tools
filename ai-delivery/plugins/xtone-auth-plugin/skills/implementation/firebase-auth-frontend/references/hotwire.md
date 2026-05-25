@@ -38,6 +38,15 @@ setPersistence(auth, inMemoryPersistence)
 
 export const AuthClient = {
   signInWithPassword: (email, pw) => signInWithEmailAndPassword(auth, email, pw),
+  signInWithEmailLink: (email) => sendSignInLinkToEmail(auth, email, {
+    url: window.location.origin + "/auth/email-link",   // ActionCodeSettings — 要件に合わせて変更
+    handleCodeInApp: true,
+  }),                                                    // 送信時に email を保存しておく（completeEmailLink で参照）
+  completeEmailLink: () => {
+    if (!isSignInWithEmailLink(auth, window.location.href)) return Promise.reject(new Error("invalid link"))
+    const email = window.localStorage.getItem("emailForSignIn")   // 送信時に保存した email
+    return signInWithEmailLink(auth, email, window.location.href)
+  },
   signInWithOIDC: (id) => signInWithPopup(auth, id === "apple" ? new OAuthProvider("apple.com") : new GoogleAuthProvider()),
   linkProvider: (id) => linkWithPopup(auth.currentUser, id === "apple" ? new OAuthProvider("apple.com") : new GoogleAuthProvider()),
   sendPasswordReset: (email) => sendPasswordResetEmail(auth, email),     // Firebase が完結（iaas）
