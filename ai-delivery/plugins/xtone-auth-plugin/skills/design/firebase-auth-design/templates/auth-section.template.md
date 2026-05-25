@@ -27,6 +27,23 @@
 
 - IDトークン TTL / リフレッシュ方針 / 失効条件
 
+## 責務仕分け（design.schema: responsibility_split / F-4）
+
+requirements に並ぶ各機能を **backend / client / iaas / shared** に仕分ける。クライアント SDK や IaaS 側で完結する機能（パスワード変更・リセット・メール変更など）を明示し、バックエンド実装対象と取り違えないようにする。
+
+| 機能 | 担当（owner） | 補足 |
+|---|---|---|
+| サインイン（メール+パスワード / パスワードレス / OIDC） | client + iaas | Firebase クライアント SDK ＋ Firebase Auth |
+| ID トークン検証 / JWT 認可 | backend | API ミドルウェア |
+| セッション確立（アプリ側ユーザー作成） | backend | POST /auth/session |
+| パスワード変更・リセット | client + iaas | Firebase クライアント SDK で完結（**バックエンド対象外**） |
+| メールアドレス変更 | client + iaas | 同上 |
+| 認証方式の追加（アカウント連携） | client + iaas | 同上 |
+| 退会（IaaS ユーザー削除 ＋ アプリ側論理削除） | shared | Admin SDK（backend）＋ アプリ DB |
+| MFA | iaas（設定）+ client（フロー） | DP-008 の方針に従う |
+
+> owner の値: **backend**=サーバ実装 / **client**=アプリ・フロント SDK / **iaas**=Firebase 等が提供 / **shared**=両方。
+
 ## 未決（undecided）
 
 - DP-XXX: <概要>（`docs/pending-decisions.md` に起票済み）
