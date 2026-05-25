@@ -53,7 +53,7 @@ design の `authentication.mfa_requirement`（enum: `required` / `optional` / `a
 |---|---|
 | `enrollTotp() → {secret, qrUrl}` / `confirmTotp(code, displayName)` | TOTP 第2要素を登録。secret/QR を提示 → 認証アプリの 6 桁コードで確定。 |
 | `enrollSms(phoneNumber) → verificationId` / `confirmSms(verificationId, code, displayName)` | SMS 第2要素を登録。SMS 検証コードで確定（reCAPTCHA 必須）。 |
-| `resolveChallenge(error, factorIndex, code) → Credential` | サインインが `auth/multi-factor-auth-required` を投げたら resolver で第2要素を解決。 |
+| `resolveChallenge(error, factorIndex, code) → Credential` | サインインが `auth/multi-factor-auth-required` を投げたら resolver で第2要素を解決。**TOTP は即時**、**SMS は「送信→入力」の2段**（レシピでは TOTP/SMS で関数を分離）。 |
 | `listFactors() → Factor[]` / `unenroll(factor)` | 登録済み第2要素の一覧・解除。 |
 
 enroll / unenroll が成功したら **サーバに通知**し、`backend.revoke_tokens` を呼ばせる（既存トークンに MFA 変更を反映するため）。

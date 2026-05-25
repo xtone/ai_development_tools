@@ -66,23 +66,28 @@ export const MfaClient = {
   },
 
   // --- サインイン時の第2要素チャレンジ ---
-  // signInWith... が "auth/multi-factor-auth-required" を投げたら error を渡す
-  resolveChallenge: async (error, factorIndex, code, recaptchaContainerId) => {
+  // signInWith... が "auth/multi-factor-auth-required" を投げたら error を渡す。
+  // TOTP は即時（認証アプリのコード）、SMS は「送信(verificationId 取得) → 入力(コード)」の2段。
+  resolveTotpChallenge: async (error, factorIndex, code) => {
     const resolver = getMultiFactorResolver(auth, error)
     const hint = resolver.hints[factorIndex]
-    if (hint.factorId === TotpMultiFactorGenerator.FACTOR_ID) {
-      const assertion = TotpMultiFactorGenerator.assertionForSignIn(hint.uid, code)
-      return resolver.resolveSignIn(assertion)
-    }
-    if (hint.factorId === PhoneMultiFactorGenerator.FACTOR_ID) {
-      const verifier = new RecaptchaVerifier(auth, recaptchaContainerId, { size: "invisible" })
-      const provider = new PhoneAuthProvider(auth)
-      const verificationId = await provider.verifyPhoneNumber(
-        { multiFactorHint: hint, session: resolver.session }, verifier)
-      const cred = PhoneAuthProvider.credential(verificationId, code)  // ※SMS は「送信→入力」の2段なので実画面では分割する
-      return resolver.resolveSignIn(PhoneMultiFactorGenerator.assertion(cred))
-    }
-    throw new Error("unsupported second factor")
+    const assertion = TotpMultiFactorGenerator.assertionForSignIn(hint.uid, code)
+    return resolver.resolveSignIn(assertion)
+  },
+  // SMS その1: まず送信して verificationId を得る（この時点ではまだコードは無い）
+  startSmsChallenge: async (error, factorIndex, recaptchaContainerId) => {
+    const resolver = getMultiFactorResolver(auth, error)
+    const hint = resolver.hints[factorIndex]
+    const verifier = new RecaptchaVerifier(auth, recaptchaContainerId, { size: "invisible" })
+    const provider = new PhoneAuthProvider(auth)
+    const verificationId = await provider.verifyPhoneNumber(
+      { multiFactorHint: hint, session: resolver.session }, verifier)
+    return { resolver, verificationId }  // resolver は completeSmsChallenge へ引き継ぐ
+  },
+  // SMS その2: ユーザーが受信した SMS コードを入力したら解決
+  completeSmsChallenge: async (resolver, verificationId, code) => {
+    const cred = PhoneAuthProvider.credential(verificationId, code)
+    return resolver.resolveSignIn(PhoneMultiFactorGenerator.assertion(cred))
   },
 
   // --- 一覧 / 解除 ---
@@ -94,7 +99,7 @@ export const MfaClient = {
 }
 ```
 
-> SMS の challenge は実 UI では「コード送信」→「コード入力」の2ステップに分ける（上記は短縮形）。`verifyPhoneNumber` で送信 → 入力後に `credential` を作る。TOTP は送信不要（認証アプリが生成）。
+> TOTP は認証アプリのコードを即時入力（`resolveTotpChallenge` 1 回）。SMS は `startSmsChallenge`（送信して `verificationId` を取得）→ ユーザーが受信コードを入力 → `completeSmsChallenge` の2段に分ける（コードは SMS 受信後にしか得られないため）。enrollment 側も同様に `enrollSms`→`confirmSms` の2段。
 
 ## 3. Stimulus: TOTP 登録（オプトイン設定画面 / 管理者強制）
 
@@ -140,8 +145,9 @@ async signIn(e) {
   }
 }
 
+// TOTP の例（即時）。SMS は startSmsChallenge で送信 → 入力後に completeSmsChallenge する2段に分ける。
 async submitSecondFactor() {
-  await MfaClient.resolveChallenge(this.mfaError, 0, this.codeTarget.value, "recaptcha-container")
+  await MfaClient.resolveTotpChallenge(this.mfaError, 0, this.codeTarget.value)
   await this.establishSession()                            // 第2要素クリア後にセッション確立
 }
 ```
