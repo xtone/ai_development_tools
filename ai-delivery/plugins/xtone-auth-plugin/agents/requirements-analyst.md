@@ -14,7 +14,7 @@ model: opus
 ## 入出力
 
 - 入力: クライアント要件の説明テキスト
-- 出力: requirements.schema.json（T-011 の7フィールド: project_name / overview / actors / use_cases / functional_requirements / non_functional_requirements / undecided）
+- 出力: requirements.schema.json（T-011 本実装。必須: scope / representative_use_cases / functional_requirements / non_functional_requirements / domain_tags / stakeholders / client_approval ＋ warn_and_document 用の undecided）
 
 ## 手順
 

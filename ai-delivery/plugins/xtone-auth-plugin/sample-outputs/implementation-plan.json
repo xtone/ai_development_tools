@@ -1,5 +1,19 @@
 {
-  "$comment": "架空案件「みんなの読書会」の実装計画成果物。firebase-auth-setup スキル / implementer の出力例。schemas/implementation-plan.schema.json 準拠。",
+  "$comment": "架空案件「みんなの読書会」の実装計画成果物。firebase-auth-setup スキル / implementer の出力例。schemas/implementation-plan.schema.json（T-011 本実装, #126）準拠。",
+  "modules": [
+    { "module_ref": "MOD-001", "priority": 1 }
+  ],
+  "tdd_strategy": "TestAfter",
+  "test_coverage_target": 70,
+  "ci_cd_config": {
+    "type": "GitHub Actions",
+    "hooks": ["lint", "test", "build"]
+  },
+  "pr_strategy": {
+    "pr_max_size_lines": 400,
+    "branch_naming": "feat/<scope>",
+    "merge_strategy": "squash"
+  },
   "tasks": [
     { "id": "T-A01", "title": "AuthAdapter インターフェース定義(差し替え可能設計の核, DP-007)", "module": "MOD-001" },
     { "id": "T-A02", "title": "FirebaseAuthAdapter 実装(ID トークン検証/サインイン/ユーザ取得)" },
