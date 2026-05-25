@@ -49,6 +49,8 @@ description: xtone-auth-plugin（認証モジュール MOD-001）の作業ガイ
 
 AI はこれらを **勝手に決めず推奨だけ提示**し、未決は `undecided`（各スキーマ）と `docs/pending-decisions.md` に残す。
 
+> DP-008 で MFA 方針が決まったら、実装は専用スキル `firebase-auth-mfa`（TOTP/SMS の登録・追加認証＝client、クレーム検証・管理者強制・失効＝backend）に従う。
+
 ## 構成
 
 | ディレクトリ | 内容 |

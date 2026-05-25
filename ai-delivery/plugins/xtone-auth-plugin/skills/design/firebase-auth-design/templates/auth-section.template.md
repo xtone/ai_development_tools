@@ -15,8 +15,9 @@
 
 ## MFA 方針（DP-008）
 
-- 方針: <全員必須 / 管理者のみ / オプトイン / 不要>
+- 方針: <全員必須 / 管理者のみ / オプトイン / 不要>（design.schema: `authentication.mfa_requirement` = `required` / `admin_only` / `optional` / `none`）
 - 根拠: <セキュリティ要件・規制>
+- 実装: 決定後の実装パターン（TOTP/SMS の登録・追加認証・管理者強制・クレーム検証）は実装フェーズの `firebase-auth-mfa` スキルを参照。
 
 ## dAccount / docomo 規約（DP-015）
 
@@ -42,7 +43,7 @@ owner は **単一の enum 値**（`backend` / `client` / `iaas` / `shared`）�
 | メールアドレス変更 | iaas | 同上 |
 | 認証方式の追加（アカウント連携） | client | クライアント SDK 主体（**バックエンド対象外**） |
 | 退会（IaaS ユーザー削除 ＋ アプリ側論理削除） | shared | Admin SDK（backend）＋ アプリ DB 論理削除 |
-| MFA | shared | 設定は IaaS、フローは client（DP-008 の方針に従う） |
+| MFA | shared | 登録/追加認証は client、検証/強制/失効は backend、第2要素検証は iaas（実装は `firebase-auth-mfa`、DP-008 の方針に従う） |
 
 > owner の値: **backend**=サーバ実装 / **client**=アプリ・フロント SDK / **iaas**=Firebase 等が提供 / **shared**=両方。
 
