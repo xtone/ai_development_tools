@@ -99,6 +99,19 @@
       "description": "ドメイン特有チェック（条件付き必須）。docomo規約(DP-015)/PCI-DSS(DP-016)/コミュニティ規約(DP-018) 等を true/false で明示。",
       "additionalProperties": true
     },
+    "responsibility_split": {
+      "type": "array",
+      "description": "責務仕分け（条件付き必須・F-4）。各機能を backend/client/iaas/shared に仕分ける。クライアント SDK や IaaS 側で完結する機能（例: パスワード変更・リセット・メール変更）を明示し、実装者の混乱を防ぐ。",
+      "items": {
+        "type": "object",
+        "required": ["item", "owner"],
+        "properties": {
+          "item": { "type": "string" },
+          "owner": { "type": "string", "enum": ["backend", "client", "iaas", "shared"] }
+        },
+        "additionalProperties": true
+      }
+    },
     "decision_record": {
       "type": "array",
       "description": "本フェーズで下した判断の記録（追加保持）。各要素は decision-point.schema.json の decision_record に準拠。",
