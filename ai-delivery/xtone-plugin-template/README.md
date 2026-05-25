@@ -27,7 +27,7 @@ cd plugins/xtone-<usecase>-plugin
 rm -rf schemas
 ln -s ../../xtone-shared-plugin/schemas/v1 schemas
 
-# テンプレファイルを実体化（{{usecase}} を置換）
+# テンプレファイルを実体化
 mv .claude-plugin/plugin.json.template .claude-plugin/plugin.json
 mv skills/plugin-guide/SKILL.md.template skills/plugin-guide/SKILL.md   # 運用ガイド（旧 CLAUDE.md, DP-27）
 mv skills/SKILL.md.template skills/<phase>/<skill>/SKILL.md             # フェーズ別 Skill
@@ -35,7 +35,18 @@ cp .env.example .env                  # トークンを設定
 # ルート CLAUDE.md は作らない（--strict 非対応 / DP-27）。人間向け概要は README.md に置く（任意）。
 ```
 
-`scripts/generate-plugin.sh`（TPL-26）で上記を自動化予定。
+### プレースホルダの置換
+
+実体化した各ファイルの `{{...}}` をすべて置換する（未置換が残らないこと）。`generate-plugin.sh`（TPL-26）で自動化予定。
+
+| プレースホルダ | 置換内容 | 出現ファイル |
+|---|---|---|
+| `{{usecase}}` | ユースケース名（例: `auth`） | plugin.json / plugin-guide / SKILL ほか共通 |
+| `{{description}}` / `{{author_name}}` | プラグイン説明・作者 | `.claude-plugin/plugin.json` |
+| `{{applicable_domains}}` | 適用ドメイン（T-008 ドメインタクソノミーから選択） | `skills/plugin-guide/SKILL.md` |
+| `{{dependent_modules}}` | 依存モジュール（MOD-XXX） | `skills/plugin-guide/SKILL.md` |
+
+確認: `grep -rn '{{' .` で未置換のプレースホルダが残っていないことをチェックする。
 
 ## 中核設計原則
 
