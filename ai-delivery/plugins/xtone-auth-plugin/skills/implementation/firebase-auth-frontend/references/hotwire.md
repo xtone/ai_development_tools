@@ -38,10 +38,13 @@ setPersistence(auth, inMemoryPersistence)
 
 export const AuthClient = {
   signInWithPassword: (email, pw) => signInWithEmailAndPassword(auth, email, pw),
-  signInWithEmailLink: (email) => sendSignInLinkToEmail(auth, email, {
-    url: window.location.origin + "/auth/email-link",   // ActionCodeSettings — 要件に合わせて変更
-    handleCodeInApp: true,
-  }),                                                    // 送信時に email を保存しておく（completeEmailLink で参照）
+  signInWithEmailLink: (email) => {
+    window.localStorage.setItem("emailForSignIn", email)  // completeEmailLink で参照
+    return sendSignInLinkToEmail(auth, email, {
+      url: window.location.origin + "/auth/email-link",   // ActionCodeSettings — 要件に合わせて変更
+      handleCodeInApp: true,
+    })
+  },
   completeEmailLink: () => {
     if (!isSignInWithEmailLink(auth, window.location.href)) return Promise.reject(new Error("invalid link"))
     const email = window.localStorage.getItem("emailForSignIn")   // 送信時に保存した email
@@ -53,7 +56,7 @@ export const AuthClient = {
   updatePassword: (pw) => updatePassword(auth.currentUser, pw),
   updateEmail: (email) => updateEmail(auth.currentUser, email),
   signOut: () => signOut(auth),
-  getIdToken: (force = false) => auth.currentUser?.getIdToken(force),    // 期限切れは自動リフレッシュ
+  getIdToken: (force = false) => auth.currentUser ? auth.currentUser.getIdToken(force) : Promise.resolve(null),  // 期限切れは自動リフレッシュ
   onAuthStateChanged: (cb) => onAuthStateChanged(auth, cb),
   withdraw: async () => {                                                // 退会（responsibility=shared）
     const idToken = await auth.currentUser?.getIdToken(true)

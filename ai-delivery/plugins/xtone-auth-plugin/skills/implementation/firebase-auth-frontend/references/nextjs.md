@@ -47,10 +47,13 @@ import {
 
 export const AuthClient = {
   signInWithPassword: (e: string, p: string) => signInWithEmailAndPassword(auth, e, p),
-  signInWithEmailLink: (email: string) => sendSignInLinkToEmail(auth, email, {
-    url: `${window.location.origin}/auth/email-link`,   // ActionCodeSettings — 要件に合わせて変更
-    handleCodeInApp: true,
-  }),
+  signInWithEmailLink: (email: string) => {
+    window.localStorage.setItem("emailForSignIn", email)  // completeEmailLink で参照
+    return sendSignInLinkToEmail(auth, email, {
+      url: `${window.location.origin}/auth/email-link`,   // ActionCodeSettings — 要件に合わせて変更
+      handleCodeInApp: true,
+    })
+  },
   completeEmailLink: () => {
     if (!isSignInWithEmailLink(auth, window.location.href)) return Promise.reject(new Error("invalid link"))
     const email = window.localStorage.getItem("emailForSignIn")   // 送信時に保存した email
