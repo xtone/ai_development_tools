@@ -38,10 +38,17 @@ claude plugin validate --strict plugins/xtone-auth-plugin
 | フェーズ | コマンド | 出力スキーマ |
 |---|---|---|
 | 要件定義 | `/req-collect` | `schemas/requirements.schema.json` |
-| 設計 | `/auth-design` | `schemas/design.schema.json`（+ `docs/adr/ADR-NNN.md`） |
+| 設計 | `/auth-design` | `schemas/design.schema.json`（+ `docs/adr/ADR-NNN.md`、`responsibility_split` で BE/FE 仕分け） |
 | 実装 | `/implement` | `schemas/implementation-plan.schema.json` + 実装コード |
 
 `schemas/` は xtone-shared-plugin への symlink（編集不可, CONV-14）。
+
+### 実装スキル（責務で使い分け）
+
+`design` の `responsibility_split` に応じて、バックエンド／フロントエンドの実装スキルを使い分ける:
+
+- **backend**: [`firebase-auth-setup`](../skills/implementation/firebase-auth-setup/SKILL.md) — ID トークン検証・JWT 認可・退会時 Admin SDK 削除（レシピ: Rails）
+- **client（フロント）**: [`firebase-auth-frontend`](../skills/implementation/firebase-auth-frontend/SKILL.md) — サインインUI・パスワード/メール変更・トークン保持・API への Bearer 付与（レシピ: Hotwire / Next.js）
 
 ## 4. 判断ポイント（人間判断をスルーさせない）
 

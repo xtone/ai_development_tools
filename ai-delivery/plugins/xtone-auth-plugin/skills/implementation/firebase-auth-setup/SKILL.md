@@ -13,6 +13,8 @@ description: Firebase Auth を任意のバックエンドに統合するスキ�
 
 > 設計方針: 言語が変わっても **契約は不変**、実装手段（SDK/コード）だけがレシピごとに変わる。Rails 固定にせず、Node/Laravel 等へ展開できる構造にする。
 
+> **スコープ: バックエンド（サーバ）専用。** ID トークン検証・JWT 認可・退会時の Admin SDK 削除・トークン失効など。フロントエンド（サインインUI・パスワード/メール変更・トークン保持・API への Bearer 付与）は対の [`firebase-auth-frontend`](../firebase-auth-frontend/SKILL.md) を参照。`responsibility_split` の **backend = 本スキル / client = firebase-auth-frontend / iaas = Firebase が提供**。
+
 ## 入出力（スキーマ）
 
 - 入力: `schemas/design.schema.json`（`authentication.stack` / `architecture.stack` / decision_record）
