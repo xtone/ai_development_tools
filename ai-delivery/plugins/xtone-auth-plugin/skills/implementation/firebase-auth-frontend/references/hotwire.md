@@ -59,7 +59,7 @@ export const AuthClient = {
   getIdToken: (force = false) => auth.currentUser ? auth.currentUser.getIdToken(force) : Promise.resolve(null),  // 期限切れは自動リフレッシュ
   onAuthStateChanged: (cb) => onAuthStateChanged(auth, cb),
   withdraw: async () => {                                                // 退会（responsibility=shared）
-    const idToken = await auth.currentUser?.getIdToken(true)
+    const idToken = auth.currentUser ? await auth.currentUser.getIdToken(true) : null
     await fetch("/account", { method: "DELETE", headers: { Authorization: `Bearer ${idToken}` } })
     return signOut(auth)                                                 // サーバが論理削除＋Admin SDK 削除
   },
