@@ -1,45 +1,84 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://xtone.dev/ai-delivery/schemas/v1/decision-point.schema.json",
-  "$comment": "T-020 検証用の最小スタブ。正式定義は Notion 判断ポイントスキーマDB（DPS-, data_source_id: fd4eec27-907d-4abc-9395-a3031ff9e10c）を真実の源とする。Subagent/Hook が status と decision_record を参照する中核スキーマ。",
+  "$comment": "T-012 判断ポイントスキーマDB（DPS-, fd4eec27-907d-4abc-9395-a3031ff9e10c）を真実の源とする本実装（#126 / B-01）。Subagent / Hook が status と decision_record を参照する中核スキーマ（T-002 warn_and_document）。",
   "title": "DecisionPoint",
-  "description": "人間判断を要するポイント1件。warn_and_document の検出対象（T-002 本決定）。",
+  "description": "人間判断を要するポイント1件。undecided の間は pending-watcher / 各 Hook が警告として可視化する。",
   "type": "object",
-  "required": ["id", "title", "status"],
+  "required": ["id", "name", "phase", "modules", "domains", "options", "decision_axes", "status"],
   "properties": {
     "id": {
       "type": "string",
       "pattern": "^DP-[0-9]+$",
-      "description": "判断ポイントID（例: DP-03）"
+      "description": "判断ポイントID（T-007 判断ポイントカタログの DP IDs とリンク）"
     },
-    "title": { "type": "string", "description": "判断ポイントの要約" },
+    "name": { "type": "string", "maxLength": 100, "description": "判断ポイント名（人間が読んで決めるトリガー名）" },
     "phase": {
       "type": "string",
-      "enum": ["requirements", "design", "implementation", "test", "release", "cross-phase"],
-      "description": "発生フェーズ"
+      "enum": ["要件定義", "設計", "実装", "テスト", "リリース", "インフラ", "引き継ぎ"],
+      "description": "判断ポイントが属するフェーズ"
     },
-    "domain": { "type": "string", "description": "関連ドメイン（任意）" },
+    "modules": {
+      "type": "array",
+      "description": "適用モジュールタグ（T-007 関連モジュール）。",
+      "items": { "type": "string" }
+    },
+    "domains": {
+      "type": "array",
+      "description": "適用ドメインタグ（T-008 の10ドメイン、複数可）。",
+      "items": { "type": "string" }
+    },
     "options": {
       "type": "array",
-      "items": { "type": "string" },
-      "description": "選択肢の一覧"
+      "description": "選択肢リスト。各選択肢に name、when（任意、AI 推奨に利用）。1件以上。",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string" },
+          "when": { "type": "object", "additionalProperties": true }
+        },
+        "additionalProperties": true
+      }
+    },
+    "decision_axes": {
+      "type": "array",
+      "description": "判断軸一覧。各軸に axis と options（1件以上）。",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["axis", "options"],
+        "properties": {
+          "axis": { "type": "string" },
+          "options": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+        },
+        "additionalProperties": true
+      }
     },
     "status": {
       "type": "string",
-      "enum": ["undecided", "decided"],
-      "description": "undecided の間は pending-watcher / 各 Hook が警告として可視化する"
+      "enum": ["decided", "undecided"],
+      "description": "判断状態。undecided は未決として docs/pending-decisions.md に明示し、フェーズ移行時に警告（ブロックなし, T-002）。"
+    },
+    "risk_if_wrong": {
+      "type": "string",
+      "description": "誤判断のリスク（任意、T-007 の誤判断のリスクを参照）。"
     },
     "decision_record": {
       "type": "object",
-      "description": "決定の記録。status=decided では3要素すべて必須（T-002 decision_record トリオ）。",
+      "description": "判断記録。status=decided では decided_by / decided_at / rationale が必須（トリオ）。adr_ref は任意。",
       "required": ["decided_by", "decided_at", "rationale"],
       "properties": {
-        "decided_by": { "type": "string", "description": "決定者" },
-        "decided_at": { "type": "string", "format": "date-time", "description": "決定日時" },
-        "rationale": { "type": "string", "description": "決定理由" },
-        "adr_ref": { "type": "string", "description": "対応する ADR ファイルパス（任意）" }
-      }
+        "decided_by": { "type": "string" },
+        "decided_at": { "type": "string", "format": "date-time" },
+        "rationale": { "type": "string" },
+        "adr_ref": { "type": "string" }
+      },
+      "additionalProperties": true
     }
   },
+  "if": { "properties": { "status": { "const": "decided" } }, "required": ["status"] },
+  "then": { "required": ["decision_record"] },
   "additionalProperties": true
 }

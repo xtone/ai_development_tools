@@ -1,18 +1,69 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://xtone.dev/ai-delivery/schemas/v1/implementation-plan.schema.json",
-  "$comment": "T-020 検証用の最小スタブ。正式な5フィールド定義は Notion I/O契約スキーマDB（FLD-, data_source_id: 0f997761-9259-4f76-9056-3f209e3a3afc）を真実の源とする。",
+  "$comment": "T-011 I/O契約スキーマDB（FLD-, 0f997761-9259-4f76-9056-3f209e3a3afc）を真実の源とする本実装（#126 / B-01）。tasks/milestones/dependencies/test_plan は implementer 用の補助フィールドとして任意で許容。undecided を追加保持（T-002）。",
   "title": "ImplementationPlan",
-  "description": "実装フェーズの計画（T-011 の5フィールド）。implementer Subagent が生成する。",
+  "description": "実装フェーズの計画。implementer Subagent が生成する。",
   "type": "object",
-  "required": ["tasks", "undecided"],
+  "required": ["modules", "tdd_strategy", "ci_cd_config", "pr_strategy"],
   "properties": {
-    "tasks": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+    "modules": {
+      "type": "array",
+      "description": "採用モジュール一覧。module_ref が modules.schema.json に存在すること。priority は整数。",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["module_ref"],
+        "properties": {
+          "module_ref": { "type": "string", "pattern": "^MOD-[0-9]+$" },
+          "priority": { "type": "integer" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "tdd_strategy": {
+      "type": "string",
+      "description": "テスト計画スタンス。NoTest はローリスクケースに限る。",
+      "enum": ["TDD", "TestAfter", "NoTest"]
+    },
+    "test_coverage_target": {
+      "type": "number",
+      "description": "テストカバレッジ目標 0-100（DP-010）。CI でこの値を下回ると警告。",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "ci_cd_config": {
+      "type": "object",
+      "description": "CI/CD設定。type と hooks（lint/test/build を含む）。",
+      "required": ["type", "hooks"],
+      "properties": {
+        "type": { "type": "string", "enum": ["GitHub Actions", "GitLab CI", "CircleCI", "Jenkins"] },
+        "hooks": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": true
+    },
+    "pr_strategy": {
+      "type": "object",
+      "description": "PR戦略。サイズ・命名・マージストラテジー。",
+      "required": ["pr_max_size_lines", "merge_strategy"],
+      "properties": {
+        "pr_max_size_lines": { "type": "integer", "minimum": 1 },
+        "branch_naming": { "type": "string" },
+        "merge_strategy": { "type": "string", "enum": ["squash", "merge", "rebase"] }
+      },
+      "additionalProperties": true
+    },
+    "tasks": {
+      "type": "array",
+      "description": "実装タスク（補助・任意）。implementer が分解する作業単位。",
+      "items": { "type": "object", "additionalProperties": true }
+    },
     "milestones": { "type": "array", "items": { "type": "string" } },
     "dependencies": { "type": "array", "items": { "type": "string" } },
     "test_plan": { "type": "string" },
     "undecided": {
       "type": "array",
+      "description": "未決の判断ポイントID（DP-XXX）。warn_and_document の検出対象（追加保持, T-002）。",
       "items": { "type": "string", "pattern": "^DP-[0-9]+$" }
     }
   },

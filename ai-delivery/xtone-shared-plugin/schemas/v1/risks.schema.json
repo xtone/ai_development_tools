@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://xtone.dev/ai-delivery/schemas/v1/risks.schema.json",
-  "$comment": "T-020 検証用の最小スタブ。正式定義は Notion I/O契約スキーマDB（FLD-, data_source_id: 0f997761-9259-4f76-9056-3f209e3a3afc）を真実の源とする。",
+  "$comment": "T-011 I/O契約スキーマDB（FLD-, 0f997761-9259-4f76-9056-3f209e3a3afc）の risks.schema.json を真実の源とする本実装（#126 / B-01）。",
   "title": "Risks",
   "description": "各フェーズで識別したリスクの一覧。",
   "type": "object",
@@ -11,12 +11,44 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["summary"],
+        "required": ["risk_id", "description", "impact_probability", "mitigation", "decision_record"],
         "properties": {
-          "summary": { "type": "string" },
-          "severity": { "type": "string", "enum": ["low", "medium", "high"] },
-          "mitigation": { "type": "string" },
-          "related_decision": { "type": "string", "pattern": "^DP-[0-9]+$" }
+          "risk_id": {
+            "type": "string",
+            "pattern": "^RISK-[0-9]+$",
+            "description": "リスクの一意識別子（例: RISK-001）"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 20,
+            "description": "リスクの内容・説明（最低20文字）"
+          },
+          "impact_probability": {
+            "type": "object",
+            "description": "影響度と発生確率の評価。",
+            "required": ["impact", "probability"],
+            "properties": {
+              "impact": { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+              "probability": { "type": "string", "enum": ["low", "medium", "high"] }
+            },
+            "additionalProperties": true
+          },
+          "mitigation": {
+            "type": "string",
+            "minLength": 1,
+            "description": "リスク軽減策。空文字不可（「未検討」も明示的に記載する）。"
+          },
+          "decision_record": {
+            "type": "object",
+            "description": "判断記録。adr_ref は design.schema.json の adr_list に存在。decided_by/decided_at が必須。",
+            "required": ["decided_by", "decided_at"],
+            "properties": {
+              "decided_by": { "type": "string" },
+              "decided_at": { "type": "string", "format": "date-time" },
+              "adr_ref": { "type": "string" }
+            },
+            "additionalProperties": true
+          }
         },
         "additionalProperties": true
       }
