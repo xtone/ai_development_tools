@@ -1,0 +1,31 @@
+{
+  "$comment": "架空案件「みんなの読書会」の要件定義成果物。auth-requirements-extraction スキルの出力例。schemas/requirements.schema.json 準拠。",
+  "project_name": "みんなの読書会",
+  "overview": "本好きが読書記録を共有しオンライン読書会を開く BtoC コミュニティアプリ。Web(SPA) とスマホアプリ(iOS/Android) を提供する。認証モジュール(MOD-001) の要件を抽出した。",
+  "actors": ["一般ユーザー", "ホストユーザー", "運営管理者"],
+  "use_cases": [
+    { "id": "UC-A01", "name": "メール+パスワードで登録・ログイン", "module": "MOD-001" },
+    { "id": "UC-A02", "name": "パスワードレス(メール一時トークン)でログイン", "module": "MOD-001" },
+    { "id": "UC-A03", "name": "Google / Apple ID でログイン(OIDC)", "module": "MOD-001" },
+    { "id": "UC-A04", "name": "既存アカウントへ認証方式を追加", "module": "MOD-001" },
+    { "id": "UC-A05", "name": "パスワード変更・リセット", "module": "MOD-001" },
+    { "id": "UC-A06", "name": "メールアドレス変更", "module": "MOD-001" },
+    { "id": "UC-A07", "name": "退会(アカウント削除)", "module": "MOD-001" }
+  ],
+  "functional_requirements": [
+    "メールアドレス+パスワード認証",
+    "メールアドレス+一時トークンによるパスワードレス認証",
+    "Google / Apple ID による OIDC 認証",
+    "認証方式の追加(アカウント連携)",
+    "パスワード変更・リセット / メールアドレス変更 / 退会",
+    "バックエンド(Rails) で API の JWT 認可とログインセッション保持",
+    "フロント(Web SPA)・アプリでのセッション保持と JWT 付きAPIリクエスト"
+  ],
+  "non_functional_requirements": [
+    "想定ユーザー規模: 初年度で数万人",
+    "規制の厳しい業界ではない / docomo・dメニュー連携なし(DP-015 非該当)",
+    "将来的な認証基盤の差し替え余地を残す(ベンダーロックイン回避)",
+    "開発チームは Firebase 利用経験あり"
+  ],
+  "undecided": ["DP-007", "DP-008"]
+}

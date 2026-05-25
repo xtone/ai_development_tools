@@ -1,0 +1,24 @@
+{
+  "$comment": "架空案件「みんなの読書会」の実装計画成果物。firebase-auth-setup スキル / implementer の出力例。schemas/implementation-plan.schema.json 準拠。",
+  "tasks": [
+    { "id": "T-A01", "title": "AuthAdapter インターフェース定義(差し替え可能設計の核, DP-007)", "module": "MOD-001" },
+    { "id": "T-A02", "title": "FirebaseAuthAdapter 実装(ID トークン検証/サインイン/ユーザ取得)" },
+    { "id": "T-A03", "title": "Rails API ミドルウェアで JWT 認可" },
+    { "id": "T-A04", "title": "メール+パスワード / パスワードレス / OIDC(Google・Apple) のサインインフロー" },
+    { "id": "T-A05", "title": "アカウント連携(認証方式の追加) UC-A04" },
+    { "id": "T-A06", "title": "パスワード変更・リセット / メール変更 / 退会(論理削除)" },
+    { "id": "T-A07", "title": "MFA オプトイン(運営管理者は必須) DP-008 決定の反映" },
+    { "id": "T-A08", "title": "Web/アプリのセッション保持と Bearer 付与" }
+  ],
+  "milestones": [
+    "M1: AuthAdapter + Firebase 実装 + JWT 認可(コア認証)",
+    "M2: 各サインインフロー(UC-A01〜A03)",
+    "M3: 連携・各種変更・退会(UC-A04〜A07) + MFA"
+  ],
+  "dependencies": [
+    "Firebase プロジェクト/サービスアカウントキー(.env 管理, コミット禁止)",
+    "schemas/design.schema.json(承認済み設計)"
+  ],
+  "test_plan": "AuthAdapter のユニットテスト(モック)、JWT 検証の正常/失効/改ざんケース、各サインインフローの結合テスト。test/ は本 MVP ではスタブのため Rollout で本格整備。",
+  "undecided": []
+}

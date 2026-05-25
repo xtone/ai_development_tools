@@ -57,8 +57,20 @@ ai-delivery/
 │       ├── module.schema.json
 │       └── quality-gate-rules.yaml
 └── plugins/
-    └── xtone-auth-plugin/         # ⏳ T-021 MVP（最初のプラグイン）
+    └── xtone-auth-plugin/         # ✅ T-021 MVP（最初のプラグイン）
+        ├── .claude-plugin/plugin.json
+        ├── README.md              #    ルート CLAUDE.md は置かない（DP-27: 運用 context は skill へ）
+        ├── agents/                #    基盤6 + authentication-architect（7）
+        ├── commands/              #    基盤8 + auth-design（9）
+        ├── hooks/                 #    hooks.json + 4 Hook
+        ├── skills/                #    auth-plugin-guide（ガイド）+ requirements / design / implementation（実動）+ test（スタブ）
+        ├── schemas/ -> ../../xtone-shared-plugin/schemas/v1/   # symlink
+        ├── docs/                  #    decision-points / usage-guide / pending-decisions / adr
+        ├── sample-inputs/, sample-outputs/   # 架空案件の作り込み例
+        └── .github/               #    PRテンプレ・CI
 ```
+
+最初のプラグイン **xtone-auth-plugin** の使い方は [plugins/xtone-auth-plugin/README.md](./plugins/xtone-auth-plugin/README.md) / [docs/usage-guide.md](./plugins/xtone-auth-plugin/docs/usage-guide.md) を参照。
 
 ## 中核設計原則
 
