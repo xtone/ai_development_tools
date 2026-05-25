@@ -41,7 +41,8 @@ export const MfaClient = {
     const session = await multiFactor(auth.currentUser).getSession()
     const secret = await TotpMultiFactorGenerator.generateSecret(session)
     // 認証アプリ用の otpauth:// URL（QR にする）と、手入力用の secretKey の両方を返す
-    const qrUrl = secret.generateQrCodeUrl(auth.currentUser.email, "みんなの読書会")
+    // 第2引数は issuer（認証アプリに表示されるサービス名）。案件のアプリ名に置換する。
+    const qrUrl = secret.generateQrCodeUrl(auth.currentUser.email, "<アプリ名>")
     return { secret, qrUrl, secretKey: secret.secretKey }
   },
   // 2) 認証アプリの 6 桁コードで確定

@@ -28,7 +28,8 @@ export const MfaClient = {
   enrollTotp: async () => {
     const session = await multiFactor(auth.currentUser!).getSession()
     const secret = await TotpMultiFactorGenerator.generateSecret(session)
-    const qrUrl = secret.generateQrCodeUrl(auth.currentUser!.email ?? "", "MyApp")
+    // 第2引数は issuer（認証アプリに表示されるサービス名）。案件のアプリ名に置換する。
+    const qrUrl = secret.generateQrCodeUrl(auth.currentUser!.email ?? "", "<アプリ名>")
     return { secret, qrUrl, secretKey: secret.secretKey }  // QR と手入力用キー
   },
   confirmTotp: async (secret: TotpSecret, code: string, displayName = "TOTP") => {
