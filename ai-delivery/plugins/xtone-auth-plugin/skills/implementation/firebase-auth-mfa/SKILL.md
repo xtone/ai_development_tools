@@ -89,6 +89,10 @@ enroll / unenroll が成功したら **サーバに通知**し、`backend.revoke
 | client | Next.js | [`references/nextjs.md`](./references/nextjs.md) | ✅ |
 | その他 | — | — | 追加可（契約を満たす形で `<stack>.md` を追加） |
 
+## ローカル検証（エミュレーター）
+
+`firebase-auth-emulator` で Docker 起動した Auth Emulator に対して、**SMS(phone) MFA** は enrollment/challenge の E2E が回せる。**TOTP MFA はエミュレーター非対応**（[firebase-tools #6224](https://github.com/firebase/firebase-tools/issues/6224)）なので、ローカル検証は SMS で代替し、TOTP の E2E は実 Identity Platform を使う。詳細・接続パラメータ・手順は [`firebase-auth-emulator`](../firebase-auth-emulator/SKILL.md) を参照。
+
 ## 既知の制約
 
 - **Identity Platform 必須**: TOTP / SMS いずれの MFA も Google Cloud Identity Platform（GCIP）へのアップグレードが必要。Firebase コンソール → Authentication → Sign-in method → Advanced で MFA を有効化してから実装・検証する。無印の Firebase Auth プロジェクトのままでは enroll/challenge が失敗する。

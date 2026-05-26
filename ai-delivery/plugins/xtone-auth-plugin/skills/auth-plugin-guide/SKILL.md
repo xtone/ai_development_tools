@@ -51,6 +51,8 @@ AI はこれらを **勝手に決めず推奨だけ提示**し、未決は `unde
 
 > DP-008 で MFA 方針が決まったら、実装は専用スキル `firebase-auth-mfa`（TOTP/SMS の登録・追加認証＝client、クレーム検証・管理者強制・失効＝backend）に従う。
 
+> **ローカル検証**（実 Firebase 無しで E2E）は `firebase-auth-emulator` を使う。Docker で Auth Emulator を起動し、署名検証スキップ・`connectAuthEmulator`・SMS MFA で E2E まで可能。**TOTP はエミュレーター非対応**のため、TOTP の E2E は実 Identity Platform で行う前提を案件 ADR に明記する。
+
 ## 構成
 
 | ディレクトリ | 内容 |
