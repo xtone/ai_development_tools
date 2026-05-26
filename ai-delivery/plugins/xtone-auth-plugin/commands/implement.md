@@ -10,7 +10,7 @@ implementer サブエージェントを使って、`schemas/v1/design.schema.jso
 
 - `skill_plan` に列挙されたスキル（`required=true`）は実装フェーズ中に必ず呼び出し、完了時に該当エントリの `called=true` に更新する。
 - 完了時に `called=false` のまま残っている `required=true` のエントリがあれば **警告**（warn_and_document）し、`docs/pending-decisions.md` に「未呼び出しスキル: <skill-id> / 理由: <自動 vs 判断>」を起票する。**ブロックはしない**（T-002）。
-- `skill_plan` 自体が **空 or 欠落のまま実装フェーズ完了**に到達した場合も警告対象（スキーマ上は optional だが運用必須）。
+- `skill_plan` は `implementation-plan.schema.json` 上 **required かつ minItems=1**。schema validation 段階で欠落・空配列は検出されるが、運用上も Step 0 で planner が必ず埋める。仮にすり抜けて完了に到達したら警告対象（warn_and_document）。
 - 計画外のスキルを呼び出したい場合は、その場で `skill_plan` に追記してから実行する。
 
 ## Step 1 以降
