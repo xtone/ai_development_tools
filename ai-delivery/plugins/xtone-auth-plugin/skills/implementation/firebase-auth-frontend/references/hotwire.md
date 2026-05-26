@@ -7,15 +7,17 @@
 
 ## 1. Firebase JS SDK の導入
 
+> **前提: Firebase JS SDK v9+（modular API）を採用する。** v8 namespaced API（`firebase.auth().signInWithEmailAndPassword(...)` 形式）は非推奨。本レシピのコード片はすべて modular（`import { signInWithEmailAndPassword } from "firebase/auth"`）。`package.json` の `firebase` が `^9.0.0` 未満の場合は更新してから本レシピを適用する。
+
 importmap（Rails 標準）の例:
 
 ```ruby
 # config/importmap.rb
-pin "firebase/app", to: "https://www.gstatic.com/firebasejs/<latest>/firebase-app.js"
-pin "firebase/auth", to: "https://www.gstatic.com/firebasejs/<latest>/firebase-auth.js"
+pin "firebase/app",  to: "https://www.gstatic.com/firebasejs/<latest>/firebase-app.js"   # v9+ modular CDN
+pin "firebase/auth", to: "https://www.gstatic.com/firebasejs/<latest>/firebase-auth.js"  # v9+ modular CDN
 ```
 
-> `<latest>` は固定値でなく公式の最新安定版を使う（environment-setup.md）。esbuild/jsbundling を使う場合は `npm i firebase`。Firebase の Web 設定値（apiKey 等）は公開前提の値だが、`config/credentials` か ENV から埋め込む。
+> `<latest>` は固定値でなく公式の最新安定版を使う（[`ai-delivery/docs/environment-setup.md`](../../../../../../docs/environment-setup.md)）。特定バージョン固定は判断ポイントとして `pending-decisions.md` に起票する。esbuild/jsbundling を使う場合は `npm i firebase`。Firebase の Web 設定値（apiKey 等）は公開前提の値だが、`config/credentials` か ENV から埋め込む。
 
 ## 2. AuthClient（契約の実装）
 
@@ -226,12 +228,70 @@ end
 get  "login",  to: "sessions#new",      as: :login
 post "login",  to: "sessions#create"
 get  "signup", to: "registrations#new", as: :signup
-# /mfa/enroll, /settings/* も同様に定義
+
+# /settings/* は singular resource（resource、複数形 resources ではない）で揃える。
+# 各 settings 配下は 1 ユーザに 1 件のため、ヘルパーは edit_profile_path / profile_path のように
+# Rails 規約どおりに生成される（profile_edit_path のような誤名で混乱しないよう singular に統一）。
+namespace :settings do
+  resource :profile,    only: [:show, :edit, :update]
+  resource :email,      only: [:edit, :update]    # メール変更（responsibility=iaas、表示用のみ）
+  resource :password,   only: [:edit, :update]    # PW 変更（responsibility=iaas、表示用のみ）
+  resource :withdrawal, only: [:new,  :create]    # 退会（responsibility=shared、DELETE /account を呼ぶ）
+end
+
+# MFA enrollment（firebase-auth-mfa との組合せ）
+resource :mfa_enrollment, only: [:new, :create], path: "mfa/enroll"
+
 root to: "home#index"
 ```
+
+> **routes 命名**: `/settings/*` 配下は **すべて singular resource（`resource :name`）** で揃え、`resources :names` を使わない。1 ユーザに 1 件の設定を扱うため。これにより `edit_settings_profile_path` のようなヘルパが生成され、`profile_edit_path` 系の手書き誤名が混入しなくなる。
 
 ## 7. 既知の制約 / 注意
 
 - Firebase JS SDK はブラウザ実行。`localStorage` ではなくメモリ保持 ＋ リフレッシュを既定にし、XSS リスクを下げる（戦略 A）。
 - パスワード変更・リセット・メール変更は Firebase JS SDK で完結し **Rails 実装不要**（responsibility=iaas）。
 - 退会はフロントから `DELETE /account` を呼び、サーバが論理削除＋Admin SDK 削除を行う（responsibility=shared）。
+- **Firebase JS SDK は v9+ modular 前提**。本レシピのコード片を v8 namespaced API（`firebase.auth().*`）に混ぜないこと。混在するとビルドは通っても挙動が壊れる。
+- **`alert()` / `confirm()` / `prompt()` を使わない**。MCP（claude-in-chrome / playwright）や Headless 実行で **モーダルダイアログが他の入力をブロック**し、E2E（B-15）が固まる。エラーや確認はすべて DOM への描画と `console.error` で行う（下記パターン）。
+
+### エラー / 確認の DOM フォールバック（alert 代替）
+
+[Section 3](#3-stimulus-コントローラサインイン--authsession) の `auth_controller.js` に、**try/catch と `flashTarget` への DOM 通知を追加する**差分。Section 3 が最小例で、本節がエラー処理を加えた拡張版。同じファイルなので Section 3 とは置き換える形で適用する（Section 3 と本節を**両方並べて配置しない**）。
+
+```diff
+ // app/javascript/controllers/auth_controller.js
+ import { Controller } from "@hotwired/stimulus"
+ import { AuthClient } from "auth/client"
+
+ export default class extends Controller {
+-  static targets = ["email", "password"]
++  static targets = ["email", "password", "flash"]   // flashTarget = エラー表示先の <div data-auth-target="flash">
+
+   async signIn(e) {
+     e.preventDefault()
+-    await AuthClient.signInWithPassword(this.emailTarget.value, this.passwordTarget.value)
+-    await this.establishSession()
++    try {
++      await AuthClient.signInWithPassword(this.emailTarget.value, this.passwordTarget.value)
++      await this.establishSession()
++    } catch (err) {
++      this.notify("ログインに失敗しました。メールアドレスとパスワードを確認してください。", err)
++    }
+   }
+
+   async establishSession() { /* ... Section 3 のまま ... */ }
+   csrf()            { /* ... Section 3 のまま ... */ }
+
++  notify(message, err = null) {
++    // alert() は使わない（MCP/E2E で固まる）。DOM に出して console.error にも残す。
++    if (this.hasFlashTarget) {
++      this.flashTarget.textContent = message
++      this.flashTarget.hidden = false
++    }
++    if (err) console.error("[auth]", err)
++  }
+ }
+```
+
+> 退会のように「ユーザー確認が必要」な操作は `confirm()` を使わず、**確認用の専用 Turbo Frame / ダイアログ要素**を出して二段階の操作にする（ブラウザ標準モーダルを避けることで E2E と一貫させる）。
