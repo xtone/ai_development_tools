@@ -15,6 +15,16 @@ description: Firebase Auth の MFA（多要素認証, TOTP/SMS）を実装する
 
 > **前提**: MFA の有効化方法（全員必須 / 管理者のみ / オプトイン / 不要）は **設計フェーズの判断ポイント DP-008**。本スキルは「決まった方針を実装する」もので、方針自体は決めない。`mfa_requirement` が `undecided` のまま実装に来た場合は確定せず `docs/pending-decisions.md` に残す（T-002 warn_and_document）。
 
+## 呼び出しトリガ（B-13）
+
+`implementation-skill-planner` が以下を判定し `implementation-plan.json.skill_plan` に列挙する:
+
+- `design.yaml.authentication.mfa_requirement` ∈ {`required`, `admin_only`} → **必須**
+- `design.yaml.authentication.mfa_requirement` = `optional` → 推奨（オプトイン UI を実装）
+- `design.yaml.authentication.mfa_requirement` = `none` → 呼び出し不要（skill_plan に並べない）
+
+未呼び出しのまま実装フェーズが完了に到達した場合は warn_and_document に従い警告（T-002）。
+
 ## スコープと責務分割（responsibility_split）
 
 | 層 | 担当 | 本スキルでの内容 |

@@ -11,6 +11,15 @@ description: Firebase Auth をフロントエンド（クライアント）に�
 
 `design.schema.json` の認証設計のうち、`responsibility_split` で **`client`** に仕分けた機能をフロントエンドに実装する。本スキルは **言語/FW 非依存の AuthClient 契約**を定義し、具体コードは `references/<stack>.md` に分離する（バックエンドの [`firebase-auth-setup`](../firebase-auth-setup/SKILL.md) と対の構造）。
 
+## 呼び出しトリガ（B-13）
+
+以下のいずれかに該当する設計成果物が来たら **必ず本スキルを起動**する。判定は `implementation-skill-planner` が行い、`implementation-plan.json.skill_plan` に列挙する。手動判断で省略しない（B-13 由来。サンプル案件で frontend スキルが素通りされた）:
+
+- `design.yaml.responsibility_split[].owner` に **`client` または `shared`** が含まれる
+- `design.yaml.page_access_control.pages` に 1 件以上の定義がある（A/B/C パターンの実装が必要）
+
+未呼び出しのまま実装フェーズが完了に到達した場合は `delivery/implementation-skill-plan.md` の `called` が false で残り、`docs/pending-decisions.md` に「未呼び出しスキル」として警告される（warn_and_document, T-002）。
+
 > 役割分担: **Firebase クライアント SDK** が認証フロー（サインイン・パスワード/メール変更等）を担い、**サーバ（firebase-auth-setup）** は ID トークンの検証のみ。フロントは取得した ID トークンを API に Bearer で渡す。
 
 > **MFA（多要素認証, DP-008）は本スキルの対象外。** 第2要素の登録（enrollment）・サインイン時の追加認証（challenge）も client 実装だが、backend/iaas にまたがる横断機能のため対の [`firebase-auth-mfa`](../firebase-auth-mfa/SKILL.md) に集約している。MFA を実装するときはそちらを参照。

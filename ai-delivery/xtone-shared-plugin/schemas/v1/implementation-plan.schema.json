@@ -5,7 +5,7 @@
   "title": "ImplementationPlan",
   "description": "実装フェーズの計画。implementer Subagent が生成する。",
   "type": "object",
-  "required": ["modules", "tdd_strategy", "ci_cd_config", "pr_strategy"],
+  "required": ["modules", "tdd_strategy", "ci_cd_config", "pr_strategy", "skill_plan"],
   "properties": {
     "modules": {
       "type": "array",
@@ -52,6 +52,50 @@
         "merge_strategy": { "type": "string", "enum": ["squash", "merge", "rebase"] }
       },
       "additionalProperties": true
+    },
+    "skill_plan": {
+      "type": "array",
+      "description": "実装フェーズで呼び出すスキルの計画（B-13）。implementation-skill-planner が design.yaml の responsibility_split / page_access_control / authentication.mfa_requirement / local_dev_stack から導出する。required かつ最低 1 件。`/implement` の Step 0 で planner が必ず埋める。called=false のままフェーズ完了に到達した場合は警告される（warn_and_document, T-002）。MVP 期は CONV-14 並行保持（v1/v2）を適用せず、最新スキーマで型化を強制する（pending-decisions の DP-MVP-COMPAT を参照）。",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["skill", "trigger", "owners"],
+        "properties": {
+          "skill": {
+            "type": "string",
+            "description": "呼び出すスキル ID（プラグイン内の skills/<phase>/<name>）。",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          },
+          "recipe": {
+            "type": "string",
+            "description": "採用するレシピ（references/<stack>.md の stack 名）。例: rails / hotwire / nextjs / docker-compose。"
+          },
+          "trigger": {
+            "type": "string",
+            "description": "なぜこのスキルを呼ぶか（design のどのフィールドが根拠か）。例: 'responsibility_split に client を含む' / 'mfa_requirement=admin_only' / 'local_dev_stack=emulator_docker'。"
+          },
+          "owners": {
+            "type": "array",
+            "description": "担当する責務領域。backend / client / iaas / shared のいずれか以上。",
+            "minItems": 1,
+            "items": { "type": "string", "enum": ["backend", "client", "iaas", "shared"] }
+          },
+          "applies_to": {
+            "type": "array",
+            "description": "本スキルが扱う要素（responsibility_split.item / page_access_control.path / decision_point ID など）。任意だが、トレーサビリティのため埋めるのが望ましい。",
+            "items": { "type": "string" }
+          },
+          "required": {
+            "type": "boolean",
+            "description": "true なら呼び出し必須（未呼び出しを警告対象にする）。false は推奨。既定 true。"
+          },
+          "called": {
+            "type": "boolean",
+            "description": "実装フェーズ完了時の実呼び出し状況。true=呼び出された、false=未呼び出し（warn_and_document の警告対象）。"
+          }
+        },
+        "additionalProperties": true
+      }
     },
     "tasks": {
       "type": "array",

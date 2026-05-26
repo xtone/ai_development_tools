@@ -13,6 +13,16 @@ Firebase Auth Emulator を Docker で起動して、`firebase-auth-setup`（back
 
 > **本番ではない**: 本スキルは「ローカル検証専用」。本番は実 Firebase Auth（MFA は Identity Platform）を使う。スキルが定義する署名検証スキップや `Bearer owner` は **本番経路では絶対に有効化しない**。
 
+## 呼び出しトリガ（B-13）
+
+`implementation-skill-planner` が以下を判定し `implementation-plan.json.skill_plan` に列挙する:
+
+- `design.yaml.local_dev_stack` ∈ {`emulator_docker`, `emulator_host`} → **必須**
+- `design.yaml.local_dev_stack` = `cloud_direct` → 呼び出し不要（ただし `decision_record` に「ローカルから実 Firebase に直接接続する」根拠を残させる）
+- `design.yaml.local_dev_stack` **未指定** → **既定で emulator_docker** として必須化（B-12: ローカル開発の既定は Emulator+Docker）
+
+未呼び出しのまま実装フェーズが完了に到達した場合は warn_and_document に従い警告（T-002）。
+
 ## スコープと既知の制約
 
 | 項目 | エミュレーター対応 | 検証方針 |

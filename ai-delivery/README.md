@@ -46,7 +46,7 @@ ai-delivery/
         ├── skills/                 # auth-plugin-guide + 各フェーズのスキル
         ├── schemas/ -> ../../xtone-shared-plugin/schemas/v1/   # symlink
         ├── docs/                   # usage-guide / decision-points / pending-decisions
-        ├── sample-inputs/, sample-outputs/
+        ├── sample-inputs/          # 架空案件の入力例（成果物 sample-outputs は B-13 後に再生成）
         └── .github/
 ```
 

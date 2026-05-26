@@ -48,7 +48,7 @@ plugins/xtone-<domain>-plugin/
 │   └── implementation/<domain>-frontend/ など
 ├── schemas/                       # xtone-shared-plugin への symlink（編集不可）
 ├── docs/                          # decision-points / usage-guide / pending-decisions / adr
-├── sample-inputs/, sample-outputs/  # 架空案件の作り込み例
+├── sample-inputs/                # 架空案件の入力例（成果物 sample-outputs/ は型化完了後に再生成）
 └── .github/                       # PR テンプレ・CI
 ```
 

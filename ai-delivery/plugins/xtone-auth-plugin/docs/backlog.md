@@ -19,12 +19,15 @@ T-022 内部パイロット（[pilot-report.md](./pilot-report.md)）で発見�
 | **B-08** | [#133](https://github.com/xtone/ai_development_tools/issues/133) | Decision | Low | 新規 DP「**退会済みアカウントの再登録ポリシー**」を判断ポイントカタログに起票（本実装は 403 拒否で仮対応）。pending-decisions に起票済み | DP（新規候補）| F-7 |
 | **B-09** | [#134](https://github.com/xtone/ai_development_tools/issues/134) | Plugin（任意） | Low | **言語別の実装テンプレ**（例: Rails 向け AuthAdapter コード雛形）をスキルに同梱し実装を加速 | SKL- | F-8 |
 | **B-10** | [#141](https://github.com/xtone/ai_development_tools/issues/141) | Architecture | Med | **フロントエンド認証実装スキル新設**（`firebase-auth-frontend` ＋ hotwire/nextjs レシピ）。#130 で責務分類した `client` 側の実装ガイドが欠落（firebase-auth-setup は backend 専用）。セッション戦略は判断ポイント扱い | SKL- / #130 | #130 レビュー後 |
+| **B-13** | [#153](https://github.com/xtone/ai_development_tools/issues/153) | Architecture | High | **実装フェーズに skill_plan 生成を強制**。`implementation-skill-planner` スキル新設＋ `design.schema.page_access_control` / `local_dev_stack` 追加＋ `implementation-plan.schema.skill_plan` 追加（**required かつ minItems=1**。MVP 期は CONV-14 並行保持を厳格適用せず最新スキーマで型化を強制 / DP-MVP-COMPAT）。frontend / emulator スキル呼び出し漏れ防止 | SKL- / FLD- | サンプル案件 sample-auth |
+| **B-14** | [#155](https://github.com/xtone/ai_development_tools/issues/155) | Documentation | Med | **`sample-outputs/` を 1 から再生成**。B-13 で削除（古いサンプルが新スキーマと不整合のため）。B-11〜B-14 一連のサンプル案件由来型化修正が完了したタイミングで、新スキーマ（page_access_control / local_dev_stack / skill_plan）と新スキル群（implementation-skill-planner 等）に沿った成果物を再構築 | SKL- / FLD- | PR #154 レビュー（豊田）|
 
 ## 優先度の考え方
 
 - **High（Rollout 前に解消推奨）**: B-01 / B-02 / B-05 / B-06。いずれも「型の穴」で、24 ユースケース展開で繰り返しコスト化する。
-- **Med（Rollout と並行可）**: B-03 / B-04 / B-07。
+- **Med（Rollout と並行可）**: B-03 / B-04 / B-07 / B-10 / B-14。
 - **Low（任意・改善）**: B-08 / B-09。
+- **Rollout 後追加 High**（24 ユースケース展開と並行で塞ぐ）: B-13（サンプル案件 sample-auth 由来。設計→実装のスキル呼び出しが暗黙的で frontend / emulator が素通りした穴）。
 
 ## 次アクション
 

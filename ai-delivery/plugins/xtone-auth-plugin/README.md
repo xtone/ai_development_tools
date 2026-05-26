@@ -29,7 +29,7 @@ claude plugin validate --strict plugins/xtone-auth-plugin
 | `hooks/` | hooks.json + 4 Hook（warn_and_document） |
 | `schemas/` | xtone-shared-plugin への symlink（編集不可, CONV-14） |
 | `docs/` | decision-points / usage-guide / pending-decisions / adr |
-| `sample-inputs/`, `sample-outputs/` | 架空案件の作り込み例（通し検証） |
+| `sample-inputs/` | 架空案件の入力例（成果物 `sample-outputs/` は B-13 一連の型化修正完了後に再生成予定。`docs/backlog.md` B-14 参照） |
 | `.github/` | PR テンプレート・CI |
 
 ## 判断ポイント
