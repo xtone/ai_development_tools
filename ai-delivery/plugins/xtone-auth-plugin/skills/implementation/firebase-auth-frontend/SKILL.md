@@ -126,3 +126,4 @@ description: Firebase Auth をフロントエンド（クライアント）に�
 4. ログイン → `POST /auth/session`、API への Bearer 付与、`onAuthStateChanged` でセッション復元を実装する。
 5. セッション戦略を人間に確認する（DP）。
 6. 実装タスク・依存・テスト方針を `implementation-plan.schema.json` に記録する。
+7. **DoD（B-15）**: 本スキルだけで完了扱いにしない。`design.yaml.representative_use_cases` および `page_access_control.pages` の **A/B/C ガード・サインインフロー・MFA enrollment 等を [`auth-e2e-verify`](../../test/auth-e2e-verify/SKILL.md) でブラウザ実機検証 PASS** するまでが完了。`delivery/e2e-verification-report.md` に通過証跡を残す。DP 決定済みなのに未実装な UC（例: パスワード変更画面、退会導線）があれば pending-decisions に警告として残す（warn_and_document）。
