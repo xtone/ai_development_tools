@@ -1,6 +1,6 @@
 ---
 name: implementation-skill-planner
-description: 設計成果物（design.yaml）から実装フェーズで呼び出すべきスキルを導出して skill_plan を生成するスキル。実装フェーズの Step 0 として、architecture.stack / responsibility_split / page_access_control / authentication.mfa_requirement / local_dev_stack の値に応じて tech-version-check / firebase-auth-setup / firebase-auth-frontend / firebase-auth-mfa / firebase-auth-emulator のうち呼ぶべきものを列挙し、implementation-plan.json の skill_plan に反映、`delivery/implementation-skill-plan.md` を出力する。frontend スキル等の呼び出し漏れ防止（B-13 由来）。skill_plan の最先頭は tech-version-check（B-11）。
+description: 設計成果物（design.yaml）から実装フェーズで呼び出すべきスキルを導出して skill_plan を生成するスキル。実装フェーズの Step 0 として、architecture.stack / responsibility_split / page_access_control / authentication.mfa_requirement / local_dev_stack / representative_use_cases の値に応じて tech-version-check / firebase-auth-setup / firebase-auth-frontend / firebase-auth-mfa / firebase-auth-emulator / auth-e2e-verify のうち呼ぶべきものを列挙し、implementation-plan.json の skill_plan に反映、`delivery/implementation-skill-plan.md` を出力する。frontend スキル等の呼び出し漏れ防止（B-13 由来）。skill_plan の最先頭は tech-version-check（B-11）、最末尾は auth-e2e-verify（B-15）。
 ---
 
 # Implementation Skill Planner
@@ -36,10 +36,13 @@ design の値から **必ず** 以下を skill_plan に列挙する。
 | `authentication.mfa_requirement` ∈ {`required`, `admin_only`, `optional`} | `firebase-auth-mfa` | rails＋hotwire / rails＋nextjs 等の組合せ | `[backend, client, iaas]` | `required`/`admin_only` は true、`optional` は false（推奨） |
 | `local_dev_stack` ∈ {`emulator_docker`, `emulator_host`} **または未指定** | `firebase-auth-emulator` | docker-compose（基本） | `[shared]` | true（既定はローカル開発 = emulator） |
 | `page_access_control.pages` が定義されている | `firebase-auth-frontend`（既出なら統合） | 同上 | 同上＋`applies_to` に各 page.path を入れる | true |
+| `representative_use_cases` に 1 件以上の UC が定義されている **かつ** 上記いずれかで setup / frontend のどちらかが skill_plan に入る | `auth-e2e-verify` | playwright | `[shared]` | true（**skill_plan の最末尾に置く**。setup / frontend / mfa / emulator がすべて呼ばれた後に E2E 検証） |
 
 > **`local_dev_stack` が未指定**でも emulator スキルを追加するのは、B-12（Emulator+Docker を既定とする方針）に整合させるため。`cloud_direct` を選んだ場合のみ planner は emulator を外し、その判断を `decision_record` に残すよう促す。
 
 > **`tech-version-check` は最先頭に置く**（B-11）。バージョン非互換に気付くのが遅れる事故（sample-auth で発生）を防ぐため、setup / frontend / mfa / emulator のいずれよりも前に呼ぶ。既に `delivery/version-matrix.md` が直近で作成済みなら skip 可（trigger に "version-matrix.md is fresh" を残す）。
+
+> **`auth-e2e-verify` は最末尾に置く**（B-15）。設計フェーズで決めた `representative_use_cases` を **ブラウザ実機で全件 PASS** するまでが実装フェーズの DoD。`tech-version-check`（最先頭）と対の構造で、skill_plan を「前段=バージョン取得 → 中段=各実装スキル → 末尾=E2E 検証」の流れで構成する。
 
 ## 手順
 
@@ -72,6 +75,7 @@ design.yaml から自動導出（implementation-skill-planner / B-13）。
 | firebase-auth-frontend | hotwire | client, shared | /login, /signup, /settings/* | true | ☐ |
 | firebase-auth-mfa | rails+hotwire | backend, client, iaas | DP-008 | true | ☐ |
 | firebase-auth-emulator | docker-compose | shared | local_dev_stack=emulator_docker（既定） | true | ☐ |
+| auth-e2e-verify | playwright | shared | UC-A01〜A07（全 representative_use_cases） | true | ☐ |
 
 ## 未呼び出し警告（フェーズ完了時に更新）
 
