@@ -23,7 +23,7 @@ description: Firebase Auth を任意のバックエンドに統合するスキ�
 
 > **スコープ: バックエンド（サーバ）専用。** ID トークン検証・JWT 認可・退会時の Admin SDK 削除・トークン失効など。フロントエンド（サインインUI・パスワード/メール変更・トークン保持・API への Bearer 付与）は対の [`firebase-auth-frontend`](../firebase-auth-frontend/SKILL.md) を参照。`responsibility_split` の **backend = 本スキル / client = firebase-auth-frontend / iaas = Firebase が提供**。MFA（多要素認証, DP-008）は client/backend/iaas 横断のため対の [`firebase-auth-mfa`](../firebase-auth-mfa/SKILL.md) に集約（本スキルが担う MFA 部分は「クレーム検証・管理者強制・変更時の失効」）。
 
-> **ローカル検証（Docker で Auth Emulator 起動・E2E）**は対の [`firebase-auth-emulator`](../firebase-auth-emulator/SKILL.md) を参照。`FIREBASE_AUTH_EMULATOR_HOST` 検出時の **署名検証スキップ**と **Admin REST の host 切替（`Bearer owner`）** はそちらに集約し、本スキルの本番経路（RS256 + サービスアカウント）と分離する。
+> **ローカル開発の既定は Firebase Auth Emulator + Docker（B-12）。** 本スキルの「手順」を進めるとき、**ローカル検証は実 Firebase に直接つながず、対の [`firebase-auth-emulator`](../firebase-auth-emulator/SKILL.md) スキルが提供する Auth Emulator を Docker で起動する**ことを既定にする。`FIREBASE_AUTH_EMULATOR_HOST` 検出時の **署名検証スキップ**と **Admin REST の host 切替（`Bearer owner`）** はそちらに集約し、本スキルの本番経路（RS256 + サービスアカウント）と分離する。設計時に `design.yaml.local_dev_stack` を `cloud_direct` にする選択（実 Firebase 直接接続）は判断ポイント扱いで、根拠を `decision_record` に残させる。
 
 ## 入出力（スキーマ）
 
