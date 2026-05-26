@@ -257,33 +257,41 @@ root to: "home#index"
 
 ### エラー / 確認の DOM フォールバック（alert 代替）
 
-```javascript
-// app/javascript/controllers/auth_controller.js（一部）
-import { Controller } from "@hotwired/stimulus"
-import { AuthClient } from "auth/client"
+[Section 3](#3-stimulus-コントローラサインイン--authsession) の `auth_controller.js` に、**try/catch と `flashTarget` への DOM 通知を追加する**差分。Section 3 が最小例で、本節がエラー処理を加えた拡張版。同じファイルなので Section 3 とは置き換える形で適用する（Section 3 と本節を**両方並べて配置しない**）。
 
-export default class extends Controller {
-  static targets = ["email", "password", "flash"]   // flashTarget = エラー表示先の <div data-auth-target="flash">
+```diff
+ // app/javascript/controllers/auth_controller.js
+ import { Controller } from "@hotwired/stimulus"
+ import { AuthClient } from "auth/client"
 
-  async signIn(e) {
-    e.preventDefault()
-    try {
-      await AuthClient.signInWithPassword(this.emailTarget.value, this.passwordTarget.value)
-      await this.establishSession()
-    } catch (err) {
-      this.notify("ログインに失敗しました。メールアドレスとパスワードを確認してください。", err)
-    }
-  }
+ export default class extends Controller {
+-  static targets = ["email", "password"]
++  static targets = ["email", "password", "flash"]   // flashTarget = エラー表示先の <div data-auth-target="flash">
 
-  notify(message, err = null) {
-    // alert() は使わない（MCP/E2E で固まる）。DOM に出して console.error にも残す。
-    if (this.hasFlashTarget) {
-      this.flashTarget.textContent = message
-      this.flashTarget.hidden = false
-    }
-    if (err) console.error("[auth]", err)
-  }
-}
+   async signIn(e) {
+     e.preventDefault()
+-    await AuthClient.signInWithPassword(this.emailTarget.value, this.passwordTarget.value)
+-    await this.establishSession()
++    try {
++      await AuthClient.signInWithPassword(this.emailTarget.value, this.passwordTarget.value)
++      await this.establishSession()
++    } catch (err) {
++      this.notify("ログインに失敗しました。メールアドレスとパスワードを確認してください。", err)
++    }
+   }
+
+   async establishSession() { /* ... Section 3 のまま ... */ }
+   csrf()            { /* ... Section 3 のまま ... */ }
+
++  notify(message, err = null) {
++    // alert() は使わない（MCP/E2E で固まる）。DOM に出して console.error にも残す。
++    if (this.hasFlashTarget) {
++      this.flashTarget.textContent = message
++      this.flashTarget.hidden = false
++    }
++    if (err) console.error("[auth]", err)
++  }
+ }
 ```
 
 > 退会のように「ユーザー確認が必要」な操作は `confirm()` を使わず、**確認用の専用 Turbo Frame / ダイアログ要素**を出して二段階の操作にする（ブラウザ標準モーダルを避けることで E2E と一貫させる）。
