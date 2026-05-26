@@ -4,13 +4,15 @@ Xtone の開発プロセスを **Claude Code プラグイン**で型化するプ
 
 ## ドキュメント案内
 
-| ファイル | 内容 |
-|---|---|
-| [CLAUDE.md](./CLAUDE.md) | Claude Code での作業ルール（鉄則・進め方・ID 体系） |
-| [docs/notion-db-catalog.md](./docs/notion-db-catalog.md) | 全 Notion DB の一覧と data_source_id、俯瞰ページ |
-| [docs/mcp-setup-guide.md](./docs/mcp-setup-guide.md) | MCP サーバー設定・トークン管理・WSL2・エラーハンドリング・トラブルシューティング |
-| [docs/environment-setup.md](./docs/environment-setup.md) | 実行環境のセットアップとバージョン方針（固定せず公式の最新安定版を使う） |
-| [docs/pending-decisions.md](./docs/pending-decisions.md) | 未決の判断ポイント（warn_and_document の出力先） |
+| ファイル | 内容 | 主な読者 |
+|---|---|---|
+| [CLAUDE.md](./CLAUDE.md) | Claude Code での作業ルール（鉄則・進め方・ID 体系） | 全員 |
+| **[docs/plugin-developer-guide.md](./docs/plugin-developer-guide.md)** | **プラグイン開発者ガイド** — 24 ユースケースの**新しいプラグインを作る**ための型と設計パターン（横断スキル化・契約と references の分離・既知の制約明文化・実機 E2E） | プラグイン開発者 |
+| **[docs/plugin-user-guide.md](./docs/plugin-user-guide.md)** | **プラグインユーザーガイド** — 案件で**プラグインを使う**ときの基本フロー・判断ポイント・フィードバックの送り方（backlog 形式）・トラブルシューティング | 案件チーム（PM・BE・FE 等） |
+| [docs/notion-db-catalog.md](./docs/notion-db-catalog.md) | 全 Notion DB の一覧と data_source_id、俯瞰ページ | 全員 |
+| [docs/mcp-setup-guide.md](./docs/mcp-setup-guide.md) | MCP サーバー設定・トークン管理・WSL2・エラーハンドリング・トラブルシューティング | 全員 |
+| [docs/environment-setup.md](./docs/environment-setup.md) | 実行環境のセットアップとバージョン方針（固定せず公式の最新安定版を使う） | 全員 |
+| [docs/pending-decisions.md](./docs/pending-decisions.md) | 未決の判断ポイント（warn_and_document の出力先） | 全員 |
 
 ## 真実の源（Source of Truth）は Notion にある
 
