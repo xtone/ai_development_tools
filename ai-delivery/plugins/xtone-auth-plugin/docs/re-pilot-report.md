@@ -108,7 +108,11 @@ Phase 1（実機テスト＝TestAdapter / frontend=ビルドのみ）に **実�
 - **Rollout の Go 条件だった High 4 件（B-01 / B-02 / B-05 / B-06）はすべて CLOSED**。さらに Med（B-03 / B-04 / B-10）も解消済み。
 - 本再パイロットは、**前回と異なるドメイン・条件（医療 / MFA required / Next.js + Rails / ロール別認可 / 退会データ分離）**で要件→設計→実装を通し、修正が効いたことを実機（backend テスト）とビルド（frontend）で実証した。
 - 新発見は Med 2・Low 1 のみで、いずれも Rollout と並行で対応可能。
-- → **Rollout 着手を支持する材料が揃った**。最終判定は豊田（T-005）。
+- → **Rollout 着手を支持する材料が揃った**。
+
+### 最終判定: **Go** — 2026-05-26 / 豊田
+
+本書をもとに、T-022 内部パイロット報告書（[`pilot-report.md`](./pilot-report.md)）の Rollout 推進可否判定を **No-go → Go** に再判定。T-023〜の Rollout に進む。残バックログ B-07（検証スクリプト / Med）/ B-08（退会再登録 DP / Low）/ B-09（言語別実装テンプレ / Low）は **Rollout 並行**で順次対応する。
 
 ## 8. 関連
 

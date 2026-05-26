@@ -2,7 +2,10 @@
 
 T-022 内部パイロット（[pilot-report.md](./pilot-report.md)）で発見した、型化の各レイヤー（Foundation / Modeling / Architecture / Tooling）への訂正タスク。
 
-> **Rollout 判定（2026-05-25 / 豊田）**: **No-go**。本バックログ（特に High 項目）を解消するまで Rollout（T-023〜）には進まない。全9件を GitHub Issue 化済み（下表参照）。
+> **Rollout 判定**:
+> - 2026-05-25 / 豊田 = **No-go**（High 4 件解消が条件）
+> - **2026-05-26 / 豊田 = Go**（再判定）— High 4 件（B-01/B-02/B-05/B-06）すべて CLOSED、[T-021 再パイロット](./re-pilot-report.md) で訂正の効果を実機実証、新発見 RN-1/2/3 も PR #143-#149 で解消。**T-023〜の Rollout に進む**。
+> - 残 **B-07 / B-08 / B-09**（Med / Low）は **Rollout 並行**で順次対応。
 
 | ID | Issue | レイヤー | 優先度 | タスク | 関連 | 発見 |
 |---|---|---|---|---|---|---|
