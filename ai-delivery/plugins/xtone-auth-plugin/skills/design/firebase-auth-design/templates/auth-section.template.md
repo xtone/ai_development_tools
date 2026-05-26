@@ -47,6 +47,23 @@ owner は **単一の enum 値**（`backend` / `client` / `iaas` / `shared`）�
 
 > owner の値: **backend**=サーバ実装 / **client**=アプリ・フロント SDK / **iaas**=Firebase 等が提供 / **shared**=両方。
 
+## ページ単位のアクセス制御（firebase-auth-frontend のデフォルトに従う / 逸脱は明示）
+
+`firebase-auth-frontend` の **3 パターン**（A: protected-only / B: public-aware / C: guest-only）と**デフォルトページ**を採用する。案件のページを以下の表に追記し、**デフォルトに反する設定は逸脱として明示**する（warn_and_document）。
+
+| パス | パターン | `default_after_login` | callback 受け取り | 補足 |
+|---|---|---|---|---|
+| `/login` | C: guest-only | `/`（既定） | 〇 | `/signup` と相互リンク・callback 引き継ぎ |
+| `/signup` | C: guest-only | `/`（既定） | 〇 | **`/login` と別ページ**。`/login` と相互リンク |
+| `/mfa/enroll` | A: protected-only | — | — | DP-008 の MFA 方針に従う |
+| `/settings/*` | A: protected-only | — | — | 退会・パスワード変更・メール変更 |
+| `/` | B: public-aware | — | — | 認証状態でコンテンツ切替 |
+| `<案件のページ>` | A/B/C | | | |
+
+- 既定遷移先（ログイン後の `default_after_login`）: `/`。案件で別にする場合はここに明示（例 `/dashboard`）
+- callback の URL 検証ポリシー: 同一オリジンの `/` 始まりのみ、`//` 拒否（open redirect 防止）
+- デフォルトに反する設定（例: `/settings` を公開、`/login` と `/signup` を統合 等）は `decision_record` に根拠を残す
+
 ## 未決（undecided）
 
 - DP-XXX: <概要>（`docs/pending-decisions.md` に起票済み）
