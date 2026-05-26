@@ -78,6 +78,7 @@ T-022 パイロット発見 F-3 / Issue #127 の解消。
 6. **運用契約**（退会削除・証明書キャッシュ・トークン失効）を実装する。
 7. ローカル動作確認（テストは `TestAdapter` で実 Firebase 不要）。
 8. 実装タスク・依存・テスト方針を `implementation-plan.schema.json` に記録する。
+9. **DoD（B-15）**: 本スキルだけで完了扱いにしない。`design.yaml.representative_use_cases` の **backend 関連 UC を [`auth-e2e-verify`](../../test/auth-e2e-verify/SKILL.md) でブラウザ実機検証 PASS** するまでが完了。`delivery/e2e-verification-report.md` に通過証跡を残す。DP 決定済みなのに未実装な UC（例: パスワード変更フローのサーバ受け口）があれば pending-decisions に警告として残す（warn_and_document）。
 
 ## 新しい言語・FW への展開
 
