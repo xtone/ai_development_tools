@@ -53,6 +53,7 @@
 | **F-3** firebase-auth-setup が運用詳細薄い | B-02 (#127) | 退会時 Admin 削除・証明書キャッシュ・トークン失効を backend に実装。失効テスト通過。`delete_user` のスタブ化が不要に ✅ |
 | **F-4** 責務境界が design に無い | B-03 (#130) | `design.responsibility_split` を client/backend/iaas/shared で明示。実装が責務分割どおりに割れた（Next.js=client / Rails=backend） ✅ |
 | **F-5** MFA 実装ガイドが無い | B-04 (#131) | `firebase-auth-mfa` で MFA=required を backend(強制)＋client(enroll/challenge) 実装。required 強制をテストで確認 ✅ |
+| **F-9** DP-27 follow-up 未反映（ルート CLAUDE.md → skill 化・CONV-06 改訂） | B-05 (#128) | プラグインにルート `CLAUDE.md` は無く、運用 context（鉄則・フロー・判断ポイント）を `auth-plugin-guide` skill から参照して再パイロットを実施できた。※ B-05 は**構造／規約の改訂**で、実機テストではなく「skill ベースの運用 context でプラグインが回るか」の確認という性質（`claude plugin validate --strict` は T-021 完了時にクリーン済み） ✅ |
 | （frontend ガイド欠落） | B-10 (#141) | `firebase-auth-frontend`(nextjs) で AuthClient/MfaClient を配置し tsc/build 通過。**前回未実装だったフロントが型レベルで通った** ✅ |
 
 ## 5. 今回の新たな発見事項
