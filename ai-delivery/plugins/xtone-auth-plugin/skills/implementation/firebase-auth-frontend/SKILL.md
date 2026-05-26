@@ -24,7 +24,7 @@ description: Firebase Auth をフロントエンド（クライアント）に�
 
 > **MFA（多要素認証, DP-008）は本スキルの対象外。** 第2要素の登録（enrollment）・サインイン時の追加認証（challenge）も client 実装だが、backend/iaas にまたがる横断機能のため対の [`firebase-auth-mfa`](../firebase-auth-mfa/SKILL.md) に集約している。MFA を実装するときはそちらを参照。
 
-> **ローカル検証（Docker で Auth Emulator 起動・E2E）**は対の [`firebase-auth-emulator`](../firebase-auth-emulator/SKILL.md) を参照。`connectAuthEmulator` の初期化と **SMS MFA での E2E 検証**手順をそちらに集約（TOTP MFA はエミュレーター非対応のため、ローカルは SMS で代替し TOTP の E2E は実 Identity Platform）。
+> **ローカル開発の既定は Firebase Auth Emulator + Docker（B-12）。** 本スキルが client 実装を進めるときも、ローカルは実 Firebase に直接つながず、対の [`firebase-auth-emulator`](../firebase-auth-emulator/SKILL.md) スキルが提供する Auth Emulator を Docker で起動する。`connectAuthEmulator` の初期化と **SMS MFA での E2E 検証**手順は emulator 側に集約（TOTP MFA はエミュレーター非対応のため、ローカルは SMS で代替し TOTP の E2E は実 Identity Platform）。本番経路（実 Firebase Auth）と分岐するコードは emulator スキルの references にある。設計時に `design.yaml.local_dev_stack` を `cloud_direct` にする選択は判断ポイント扱い。
 
 ## 入出力（スキーマ）
 

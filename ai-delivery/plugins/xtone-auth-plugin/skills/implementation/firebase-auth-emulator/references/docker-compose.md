@@ -88,6 +88,39 @@ services:
 
 > **host の使い分け**: backend は Docker ネットワーク内なので `auth-emulator:9099`。frontend のブラウザ側コードは **ホスト OS のブラウザから** emulator に繋ぐので `localhost:9099`（コンテナ間 DNS は使えない）。NEXT_PUBLIC_ で分けるのが安全。
 
+### Rails + Hotwire 構成（backend と frontend が同居）
+
+Hotwire ベースの Rails アプリでは frontend を別コンテナにせず、backend サービスから ERB で window 経由でブラウザに値を渡す（[`hotwire.md`](./hotwire.md) 参照）。次のように `backend` サービスだけで完結する:
+
+```yaml
+services:
+  auth-emulator:
+    build: ./emulator
+    ports: ["9099:9099", "4000:4000"]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:9099"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  rails:
+    build: ./   # Rails アプリのルート（Gemfile / Dockerfile が直下）
+    environment:
+      AUTH_ADAPTER: "firebase"
+      FIREBASE_PROJECT_ID: "demo-project"
+      # Rails コンテナ内（backend 側）が emulator REST に繋ぐホスト名
+      FIREBASE_AUTH_EMULATOR_HOST: "auth-emulator:9099"
+      # ブラウザ（ホスト OS）が emulator に繋ぐホスト名。Rails の ERB で window に渡す
+      FIREBASE_PUBLIC_EMULATOR_HOST: "localhost:9099"
+      MFA_REQUIREMENT: "required"
+    ports: ["3000:3000"]
+    depends_on:
+      auth-emulator:
+        condition: service_healthy
+```
+
+> Rails 側は **2 つの ENV** を持つ点に注意（コンテナ間用 `FIREBASE_AUTH_EMULATOR_HOST` ／ ブラウザ用 `FIREBASE_PUBLIC_EMULATOR_HOST`）。両者を混同するとブラウザから繋がらない（同じ値にすると、コンテナ内の AdminClient が失敗する）。詳細は [`hotwire.md` の 1 節](./hotwire.md)。
+
 ## 4. 起動と確認
 
 ```bash

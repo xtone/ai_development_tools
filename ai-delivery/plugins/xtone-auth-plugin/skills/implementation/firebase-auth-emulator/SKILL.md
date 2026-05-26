@@ -89,6 +89,7 @@ Firebase Auth Emulator を Docker で起動して、`firebase-auth-setup`（back
 | 環境 | Docker | [`references/docker-compose.md`](./references/docker-compose.md) | ✅ |
 | backend | Ruby on Rails | [`references/rails.md`](./references/rails.md) | ✅ |
 | client | Next.js | [`references/nextjs.md`](./references/nextjs.md) | ✅ |
+| client | Rails + Hotwire | [`references/hotwire.md`](./references/hotwire.md) | ✅ |
 | その他 | — | — | 追加可（契約を満たす形で追加） |
 
 ## 既知の制約（くりかえし）
