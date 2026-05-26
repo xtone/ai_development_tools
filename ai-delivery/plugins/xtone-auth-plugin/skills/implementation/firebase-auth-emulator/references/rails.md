@@ -20,6 +20,12 @@ module AppAuth
   def self.emulator?       = !emulator_host.nil?
   def self.reset!          = (@adapter = nil)
 end
+
+# ★ 本番混入ガード（テンプレートに含める / 推奨止まりにしない）。
+# production で FIREBASE_AUTH_EMULATOR_HOST が設定されていたら、認証無効化の重大事故を防ぐため起動を止める。
+if defined?(Rails) && Rails.env.production? && AppAuth.emulator?
+  abort "FATAL: FIREBASE_AUTH_EMULATOR_HOST is set in production. Refusing to start (firebase-auth-emulator)."
+end
 ```
 
 ## 2. verify_token: 署名検証スキップ + 手動 iss/aud/exp 検証

@@ -30,13 +30,21 @@ FROM node:22-bookworm-slim
 RUN apt-get update \
  && apt-get install -y --no-install-recommends openjdk-17-jre-headless ca-certificates curl \
  && rm -rf /var/lib/apt/lists/*
-RUN npm install -g firebase-tools
+
+# firebase-tools: バージョン固定（再現性のため）。
+# 採用時点の最新安定版を ARG のデフォルトに置く。更新は公式リリースで確認:
+#   https://github.com/firebase/firebase-tools/releases （B-06: 数値ハードコードは避け公式最新を採る）
+ARG FIREBASE_TOOLS_VERSION=14.4.0
+RUN npm install -g "firebase-tools@${FIREBASE_TOOLS_VERSION}"
+
 WORKDIR /app
 COPY firebase.json ./
 EXPOSE 9099 4000
 # project は何でも良い（emulator 内で完結）。auth のみ起動。
 CMD ["firebase", "emulators:start", "--only", "auth", "--project", "demo-telemed"]
 ```
+
+> ピン留めは `docker compose build` の再現性のため。**バージョン更新は B-06 の手順に従い公式リリースを確認**して `--build-arg FIREBASE_TOOLS_VERSION=...` または ARG のデフォルトを更新する。固定値の陳腐化を避けるため、定期的に最新安定版へ追従する判断ポイント。
 
 ## 3. docker-compose.yml
 

@@ -27,9 +27,14 @@ setPersistence(auth, inMemoryPersistence);
 
 // ★ EMULATOR_HOST が設定されている場合のみエミュレーターに接続。本番ビルドでは未設定にする。
 const EMU = process.env.NEXT_PUBLIC_FIREBASE_AUTH_EMULATOR_HOST;
-if (EMU && typeof window !== "undefined" && !(auth as unknown as { _canInitEmulator: boolean })._canInitEmulator === false) {
-  // disableWarnings: コンソール赤帯の警告を抑制（本番ビルドではこのコードに来ない前提）
-  connectAuthEmulator(auth, `http://${EMU}`, { disableWarnings: true });
+if (EMU && typeof window !== "undefined") {
+  try {
+    // disableWarnings: コンソール赤帯の警告を抑制（本番ビルドではこのコードに来ない前提）
+    connectAuthEmulator(auth, `http://${EMU}`, { disableWarnings: true });
+  } catch {
+    // HMR で本ファイルが再評価された場合、connectAuthEmulator は2回目以降エラーを投げる。
+    // 既に接続済みの状態なので握りつぶしてよい。
+  }
 }
 ```
 
