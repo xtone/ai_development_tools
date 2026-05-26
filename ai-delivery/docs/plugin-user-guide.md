@@ -1,19 +1,19 @@
-# プラグインユーザーガイド（案件で型化プラグインを使う）
+# プラグインユーザーガイド（案件でプラグインを使う）
 
-このドキュメントは、AIデリバリシステムの **型化プラグインを使って実案件を進める開発者**向け。要件→設計→実装の各フェーズで、プラグインがどう支援するか、**自分が何を判断するか**、不具合や改善要望をどう開発者に届けるかを示す。
+このドキュメントは、AIデリバリシステムの **プラグインを使って実案件を進める開発者**向け。要件 → 設計 → 実装の各フェーズで、プラグインがどう支援するか、**自分が何を判断するか**、不具合や改善要望をどうプラグイン開発者に届けるかを示す。
 
 > **対をなすガイド**: プラグインを*作る*側は [`plugin-developer-guide.md`](./plugin-developer-guide.md)。
 
 ## このガイドの読者
 
-- 実案件で型化プラグインを使う**プロジェクトメンバー**（PM / バックエンド / フロント / アプリ / インフラ）
+- 実案件でプラグインを使う**プロジェクトメンバー**（PM / バックエンド / フロント / アプリ / インフラ）
 - プラグインのフィードバック（うまく動かない / 改善要望）をプラグイン開発者に伝えたい開発者
 
 ## 0. まず読んでほしい中核価値
 
 > **AI に決めさせない判断は、必ず人間に上がってくる仕組みです。**
 
-CI / Hook / Subagent はすべて **warn_and_document**（警告のみ・ブロックなし）。フェーズ移行時に未決ポイントが残っていると警告が出るが、進めることはできる。**警告を放置せず、最終的に必ず人間判断で確定する**ことが型化の中核価値です。
+CI / Hook / Subagent はすべて **warn_and_document**（警告のみ・ブロックなし）。フェーズ移行時に未決ポイントが残っていると警告が出るが、進めることはできる。**警告を放置せず、最終的に必ず人間判断で確定する**ことが中核価値です。
 
 ## 1. 基本の流れ
 
@@ -25,7 +25,7 @@ cd ai-delivery
 claude --plugin-dir plugins/xtone-auth-plugin
 ```
 
-利用可能なプラグイン一覧は `ai-delivery/plugins/` 配下を参照（Rollout フェーズで段階的に増える）。
+利用可能なプラグイン一覧は `ai-delivery/plugins/` 配下を参照。
 
 ### 1.2 フェーズを順に進める
 
@@ -49,13 +49,13 @@ claude --plugin-dir plugins/xtone-auth-plugin
 
 | カテゴリ | 例 |
 |---|---|
-| スタック選定 | DP-007 認証スタック / DP-004 アーキテクチャ |
-| セキュリティ・規制 | DP-008 MFA 方針 / DP-015 dAccount / DP-016 PCI-DSS |
+| スタック選定 | 認証スタック / アーキテクチャ |
+| セキュリティ・規制 | MFA 方針 / dAccount / PCI-DSS |
 | 非機能要件 | ユーザー規模 / SLA / 退会データ保存期間 |
 | ドメイン特化 | 業界規制・コンプライアンス（医療なら 3省2GL、金融なら FISC など） |
 | 既定パターンからの逸脱 | フロント 3 パターン（protected/public-aware/guest）と違う配置にする 等 |
 
-これらは **AI が決めず推奨だけ提示**する設計。あなたが決めたものを `decision_record` に記録、決まらないものは `undecided` に残す。
+これらは **AI が決めず推奨だけ提示**する設計。あなたが決めたものを `decision_record` に記録し、決まらないものは `undecided` に残す。
 
 ### AI が書くこと
 
@@ -69,13 +69,12 @@ claude --plugin-dir plugins/xtone-auth-plugin
 
 フェーズ移行時に **pre-phase-transition Hook** が `undecided` を検出して警告を出す（ブロックはしない）。
 
-- **未決を残したまま進める** — 後で必ず人間判断で確定する前提なら OK。`docs/pending-decisions.md` に残る
+- **未決を残したまま進める** — 後で必ず人間判断で確定する前提なら OK。プラグインの `docs/pending-decisions.md` に残る
 - **その場で決める** — 判断材料が揃っているなら、`/decide` で `decision_record` に記録して `undecided` から外す
 
 ### 未決を放置しない
 
-- 案件横断で再発する未決は **DP-NNN として正式起票**（Notion 判断ポイントカタログDB）
-- T-049（四半期レビュー）で未決一括チェックがあるので、それまでには消化する
+警告に出てくる未決ポイントを最後まで放置しない。リリース前に必ず人間判断で確定する。
 
 ## 4. delivery 成果物の確認
 
@@ -87,7 +86,7 @@ claude --plugin-dir plugins/xtone-auth-plugin
 | 設計 | `design.yaml` + `docs/adr/ADR-NNN.md` |
 | 実装 | `implementation-plan.json` + 実装コード |
 
-**スキーマ検証**は必ず通す（B-01 で本実装済み）。検証が落ちる場合は、案件特有の要件で逸脱しているのか、スキーマ側の穴かを切り分けてフィードバックする。
+**スキーマ検証**は必ず通す。検証が落ちる場合は、案件特有の要件で逸脱しているのか、スキーマ側の穴かを切り分けてフィードバックする（後述）。
 
 ## 5. フィードバックの送り方（重要）
 
@@ -109,14 +108,14 @@ claude --plugin-dir plugins/xtone-auth-plugin
 ### 5.2 起票先
 
 - **プラグイン特定の問題** → そのプラグインの `docs/backlog.md` に **B-NNN** で追記 + GitHub Issue
-- **横断的な問題**（複数プラグインに関わる、CONV/スキーマレベル）→ `ai-delivery/` 全体の GitHub Issue
-- **新規 DP 候補** → プラグインの `docs/pending-decisions.md` に起票
+- **横断的な問題**（複数プラグインに関わる、共通スキーマレベル）→ `ai-delivery/` 全体の GitHub Issue
+- **新規判断ポイントの候補** → プラグインの `docs/pending-decisions.md` に起票
 
 ### 5.3 良いフィードバックの例
 
-T-021 再パイロットで踏んだ `auth_time` 不具合（[PR #147](https://github.com/xtone/ai_development_tools/pull/147)）は：
+認証プラグインの実機検証で踏んだ `auth_time` 不具合：
 
-1. **症状**: `/consultations` でログイン→ MFA 設定後に **401 `token revoked`**
+1. **症状**: `/consultations` にログイン → MFA 設定後にアクセスすると **401 `token revoked`**
 2. **想定 vs 実挙動**: 想定は 200（MFA 充足）。実挙動は 401（backend が `auth_time < tokens_valid_after` で拒否）
 3. **重要度**: High（実装が止まる）
 4. **影響範囲**: MFA を使う全案件
@@ -133,7 +132,7 @@ T-021 再パイロットで踏んだ `auth_time` 不具合（[PR #147](https://g
 
 ### 認証プラグイン
 
-- **Firebase Auth Emulator は TOTP MFA 非対応** — ローカル検証は SMS で代替、TOTP は実 Identity Platform で（[firebase-tools #6224](https://github.com/firebase/firebase-tools/issues/6224)）
+- **Firebase Auth Emulator は TOTP MFA 非対応** — ローカル検証は SMS で代替、TOTP は実 Identity Platform で
 - **emulator の MFA enrollment は `emailVerified=true` 前提** — signUp 後に `accounts:update` で立てる
 - **`auth_time` は MFA enrollment で更新されない** — MFA 変更時は **soft 失効**（IaaS refresh のみ、サーバ側 `tokens_valid_after` は触らない）
 - 詳細: [`firebase-auth-mfa` SKILL.md の既知の制約](../plugins/xtone-auth-plugin/skills/implementation/firebase-auth-mfa/SKILL.md)
@@ -160,10 +159,9 @@ T-021 再パイロットで踏んだ `auth_time` 不具合（[PR #147](https://g
 
 ## 8. レビュー・サポート
 
-- **使い方の質問・困りごと**: 開発チーム（Slack の関連チャンネル）or 豊田に直接
+- **使い方の質問・困りごと**: 開発チーム（Slack の関連チャンネル）or プラグイン開発者に直接
 - **機能要望・不具合**: 上記 §5 のフォーマットで GitHub Issue
-- **案件横断の判断ポイント**: Notion 持ち越し事項管理（ADR）
 
 ---
 
-> **プラグインユーザーは「型化の改善ループ」の重要な担い手**です。実案件で踏んだ穴ほど、型化の品質を上げる材料になります。気軽に GitHub Issue を立ててください。
+> **プラグインユーザーは「型化の改善ループ」の重要な担い手**です。実案件で踏んだ穴ほど、型の品質を上げる材料になります。気軽に GitHub Issue を立ててください。
