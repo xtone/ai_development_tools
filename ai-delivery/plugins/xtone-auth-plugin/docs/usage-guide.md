@@ -24,9 +24,11 @@ claude plugin validate --strict plugins/xtone-auth-plugin
 ```
 /req-collect   # 要件定義（認証要件の抽出は auth-requirements-extraction スキル）
    ↓
-/auth-design   # 認証設計（authentication-architect が DP-007/008/015 を比較・推奨）
+/auth-design   # 認証設計（authentication-architect が DP-007/008/015 を比較・推奨、
+               #   firebase-auth-design が design.yaml + ADR を生成）
    ↓
-/implement     # 実装計画と認証アダプタ実装（firebase-auth-setup スキル）
+/implement     # 実装（backend: firebase-auth-setup / client: firebase-auth-frontend /
+               #   横断 MFA: firebase-auth-mfa / ローカル E2E: firebase-auth-emulator）
 ```
 
 補助コマンド: `/decide`（判断記録）/ `/status`（進捗）/ `/next`（次アクション）/ `/pending-list`（未決一覧）/ `/skip-review`（AIレビュー）。
@@ -43,12 +45,20 @@ claude plugin validate --strict plugins/xtone-auth-plugin
 
 `schemas/` は xtone-shared-plugin への symlink（編集不可, CONV-14）。
 
-### 実装スキル（責務で使い分け）
+### 認証スキル一覧
 
-`design` の `responsibility_split` に応じて、バックエンド／フロントエンドの実装スキルを使い分ける:
+フェーズと責務で使い分ける。横断機能（MFA / emulator）は backend・client 双方にまたがるため独立スキルに集約している（B-04 / T-021 由来）。
 
-- **backend**: [`firebase-auth-setup`](../skills/implementation/firebase-auth-setup/SKILL.md) — ID トークン検証・JWT 認可・退会時 Admin SDK 削除（レシピ: Rails）
-- **client（フロント）**: [`firebase-auth-frontend`](../skills/implementation/firebase-auth-frontend/SKILL.md) — サインインUI・パスワード/メール変更・トークン保持・API への Bearer 付与（レシピ: Hotwire / Next.js）
+| 種別 | スキル | 責務 / レシピ |
+|---|---|---|
+| 要件定義 | [`auth-requirements-extraction`](../skills/requirements/auth-requirements-extraction/SKILL.md) | 認証要件の抽出（ログイン方式 / MFA / 規制 / 退会 / ページ単位の認証要否 A/B/C） |
+| 設計 | [`firebase-auth-design`](../skills/design/firebase-auth-design/SKILL.md) | `design.yaml` + ADR + `responsibility_split` + `page_access_control` を生成 |
+| 実装（backend） | [`firebase-auth-setup`](../skills/implementation/firebase-auth-setup/SKILL.md) | ID トークン検証・JWT 認可・退会時 Admin 削除・**2 段階の失効**（hard / soft）（レシピ: Rails） |
+| 実装（client） | [`firebase-auth-frontend`](../skills/implementation/firebase-auth-frontend/SKILL.md) | サインイン / 退会 / トークン保持 / API への Bearer 付与 / **3 パターンの認証ガード**（protected-only / public-aware / guest-only）と /login と /signup の分離（レシピ: Hotwire / Next.js） |
+| 実装（横断 MFA） | [`firebase-auth-mfa`](../skills/implementation/firebase-auth-mfa/SKILL.md) | MFA enrollment（client）/ クレーム検証・管理者強制・MFA 変更時の soft 失効（backend）。`mfa_requirement` の実装マッピング、`auth_time` 非更新の落とし穴を明文化（レシピ: rails / hotwire / nextjs） |
+| 実装（ローカル E2E） | [`firebase-auth-emulator`](../skills/implementation/firebase-auth-emulator/SKILL.md) | Docker で Auth Emulator を起動。署名検証スキップ・Admin REST 切替・`connectAuthEmulator`・SMS MFA で E2E（TOTP は非対応 → 実 Identity Platform）（レシピ: docker-compose / rails / nextjs） |
+
+> どのスキルがいつ起動するかの**実プロンプト例**は下の「[7. プロンプト例](#7-プロンプト例t-021-再パイロットの実例から)」を参照。
 
 ## 4. 判断ポイント（人間判断をスルーさせない）
 
