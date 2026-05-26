@@ -26,11 +26,17 @@ jobs:
         run: |
           # スキーマ検証スクリプト(scripts/validate-plugin.sh, TPL-27)整備後に置換する。
           # 現状は sample-outputs/*.json が JSON として妥当かを確認する最小チェック。
-          for f in sample-outputs/*.json; do
-            python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$f" \
-              && echo "ok: $f" \
-              || echo "::warning::$f が不正な JSON です"
-          done
+          # sample-outputs/ は B-13 一連の型化修正完了後に再生成予定のため、存在する場合のみ検証する。
+          if [ -d sample-outputs ]; then
+            for f in sample-outputs/*.json; do
+              [ -e "$f" ] || continue
+              python3 -c "import json,sys; json.load(open(sys.argv[1]))" "$f" \
+                && echo "ok: $f" \
+                || echo "::warning::$f が不正な JSON です"
+            done
+          else
+            echo "::notice::sample-outputs/ は未生成のためスキップ（再生成は backlog B-14）"
+          fi
 
       - name: Lint shell hooks (R-013)
         run: |

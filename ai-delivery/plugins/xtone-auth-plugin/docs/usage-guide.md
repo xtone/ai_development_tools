@@ -72,7 +72,9 @@ claude plugin validate --strict plugins/xtone-auth-plugin
 
 ## 5. 通し検証（架空案件の作り込み例）
 
-`sample-inputs/` の架空案件入力から、`sample-outputs/` に要件→設計→実装計画の成果物例が入っている。新規案件を始める際の雛形・期待値として参照する。詳細は [`../sample-outputs/README.md`](../sample-outputs/README.md)。
+`sample-inputs/` に架空案件「みんなの読書会」の入力テキストがある。
+
+> **成果物例 (`sample-outputs/`) は現在ありません。** B-13（実装スキル呼び出しプラン生成）一連の型化修正が完了した後に、最新スキーマ・スキル群で**1 から再生成**する予定（[`backlog.md`](./backlog.md) の B-14）。それまでは新規案件の雛形は `schemas/v1/*.schema.json` と各スキルの「入出力」節を直接参照する。
 
 ## 6. 差し替え可能設計（他 IaaS 追加）
 

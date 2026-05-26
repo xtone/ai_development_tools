@@ -63,7 +63,7 @@ AI はこれらを **勝手に決めず推奨だけ提示**し、未決は `unde
 | `skills/` | フェーズ別 Skill（requirements / design / implementation 実動、test スタブ）+ 本ガイド（auth-plugin-guide） |
 | `schemas/` | xtone-shared-plugin への symlink（編集不可） |
 | `docs/` | decision-points.md / usage-guide.md / pending-decisions.md / adr/ |
-| `sample-inputs/`, `sample-outputs/` | 架空案件の作り込み例（要件→設計→実装の通し検証） |
+| `sample-inputs/` | 架空案件の入力例（成果物 `sample-outputs/` は B-13 一連の型化修正完了後に再生成予定。`docs/backlog.md` B-14 参照） |
 
 ## 関連
 

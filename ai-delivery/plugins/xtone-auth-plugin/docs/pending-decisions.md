@@ -21,4 +21,4 @@ warn_and_document（T-002 本決定）の出力先。認証設計・実装中に
 |---|---|---|---|---|
 | 2026-05-25 | [DP-27](https://www.notion.so/36bceb782fa3814c8367dc527991467a) | プラグインルートの `CLAUDE.md`（CONV-06 想定）が Claude Code `--strict` で警告（「ルート CLAUDE.md は context 非ロード。skill を使え」）。CONV-06 と Claude Code 標準の衝突 | **(B) 運用 context を `skills/auth-plugin-guide/SKILL.md` 化し、ルート CLAUDE.md を撤去 → --strict クリーン通過**。波及: CONV-06 改訂・テンプレの CLAUDE.md.template → plugin-guide skill 化（TPL-26 実装時） | 豊田 |
 
-> 架空案件の作り込み例で未決→決定の流れを示したものは [`../sample-outputs/`](../sample-outputs/) を参照（検証用）。
+> 架空案件の作り込み例（要件 → 設計 → 実装計画の通し成果物）は、B-13 一連の型化修正が完了した後に `../sample-outputs/` として再生成予定。詳細は [`backlog.md`](./backlog.md) の B-14。
