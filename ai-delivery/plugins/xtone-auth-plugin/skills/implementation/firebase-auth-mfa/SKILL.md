@@ -25,6 +25,8 @@ description: Firebase Auth の MFA（多要素認証, TOTP/SMS）を実装する
 
 未呼び出しのまま実装フェーズが完了に到達した場合は warn_and_document に従い警告（T-002）。
 
+> **前提（B-11）**: 本スキルを呼ぶ前に [`tech-version-check`](../tech-version-check/SKILL.md) を実行し、Firebase Admin SDK / Firebase JS SDK / TOTP / SMS 関連ライブラリ等の **最新安定版と要求ランタイム**を `delivery/version-matrix.md` に取得・記録しておく。`Gemfile` / `package.json` に書く version はそこから引く。
+
 ## スコープと責務分割（responsibility_split）
 
 | 層 | 担当 | 本スキルでの内容 |

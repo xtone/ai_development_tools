@@ -23,6 +23,8 @@ Firebase Auth Emulator を Docker で起動して、`firebase-auth-setup`（back
 
 未呼び出しのまま実装フェーズが完了に到達した場合は warn_and_document に従い警告（T-002）。
 
+> **前提（B-11）**: 本スキルを呼ぶ前に [`tech-version-check`](../tech-version-check/SKILL.md) を実行し、`firebase-tools`（CLI）/ Node base image / Docker base image の **最新安定版**を `delivery/version-matrix.md` に取得・記録しておく。`emulator/Dockerfile` の `FIREBASE_TOOLS_VERSION` などはそこから引く。
+
 ## スコープと既知の制約
 
 | 項目 | エミュレーター対応 | 検証方針 |

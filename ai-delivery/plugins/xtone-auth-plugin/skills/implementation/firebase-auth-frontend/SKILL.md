@@ -20,6 +20,8 @@ description: Firebase Auth をフロントエンド（クライアント）に�
 
 未呼び出しのまま実装フェーズが完了に到達した場合は `delivery/implementation-skill-plan.md` の `called` が false で残り、`docs/pending-decisions.md` に「未呼び出しスキル」として警告される（warn_and_document, T-002）。
 
+> **前提（B-11）**: 本スキルを呼ぶ前に [`tech-version-check`](../tech-version-check/SKILL.md) を実行し、Node / `firebase` JS SDK / FW（Next.js / Rails+Hotwire）等の **最新安定版と要求ランタイム**を `delivery/version-matrix.md` に取得・記録しておく。`package.json` の `firebase` バージョン（v9+ modular 前提）もそこから引く。
+
 > 役割分担: **Firebase クライアント SDK** が認証フロー（サインイン・パスワード/メール変更等）を担い、**サーバ（firebase-auth-setup）** は ID トークンの検証のみ。フロントは取得した ID トークンを API に Bearer で渡す。
 
 > **MFA（多要素認証, DP-008）は本スキルの対象外。** 第2要素の登録（enrollment）・サインイン時の追加認証（challenge）も client 実装だが、backend/iaas にまたがる横断機能のため対の [`firebase-auth-mfa`](../firebase-auth-mfa/SKILL.md) に集約している。MFA を実装するときはそちらを参照。

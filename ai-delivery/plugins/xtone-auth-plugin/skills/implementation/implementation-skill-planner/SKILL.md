@@ -1,6 +1,6 @@
 ---
 name: implementation-skill-planner
-description: 設計成果物（design.yaml）から実装フェーズで呼び出すべきスキルを導出して skill_plan を生成するスキル。実装フェーズの Step 0 として、responsibility_split / page_access_control / authentication.mfa_requirement / local_dev_stack の値に応じて firebase-auth-setup / firebase-auth-frontend / firebase-auth-mfa / firebase-auth-emulator のうち呼ぶべきものを列挙し、implementation-plan.json の skill_plan に反映、`delivery/implementation-skill-plan.md` を出力する。frontend スキル等の呼び出し漏れ防止（B-13 由来）。
+description: 設計成果物（design.yaml）から実装フェーズで呼び出すべきスキルを導出して skill_plan を生成するスキル。実装フェーズの Step 0 として、architecture.stack / responsibility_split / page_access_control / authentication.mfa_requirement / local_dev_stack の値に応じて tech-version-check / firebase-auth-setup / firebase-auth-frontend / firebase-auth-mfa / firebase-auth-emulator のうち呼ぶべきものを列挙し、implementation-plan.json の skill_plan に反映、`delivery/implementation-skill-plan.md` を出力する。frontend スキル等の呼び出し漏れ防止（B-13 由来）。skill_plan の最先頭は tech-version-check（B-11）。
 ---
 
 # Implementation Skill Planner
@@ -30,6 +30,7 @@ design の値から **必ず** 以下を skill_plan に列挙する。
 
 | design のフィールドと値 | 追加するスキル | recipe | owners | required |
 |---|---|---|---|---|
+| `architecture.stack` に**何らかの言語/FW が記述されている**（実装フェーズの全案件で必須） | `tech-version-check` | — | `[shared]` | true（**skill_plan の最先頭に置く**。既に `version-matrix.md` が直近に作成済みなら skip 可、その旨を trigger に明示） |
 | `responsibility_split[].owner` に `backend` or `shared` がある | `firebase-auth-setup` | 採用言語/FW（例: rails / node / laravel） | `[backend]`（shared 含む場合 `[backend, shared]`） | true |
 | `responsibility_split[].owner` に `client` or `shared` がある | `firebase-auth-frontend` | hotwire / nextjs / その他 | `[client]`（shared 含む場合 `[client, shared]`） | true |
 | `authentication.mfa_requirement` ∈ {`required`, `admin_only`, `optional`} | `firebase-auth-mfa` | rails＋hotwire / rails＋nextjs 等の組合せ | `[backend, client, iaas]` | `required`/`admin_only` は true、`optional` は false（推奨） |
@@ -37,6 +38,8 @@ design の値から **必ず** 以下を skill_plan に列挙する。
 | `page_access_control.pages` が定義されている | `firebase-auth-frontend`（既出なら統合） | 同上 | 同上＋`applies_to` に各 page.path を入れる | true |
 
 > **`local_dev_stack` が未指定**でも emulator スキルを追加するのは、B-12（Emulator+Docker を既定とする方針）に整合させるため。`cloud_direct` を選んだ場合のみ planner は emulator を外し、その判断を `decision_record` に残すよう促す。
+
+> **`tech-version-check` は最先頭に置く**（B-11）。バージョン非互換に気付くのが遅れる事故（sample-auth で発生）を防ぐため、setup / frontend / mfa / emulator のいずれよりも前に呼ぶ。既に `delivery/version-matrix.md` が直近で作成済みなら skip 可（trigger に "version-matrix.md is fresh" を残す）。
 
 ## 手順
 
@@ -64,6 +67,7 @@ design.yaml から自動導出（implementation-skill-planner / B-13）。
 
 | skill | recipe | owners | applies_to | required | called |
 |---|---|---|---|---|---|
+| tech-version-check | — | shared | architecture.stack に Ruby / Rails / Firebase JS SDK 等を記述 | true | ☐ |
 | firebase-auth-setup | rails | backend, shared | "ID トークン検証", "退会" | true | ☐ |
 | firebase-auth-frontend | hotwire | client, shared | /login, /signup, /settings/* | true | ☐ |
 | firebase-auth-mfa | rails+hotwire | backend, client, iaas | DP-008 | true | ☐ |

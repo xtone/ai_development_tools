@@ -19,6 +19,8 @@ description: Firebase Auth を任意のバックエンドに統合するスキ�
 
 未呼び出しのまま実装フェーズが完了に到達した場合は `delivery/implementation-skill-plan.md` の `called` が false で残り、`docs/pending-decisions.md` に警告される（warn_and_document, T-002）。
 
+> **前提（B-11）**: 本スキルを呼ぶ前に [`tech-version-check`](../tech-version-check/SKILL.md) を実行し、Ruby / Rails / 主要 gem 等の **最新安定版と要求ランタイム**を `delivery/version-matrix.md` に取得・記録しておく。`Gemfile` に書く version はそこから引く（バージョン非互換に気付くのが遅れる事故の防止）。
+
 > 設計方針: 言語が変わっても **契約は不変**、実装手段（SDK/コード）だけがレシピごとに変わる。Rails 固定にせず、Node/Laravel 等へ展開できる構造にする。
 
 > **スコープ: バックエンド（サーバ）専用。** ID トークン検証・JWT 認可・退会時の Admin SDK 削除・トークン失効など。フロントエンド（サインインUI・パスワード/メール変更・トークン保持・API への Bearer 付与）は対の [`firebase-auth-frontend`](../firebase-auth-frontend/SKILL.md) を参照。`responsibility_split` の **backend = 本スキル / client = firebase-auth-frontend / iaas = Firebase が提供**。MFA（多要素認証, DP-008）は client/backend/iaas 横断のため対の [`firebase-auth-mfa`](../firebase-auth-mfa/SKILL.md) に集約（本スキルが担う MFA 部分は「クレーム検証・管理者強制・変更時の失効」）。
