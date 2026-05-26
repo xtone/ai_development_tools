@@ -2,7 +2,7 @@
 
 `firebase-auth-mfa` スキルの **backend 実装レシピ**。SKILL.md の backend 契約（MFA クレーム検証・`mfa_requirement` 強制・enrollment 状態確認・失効）を Rails/Ruby で満たす。**登録/追加認証フローは持たない**（それは client = [`hotwire.md`](./hotwire.md) / [`nextjs.md`](./nextjs.md)）。
 
-土台は [`firebase-auth-setup/references/rails.md`](../../firebase-auth-setup/references/rails.md)（`FirebaseAdapter` / `Authenticatable` / `revoke_tokens!`）。本レシピはその**差分のみ**を示す。
+土台は [`firebase-auth-setup/references/rails.md`](../../firebase-auth-setup/references/rails.md)（`FirebaseAdapter` / `Authenticatable` / `hard_revoke_tokens!` & `revoke_refresh_tokens!`）。本レシピはその**差分のみ**を示す。
 
 - 対象: Rails（API モード）/ Ruby — **公式の最新安定版**（バージョン方針は `ai-delivery/docs/environment-setup.md`）
 - 依存追加なし（firebase-auth-setup と同じ `jwt` / `googleauth`）
@@ -102,9 +102,9 @@ rescue NotFoundError
 end
 ```
 
-## 4. MFA 変更時のトークン失効
+## 4. MFA 変更時のトークン失効（soft 失効）
 
-enroll / unenroll が起きたら、既存トークンに反映するため失効させる。firebase-auth-setup の運用契約「退会・パスワード変更・**MFA 変更**・不正検知時はサーバ側で失効」の具体化。client は enroll/unenroll 成功後にこのエンドポイントを叩く。
+enroll / unenroll が起きたら、**IaaS の refresh のみ失効**させる（他デバイスの古い MFA 無しトークンを無効化）。`firebase-auth-setup` の「2 段階の失効」の **soft 側**。client は enroll/unenroll 成功後にこのエンドポイントを叩く。
 
 ```ruby
 # config/routes.rb
@@ -117,15 +117,18 @@ class MfaController < ApplicationController
   include Authenticatable
   before_action :require_registered_user!
 
-  # client が enroll / unenroll 成功直後に呼ぶ。既存リフレッシュトークンを失効する。
+  # client が enroll / unenroll 成功直後に呼ぶ。
+  # ※ IaaS の refresh のみ失効。サーバ側 tokens_valid_after は触らない（soft 失効）。
+  #   Firebase の auth_time は MFA enrollment で更新されないため、ローカル即拒否すると
+  #   enroll 直後の同セッションが 401(token revoked) になる（SKILL.md 既知の制約）。
   def changed
-    current_user.revoke_tokens!   # firebase-auth-setup: tokens_valid_after 更新 ＋ IaaS revoke
+    current_user.revoke_refresh_tokens!
     head :no_content
   end
 end
 ```
 
-> 失効後、client は `getIdToken(true)` で第2要素を含む新しい ID トークンを取得し直す（次回の保護アクセスで `mfa_satisfied?` が true になる）。
+> client は enroll 直後に `multiFactor(user).enroll()` の応答内で MFA 付きの新 ID トークンを取得済みなので、次回の保護リソースアクセスでそのまま使う（`mfa_satisfied?` が true）。後で `getIdToken(true)` でリフレッシュしても、Firebase の `auth_time` は変わらないため、サーバ側 `tokens_valid_after` を上げると `token_valid?` が false になる—それを避けるための soft 失効。
 
 ## 5. テスト（実 Firebase 不要）
 
