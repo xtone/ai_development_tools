@@ -66,14 +66,51 @@
 
 > いずれも **High ではない**（Med 2 / Low 1）。前回のような「型の穴」が実装全体を止める性質のものは出ていない。
 
-## 6. Rollout 推進可否の再判定材料（判定は豊田）
+## 6. Phase 2: Docker Auth Emulator で実機 E2E 動作確認（2026-05-26）
+
+Phase 1（要件→設計→backend(TestAdapter)+frontend(ビルド/型)）の後、「実際に動かして実装が問題ないか確認したい」「Docker で Firebase エミュレーター環境を構築したい」という要望に応えて、横断スキル **`firebase-auth-emulator`**（[PR #145](https://github.com/xtone/ai_development_tools/pull/145)）を新設し、サンプルアプリを emulator 対応に改修して `docker compose` で **実トークン経由の E2E** を確認した。
+
+### 構成（docker-compose）
+
+| サービス | イメージ / ポート | 状態 |
+|---|---|---|
+| `auth-emulator` | firebase-tools 14.4.0 + JRE17（port 9099 / UI 4000） | healthy |
+| `backend` | Rails 8.1 / Ruby 3.3.6（port 3000） | up |
+| `frontend` | Next.js (App Router)（port 3001） | up |
+
+backend は `FIREBASE_AUTH_EMULATOR_HOST` 検出時のみ **署名検証スキップ + 手動 iss/aud/exp 検証**、Admin REST を `Bearer owner` で `http://EMU/identitytoolkit.googleapis.com` に切替。本番混入を防ぐ **production && emulator? → `abort`** ガードを app_auth.rb に同梱（PR #145 レビュー Major 指摘の対応）。
+
+### E2E 結果（emulator REST + Rails API、12 ステップ）
+
+| # | シナリオ | 結果 |
+|---|---|---|
+| 0 | emulator state クリア（再実行性） | OK |
+| 1 | 患者・医師を emulator で `signUp` → `emailVerified=true` 更新 → `signInWithPassword` | OK |
+| 2/3 | `POST /auth/session`（MFA 前、患者・医師とも） | 201 / 201 |
+| 4 | **MFA 未充足の保護リソース** → **403 `mfa_required`** | ✅ `require_mfa!` が実機で発火 |
+| 6–8 | SMS MFA enrollment: `start` → `verificationCodes` REST 取得 → `finalize` | OK（MFA 付き `idToken` 取得） |
+| 9 | **MFA 充足で保護リソース** → 200 | ✅ `firebase.sign_in_second_factor` 検証成功 |
+| 9b | ロール認可: **患者は自分のみ閲覧**（1 件） | OK |
+| 10 | ロール認可: **医師は全件閲覧**（2 件） | OK |
+| 11 | 退会 → 204、**診療データ保持**（`consultations` が 2 件残存） | ✅ ADR-002 の認証アカウント／診療データ分離が成立 |
+| 12 | **退会後の同一 UID 再ログイン拒否** | 403（F-7 仮対応） |
+
+### 実証されたポイント / 派生発見
+
+- **MFA required の E2E がローカルで完結**（SMS MFA を使用）— 前回 **RN-3**「MFA の client E2E は実 Firebase が必要」の制約を **実質解消**。TOTP MFA は依然エミュレーター非対応（[firebase-tools #6224](https://github.com/firebase/firebase-tools/issues/6224)）のため、TOTP の E2E は実 Identity Platform へ委ねる（ADR-002 / スキル `firebase-auth-emulator` に明記）。
+- **派生発見**: emulator の MFA enrollment は **`emailVerified=true` が前提**（`UNVERIFIED_EMAIL` エラー）。E2E スクリプトとスキルに反映（signUp 後に `accounts:update` で `emailVerified` を立てる）。
+- **本番混入ガード**（production && emulator? → abort）が Vertex AI レビューの Major 指摘でテンプレート化（PR #145 Major #3）。サンプル `app_auth.rb` にも反映済み。
+
+Phase 1（実機テスト＝TestAdapter / frontend=ビルドのみ）に **実トークンでの E2E**が積み上がり、Rollout の判定根拠が強化された。
+
+## 7. Rollout 推進可否の再判定材料（判定は豊田）
 
 - **Rollout の Go 条件だった High 4 件（B-01 / B-02 / B-05 / B-06）はすべて CLOSED**。さらに Med（B-03 / B-04 / B-10）も解消済み。
 - 本再パイロットは、**前回と異なるドメイン・条件（医療 / MFA required / Next.js + Rails / ロール別認可 / 退会データ分離）**で要件→設計→実装を通し、修正が効いたことを実機（backend テスト）とビルド（frontend）で実証した。
 - 新発見は Med 2・Low 1 のみで、いずれも Rollout と並行で対応可能。
 - → **Rollout 着手を支持する材料が揃った**。最終判定は豊田（T-005）。
 
-## 7. 関連
+## 8. 関連
 
 - 前回パイロット: [`pilot-report.md`](./pilot-report.md)
 - 訂正バックログ: [`backlog.md`](./backlog.md)
