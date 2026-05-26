@@ -56,7 +56,7 @@ design の `authentication.mfa_requirement`（enum: `required` / `optional` / `a
 | `resolveChallenge(error, factorIndex, code) → Credential` | サインインが `auth/multi-factor-auth-required` を投げたら resolver で第2要素を解決。**TOTP は即時**、**SMS は「送信→入力」の2段**（レシピでは TOTP/SMS で関数を分離）。 |
 | `listFactors() → Factor[]` / `unenroll(factor)` | 登録済み第2要素の一覧・解除。 |
 
-enroll / unenroll が成功したら **サーバに通知**し、`backend.revoke_tokens` を呼ばせる（既存トークンに MFA 変更を反映するため）。
+enroll / unenroll が成功したら **サーバに通知**し、`backend.revoke_refresh_tokens` を呼ばせる（**IaaS の refresh のみ失効**＝他デバイスの古い MFA 無しトークンを無効化）。`auth_time` は MFA enrollment で更新されないため、サーバ側 `tokens_valid_after` は触らない（後述「既知の制約」）。
 
 ### backend（検証 / 強制 / 失効 / 状態確認）
 
@@ -75,7 +75,7 @@ enroll / unenroll が成功したら **サーバに通知**し、`backend.revoke
 1. design の `authentication.mfa_requirement` を確認する。`undecided` なら確定せず `docs/pending-decisions.md` に残す（DP-008）。
 2. backend レシピ（`references/<stack>.md`）で `verify_token` に `second_factor` を追加し、`require_mfa!` を `mfa_requirement` に合わせて適用する。
 3. client レシピで enrollment（TOTP/SMS）・challenge・unenroll を実装する。`admin_only` なら管理者に enrollment を必須化、`optional` なら設定画面に導線を置く。
-4. enroll/unenroll 成功時にサーバへ通知し、`revoke_tokens` を呼ぶ。
+4. enroll/unenroll 成功時にサーバへ通知し、`revoke_refresh_tokens` を呼ぶ（soft 失効。`auth_time` 仕様のためサーバ側 `tokens_valid_after` は触らない）。
 5. Firebase コンソールで MFA（Identity Platform）を有効化する（下記「既知の制約」）。
 6. ローカル動作確認（backend テストは `TestAdapter` の `second_factor` 注入で実 Firebase 不要）。
 7. 実装タスク・依存・テスト方針を `implementation-plan.schema.json` に記録する。

@@ -230,7 +230,7 @@ def identitytoolkit_post(method, **body)
 end
 ```
 
-退会・パスワード変更・MFA 変更・不正検知時に `user.revoke_tokens!` を呼ぶ（DB 更新＋ IaaS 失効）。
+退会・パスワード変更・不正検知時は `user.hard_revoke_tokens!`、MFA 変更時は `user.revoke_refresh_tokens!`（soft 失効）を呼ぶ — 上の「2 段階の失効」表に従う。
 
 ## 4. テスト（実 Firebase 不要）
 

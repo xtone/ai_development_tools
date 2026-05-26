@@ -2,7 +2,7 @@
 
 `firebase-auth-mfa` スキルの **backend 実装レシピ**。SKILL.md の backend 契約（MFA クレーム検証・`mfa_requirement` 強制・enrollment 状態確認・失効）を Rails/Ruby で満たす。**登録/追加認証フローは持たない**（それは client = [`hotwire.md`](./hotwire.md) / [`nextjs.md`](./nextjs.md)）。
 
-土台は [`firebase-auth-setup/references/rails.md`](../../firebase-auth-setup/references/rails.md)（`FirebaseAdapter` / `Authenticatable` / `revoke_tokens!`）。本レシピはその**差分のみ**を示す。
+土台は [`firebase-auth-setup/references/rails.md`](../../firebase-auth-setup/references/rails.md)（`FirebaseAdapter` / `Authenticatable` / `hard_revoke_tokens!` & `revoke_refresh_tokens!`）。本レシピはその**差分のみ**を示す。
 
 - 対象: Rails（API モード）/ Ruby — **公式の最新安定版**（バージョン方針は `ai-delivery/docs/environment-setup.md`）
 - 依存追加なし（firebase-auth-setup と同じ `jwt` / `googleauth`）
