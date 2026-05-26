@@ -21,13 +21,17 @@ T-022 内部パイロット（[pilot-report.md](./pilot-report.md)）で発見�
 | **B-10** | [#141](https://github.com/xtone/ai_development_tools/issues/141) | Architecture | Med | **フロントエンド認証実装スキル新設**（`firebase-auth-frontend` ＋ hotwire/nextjs レシピ）。#130 で責務分類した `client` 側の実装ガイドが欠落（firebase-auth-setup は backend 専用）。セッション戦略は判断ポイント扱い | SKL- / #130 | #130 レビュー後 |
 | **B-13** | [#153](https://github.com/xtone/ai_development_tools/issues/153) | Architecture | High | **実装フェーズに skill_plan 生成を強制**。`implementation-skill-planner` スキル新設＋ `design.schema.page_access_control` / `local_dev_stack` 追加＋ `implementation-plan.schema.skill_plan` 追加（**required かつ minItems=1**。MVP 期は CONV-14 並行保持を厳格適用せず最新スキーマで型化を強制 / DP-MVP-COMPAT）。frontend / emulator スキル呼び出し漏れ防止 | SKL- / FLD- | サンプル案件 sample-auth |
 | **B-14** | [#155](https://github.com/xtone/ai_development_tools/issues/155) | Documentation | Med | **`sample-outputs/` を 1 から再生成**。B-13 で削除（古いサンプルが新スキーマと不整合のため）。B-11〜B-14 一連のサンプル案件由来型化修正が完了したタイミングで、新スキーマ（page_access_control / local_dev_stack / skill_plan）と新スキル群（implementation-skill-planner 等）に沿った成果物を再構築 | SKL- / FLD- | PR #154 レビュー（豊田）|
+| **B-11** | [#156](https://github.com/xtone/ai_development_tools/issues/156) | Tooling | High | **`tech-version-check` スキル新設**。context7 / WebFetch で公式最新安定版・互換性を事前取得し `delivery/version-matrix.md` に記録。Ruby/Rails 等の非互換に途中で当たる事故を防止 | SKL- / TPL- | sample-auth |
+| **B-12** | [#157](https://github.com/xtone/ai_development_tools/issues/157) | Architecture | High | **Firebase Emulator + Docker をローカル開発の既定化**。B-13 で schema 側 `local_dev_stack` は導入済み。本件は **スキル中身**（docker-compose テンプレ / Adapter 分岐 / connectAuthEmulator 統合）を整備。B-14 の前提 | SKL- | sample-auth |
+| **B-15** | [#158](https://github.com/xtone/ai_development_tools/issues/158) | Architecture | Med | **`auth-e2e-verify` スキル新設**。Playwright で `representative_use_cases` を全件通すまで責務化。`alert()` 禁止 等の MCP/Headless 配慮も込み。前提: B-12 | SKL- | sample-auth |
+| **B-16** | [#159](https://github.com/xtone/ai_development_tools/issues/159) | Plugin | Low | hotwire レシピ細部修正（Rails singular resource / `alert()` 禁止 / Firebase v9 modular 統一） | SKL- | sample-auth |
 
 ## 優先度の考え方
 
 - **High（Rollout 前に解消推奨）**: B-01 / B-02 / B-05 / B-06。いずれも「型の穴」で、24 ユースケース展開で繰り返しコスト化する。
-- **Med（Rollout と並行可）**: B-03 / B-04 / B-07 / B-10 / B-14。
-- **Low（任意・改善）**: B-08 / B-09。
-- **Rollout 後追加 High**（24 ユースケース展開と並行で塞ぐ）: B-13（サンプル案件 sample-auth 由来。設計→実装のスキル呼び出しが暗黙的で frontend / emulator が素通りした穴）。
+- **Med（Rollout と並行可）**: B-03 / B-04 / B-07 / B-10 / B-14 / B-15。
+- **Low（任意・改善）**: B-08 / B-09 / B-16。
+- **Rollout 後追加 High**（24 ユースケース展開と並行で塞ぐ）: B-11（バージョン取得）/ B-12（Emulator 既定化）/ B-13（スキル呼び出し計画）。いずれもサンプル案件 sample-auth 由来。
 
 ## 次アクション
 
