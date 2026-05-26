@@ -17,10 +17,10 @@ description: 設計成果物（design.yaml）から実装フェーズで呼び�
 
 - 入力: `delivery/design.yaml`（または `design.json`、`design.schema.json` 準拠）
 - 出力:
-  - `delivery/implementation-plan.json` の **`skill_plan` フィールド**（スキーマ上は optional だが、本スキルが Step 0 で **必ず埋める**運用必須フィールド。空 or 欠落のまま実装フェーズ完了に到達したら警告／T-002 warn_and_document）
+  - `delivery/implementation-plan.json` の **`skill_plan` フィールド**（`implementation-plan.schema.json` 上 **required**。本スキルが Step 0 で必ず埋める）
   - `delivery/implementation-skill-plan.md`（人間向けチェックリスト）
 
-> CONV-14（Single Source of Truth・破壊的変更は v1/v2 並行）に従い、`implementation-plan.schema.json` 側は **required 化しない**（既存 v1 データを壊さないため）。**運用上の必須化は本スキルと `/implement` の Step 0 が担う**。
+> **MVP 期の互換性方針**: 本プラグインは MVP ステータスのため、CONV-14（v1/v2 並行保持）を**厳格適用しない**。最新スキーマで型化を強制する。GA 移行時に並行保持戦略を立てる（[`docs/pending-decisions.md`](../../../docs/pending-decisions.md) の `DP-MVP-COMPAT` 参照）。
 
 スキーマは編集しない（CONV-14）。
 
@@ -43,7 +43,12 @@ design の値から **必ず** 以下を skill_plan に列挙する。
 1. `delivery/design.yaml` を読み込み、`responsibility_split` / `page_access_control` / `authentication.mfa_requirement` / `local_dev_stack` を抽出。
 2. 上表のルールで対象スキルを列挙し、重複は `owners` / `applies_to` を統合してまとめる。
 3. 採用言語/FW を `architecture.stack` から推定し `recipe` を埋める（複数 FW 採用なら複数エントリ可）。
-4. `delivery/implementation-plan.json` に **`skill_plan`** を書き込む（既存があれば差分マージ）。`called` 初期値は `false`。
+4. `delivery/implementation-plan.json` に **`skill_plan`** を書き込む。`called` 初期値は `false`。**既存の `skill_plan` があれば下記の差分マージ規則に従う**:
+   - **同一 `skill` の重複**: 1 エントリに統合し、`owners` / `applies_to` は **union**（重複除去で和集合）、`recipe` は新規生成側を採用（古い trigger と矛盾しないことを `pending-decisions.md` で確認）。
+   - **`called`**: 既存値（true）を保持する（人手 or 過去の実行記録を尊重）。
+   - **`required`**: 既存と新規で異なる場合は **より厳しい方**（`true`）を採用。
+   - **新規導出されたが既存に無いエントリ**: そのまま追加。
+   - **既存にあるが今回の design.yaml では導出されないエントリ**: 削除せず保持し、`trigger` に `(retained from previous run; not derivable from current design)` を追記して `pending-decisions.md` に「人間判断: このエントリは必要か？」と起票する（warn_and_document）。
 5. `delivery/implementation-skill-plan.md` を生成: 各スキルにチェックボックス、`trigger` / `owners` / `applies_to` を表で示す。
 6. 実装フェーズ中、各スキルの呼び出し完了時にこの md と JSON の `called=true` を更新する（implementer/各スキル側の責務）。
 7. フェーズ完了時、`called=false` のままで `required=true` のエントリがあれば **警告**（warn_and_document）し、`docs/pending-decisions.md` に「未呼び出しスキル」を起票する。
