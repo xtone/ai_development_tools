@@ -17,8 +17,10 @@ description: 設計成果物（design.yaml）から実装フェーズで呼び�
 
 - 入力: `delivery/design.yaml`（または `design.json`、`design.schema.json` 準拠）
 - 出力:
-  - `delivery/implementation-plan.json` の **`skill_plan` フィールド**（`implementation-plan.schema.json` 必須）
+  - `delivery/implementation-plan.json` の **`skill_plan` フィールド**（スキーマ上は optional だが、本スキルが Step 0 で **必ず埋める**運用必須フィールド。空 or 欠落のまま実装フェーズ完了に到達したら警告／T-002 warn_and_document）
   - `delivery/implementation-skill-plan.md`（人間向けチェックリスト）
+
+> CONV-14（Single Source of Truth・破壊的変更は v1/v2 並行）に従い、`implementation-plan.schema.json` 側は **required 化しない**（既存 v1 データを壊さないため）。**運用上の必須化は本スキルと `/implement` の Step 0 が担う**。
 
 スキーマは編集しない（CONV-14）。
 

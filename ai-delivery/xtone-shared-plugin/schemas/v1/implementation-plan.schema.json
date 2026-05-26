@@ -5,7 +5,7 @@
   "title": "ImplementationPlan",
   "description": "実装フェーズの計画。implementer Subagent が生成する。",
   "type": "object",
-  "required": ["modules", "tdd_strategy", "ci_cd_config", "pr_strategy", "skill_plan"],
+  "required": ["modules", "tdd_strategy", "ci_cd_config", "pr_strategy"],
   "properties": {
     "modules": {
       "type": "array",
@@ -55,7 +55,7 @@
     },
     "skill_plan": {
       "type": "array",
-      "description": "実装フェーズで呼び出すスキルの計画（B-13）。implementation-skill-planner が design.yaml の responsibility_split / page_access_control / authentication.mfa_requirement / local_dev_stack から導出する。最低 1 件必須。warn_and_document に従い、`called=false` のままフェーズ完了時に到達した場合は警告される（ブロックはしない）。",
+      "description": "実装フェーズで呼び出すスキルの計画（B-13）。implementation-skill-planner が design.yaml の responsibility_split / page_access_control / authentication.mfa_requirement / local_dev_stack から導出する。スキーマ上は optional（既存 v1 を壊さない＝CONV-14 並行保持回避のため required 化はしない）。実体としては `/implement` の Step 0 で planner が必ず埋めるべきフィールドで、空 or 欠落のままフェーズ完了に到達した場合は警告される（warn_and_document, T-002）。出現する場合は最低 1 件以上。",
       "minItems": 1,
       "items": {
         "type": "object",

@@ -26,8 +26,8 @@
     },
     {
       "skill": "firebase-auth-frontend",
-      "recipe": "hotwire",
-      "trigger": "responsibility_split に client / shared を含む & page_access_control.pages が定義されている",
+      "recipe": "nextjs",
+      "trigger": "responsibility_split に client / shared を含む & page_access_control.pages が定義されている / architecture.stack は React (Web SPA) のため nextjs レシピ（Bearer 直送り）を流用。iOS/Android は別レシピ（references 未整備＝判断ポイント）",
       "owners": ["client", "shared"],
       "applies_to": ["サインイン（メール+パスワード/パスワードレス/OIDC）", "認証方式の追加（アカウント連携）", "退会（IaaS 削除＋アプリ側論理削除）", "/login", "/signup", "/mfa/enroll", "/settings/*", "/", "/clubs"],
       "required": true,
