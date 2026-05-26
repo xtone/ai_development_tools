@@ -91,4 +91,4 @@ description: 採用予定の言語/FW/主要ライブラリの **最新安定版
 
 - 後続: `firebase-auth-setup` / `firebase-auth-frontend` / `firebase-auth-mfa` / `firebase-auth-emulator`（本スキルの version-matrix.md に従って Gemfile / package.json / Dockerfile を埋める）
 - バージョン方針: [`ai-delivery/docs/environment-setup.md`](../../../../../docs/environment-setup.md)
-- 横展開: 本スキルは現状 xtone-auth-plugin 内に配置するが、本来は **横断スキル**（複数プラグインで共通利用）。`xtone-shared-plugin` / `xtone-plugin-template` への移管は **backlog B-17（PR #162 マージ後に起票予定）** で扱う。本 PR ではプラグイン内配置のままで進める。
+- 横展開: 本スキルは現状 xtone-auth-plugin 内に配置するが、本来は **横断スキル**（複数プラグインで共通利用）。`xtone-shared-plugin` / `xtone-plugin-template` への移管は **B-17（[#164](https://github.com/xtone/ai_development_tools/issues/164)）** で扱う。
