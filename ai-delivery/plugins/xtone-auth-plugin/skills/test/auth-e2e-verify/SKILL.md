@@ -69,7 +69,7 @@ design からマップして、最低でも以下を通す（不該当は skip�
 - `docker compose up` で auth-emulator + backend (+ frontend) が起動可能
 - `FIREBASE_AUTH_EMULATOR_HOST` / `FIREBASE_PUBLIC_EMULATOR_HOST` が適切に通っている（B-12 参照）
 - mock user は emulator UI（`http://localhost:4000`）か REST から作成
-- SMS MFA コードは `GET http://localhost:9099/emulator/v1/projects/{project}/verificationCodes` で取得（emulator スキル `references/` 参照）
+- SMS MFA コードは `GET http://localhost:9099/emulator/v1/projects/{project}/verificationCodes` で取得（詳細・ヘッダ・ヘルパ関数は [`firebase-auth-emulator/references/`](../../implementation/firebase-auth-emulator/references/) — `nextjs.md` / `hotwire.md` / `rails.md` 参照）
 
 `cloud_direct` が選ばれた案件は staging Firebase での E2E に切り替え（本スキルのスコープ外、案件 ADR に分担を明記する）。
 
@@ -128,6 +128,6 @@ design からマップして、最低でも以下を通す（不該当は skip�
 
 ## 関連
 
-- 前提スキル: `firebase-auth-emulator`（B-12）/ `firebase-auth-setup` / `firebase-auth-frontend` / `firebase-auth-mfa` / `tech-version-check`（B-11）
-- planner 連携: `implementation-skill-planner` の skill_plan 最末尾エントリ
+- 前提スキル: `firebase-auth-emulator`（B-12）/ `firebase-auth-setup` / `firebase-auth-frontend` / `firebase-auth-mfa` / `tech-version-check`（B-11、**マージ後に有効**）
+- planner 連携: `implementation-skill-planner` の skill_plan 最末尾エントリ。**B-11（PR #162）とのコンフリクト回避**のため、本 PR では planner 表への `auth-e2e-verify` 行追加は行わず、**B-11 マージ後のフォロー PR**で追記する
 - 関連方針: B-16（`alert()` / `confirm()` 禁止＝ E2E 固まり防止）

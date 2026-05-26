@@ -89,6 +89,7 @@ enroll / unenroll が成功したら **サーバに通知**し、`backend.revoke
 5. Firebase コンソールで MFA（Identity Platform）を有効化する（下記「既知の制約」）。
 6. ローカル動作確認（backend テストは `TestAdapter` の `second_factor` 注入で実 Firebase 不要）。
 7. 実装タスク・依存・テスト方針を `implementation-plan.schema.json` に記録する。
+8. **DoD（B-15）**: 本スキルだけで完了扱いにしない。`mfa_requirement` に応じた **enrollment / challenge / unenroll / 管理者強制 / soft 失効通知**の各 UC を [`auth-e2e-verify`](../../test/auth-e2e-verify/SKILL.md) でブラウザ実機検証 PASS するまでが完了。Emulator では **SMS MFA で E2E**、**TOTP MFA は実 Identity Platform**で検証（emulator 非対応）。`delivery/e2e-verification-report.md` に通過証跡を残す。DP-008 決定済みなのに未実装な UC（例: `admin_only` で管理者の enrollment 強制画面が無い）があれば pending-decisions に警告として残す（warn_and_document）。
 
 ## 言語・フレームワーク別レシピ
 
