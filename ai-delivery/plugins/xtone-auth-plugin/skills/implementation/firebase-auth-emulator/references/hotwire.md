@@ -73,9 +73,14 @@ emulator の REST から最新の検証コードを取り、`firebase-auth-mfa/r
 export async function fetchLatestEmulatorSmsCode(projectId = "demo-project") {
   const host = window.FIREBASE_AUTH_EMULATOR_HOST
   if (!host) throw new Error("emulator not configured")
-  const r = await fetch(`http://${host}/emulator/v1/projects/${projectId}/verificationCodes`)
+  // Authorization: Bearer owner は emulator の Admin REST 共通ヘッダ（nextjs.md と一貫）。
+  // emulator 専用。本番経路では絶対に使わない。
+  const r = await fetch(`http://${host}/emulator/v1/projects/${projectId}/verificationCodes`, {
+    headers: { Authorization: "Bearer owner" },
+  })
   if (!r.ok) throw new Error(`emulator REST failed: ${r.status}`)
   const { verificationCodes } = await r.json()
+  if (!verificationCodes?.length) throw new Error("no SMS code in emulator")
   return verificationCodes.at(-1)?.code   // 最新のコード
 }
 ```
