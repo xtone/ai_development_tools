@@ -1,6 +1,6 @@
 ---
 name: implementation-skill-planner
-description: 設計成果物（design.yaml）から実装フェーズで呼び出すべきスキルを導出して skill_plan を生成するスキル。実装フェーズの Step 0 として、responsibility_split / page_access_control / authentication.mfa_requirement / local_dev_stack の値に応じて firebase-auth-setup / firebase-auth-frontend / firebase-auth-mfa / firebase-auth-emulator のうち呼ぶべきものを列挙し、implementation-plan.json の skill_plan に反映、`delivery/implementation-skill-plan.md` を出力する。frontend スキル等の呼び出し漏れ防止（B-13 由来）。
+description: 設計成果物（design.yaml）から実装フェーズで呼び出すべきスキルを導出して skill_plan を生成するスキル。実装フェーズの Step 0 として、architecture.stack / responsibility_split / page_access_control / authentication.mfa_requirement / local_dev_stack の値に応じて tech-version-check / firebase-auth-setup / firebase-auth-frontend / firebase-auth-mfa / firebase-auth-emulator のうち呼ぶべきものを列挙し、implementation-plan.json の skill_plan に反映、`delivery/implementation-skill-plan.md` を出力する。frontend スキル等の呼び出し漏れ防止（B-13 由来）。skill_plan の最先頭は tech-version-check（B-11）。
 ---
 
 # Implementation Skill Planner
@@ -67,6 +67,7 @@ design.yaml から自動導出（implementation-skill-planner / B-13）。
 
 | skill | recipe | owners | applies_to | required | called |
 |---|---|---|---|---|---|
+| tech-version-check | — | shared | architecture.stack に Ruby / Rails / Firebase JS SDK 等を記述 | true | ☐ |
 | firebase-auth-setup | rails | backend, shared | "ID トークン検証", "退会" | true | ☐ |
 | firebase-auth-frontend | hotwire | client, shared | /login, /signup, /settings/* | true | ☐ |
 | firebase-auth-mfa | rails+hotwire | backend, client, iaas | DP-008 | true | ☐ |

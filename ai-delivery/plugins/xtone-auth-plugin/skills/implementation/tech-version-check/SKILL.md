@@ -65,44 +65,21 @@ description: 採用予定の言語/FW/主要ライブラリの **最新安定版
 5. 非互換が発覚した場合は判断ポイント化（pending-decisions に「採用バージョンを下げるか / 互換ライブラリを変えるか」を起票）。
 6. 取得情報を `implementation-plan.json.skill_plan` の本エントリ `called=true` に更新。
 
-## 出力テンプレ（version-matrix.md）
+## 出力テンプレ
 
-```markdown
-# 採用バージョン記録（tech-version-check / B-11）
+雛形（プレースホルダ・サンプル値・Gemfile/package.json/Dockerfile のコメント例を含む完全版）は **[`templates/version-matrix.template.md`](./templates/version-matrix.template.md)** を参照。`delivery/version-matrix.md` を新規作成するときは、このテンプレートをコピーして `<...>` プレースホルダを実値で埋める。
 
-- 作成日: 2026-05-26
-- 案件: <project>
-- design.yaml.architecture.stack: <quoted>
+テンプレートには次の節がある:
 
-## 言語ランタイム
-| 名前 | 採用バージョン | 公式最新 | 要求 | 根拠 URL |
-|---|---|---|---|---|
-| Ruby | 3.x.x (採用時点の最新安定版) | 3.x.x | — | https://www.ruby-lang.org/en/downloads/ |
+1. 言語ランタイム表
+2. メイン FW 表
+3. 主要ライブラリ・SDK 表
+4. ツール / コンテナ表
+5. 既知の非互換性 / 警戒事項
+6. 採用根拠の要約
+7. **Gemfile / package.json / Dockerfile に残すコメント例**（手順 4 で各依存ファイルへ追記する形式の見本）
 
-## メイン FW
-| 名前 | 採用 | 公式最新 | 要求ランタイム | 根拠 URL |
-|---|---|---|---|---|
-| Rails | 8.x.x | 8.x.x | Ruby 3.x+ | https://rubygems.org/gems/rails |
-
-## 主要ライブラリ・SDK
-| 名前 | 採用 | 公式最新 | 要求 | 根拠 URL |
-|---|---|---|---|---|
-| firebase (JS) | 9.x+ (modular) | 11.x.x | Node 18+ | https://www.npmjs.com/package/firebase |
-| jwt (gem) | 3.x | 3.x | Ruby 3.x+ | https://rubygems.org/gems/jwt |
-
-## ツール / コンテナ
-| 名前 | 採用 | 公式最新 | 用途 | 根拠 URL |
-|---|---|---|---|---|
-| firebase-tools | 14.x | 14.x | Emulator (B-12) | https://github.com/firebase/firebase-tools/releases |
-| node (base image) | 22-slim | 22.x | Emulator container | https://hub.docker.com/_/node |
-
-## 既知の非互換性 / 警戒事項
-- _(取得時点で問題があれば 1 行ずつ記録)_
-
-## 採用根拠の要約
-- 「公式の最新安定版」方針（environment-setup.md）に従い、`<確認日>` 時点で context7 / 公式リリースで取得した最新を採用。
-- 特定バージョン固定が必要な要件は受け取っていない。
-```
+> SKILL.md にインライン例を二重に持たない（テンプレートとの乖離回避）。Single Source of Truth はテンプレートファイル側。
 
 ## 判断ポイント（人間判断をスルーさせない）
 
@@ -114,4 +91,4 @@ description: 採用予定の言語/FW/主要ライブラリの **最新安定版
 
 - 後続: `firebase-auth-setup` / `firebase-auth-frontend` / `firebase-auth-mfa` / `firebase-auth-emulator`（本スキルの version-matrix.md に従って Gemfile / package.json / Dockerfile を埋める）
 - バージョン方針: [`ai-delivery/docs/environment-setup.md`](../../../../../docs/environment-setup.md)
-- 横展開: 本スキルは現状 xtone-auth-plugin 内に配置するが、本来は **横断スキル**（複数プラグインで共通利用）。`xtone-shared-plugin` / `xtone-plugin-template` への移管は別 Issue。
+- 横展開: 本スキルは現状 xtone-auth-plugin 内に配置するが、本来は **横断スキル**（複数プラグインで共通利用）。`xtone-shared-plugin` / `xtone-plugin-template` への移管は **backlog B-17（PR #162 マージ後に起票予定）** で扱う。本 PR ではプラグイン内配置のままで進める。
