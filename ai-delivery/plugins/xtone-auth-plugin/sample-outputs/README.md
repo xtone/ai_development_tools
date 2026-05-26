@@ -8,7 +8,9 @@
 |---|---|---|---|
 | 要件定義 | `/req-collect` → auth-requirements-extraction | [`requirements.json`](./requirements.json) | requirements.schema.json |
 | 設計 | `/auth-design` → firebase-auth-design / authentication-architect | [`design.yaml`](./design.yaml) + [`ADR-001-auth-stack.md`](./ADR-001-auth-stack.md) | design.schema.json |
-| 実装 | `/implement` → firebase-auth-setup | [`implementation-plan.json`](./implementation-plan.json) | implementation-plan.schema.json |
+| 実装 | `/implement` → implementation-skill-planner → firebase-auth-setup / -frontend / -mfa / -emulator | [`implementation-plan.json`](./implementation-plan.json)（`skill_plan` 必須） | implementation-plan.schema.json |
+
+> B-13: `design.yaml` の `page_access_control` / `local_dev_stack` / `responsibility_split` から `implementation-plan.json.skill_plan` を機械的に導出し、frontend / emulator スキルの呼び出し漏れを防ぐ。サンプル `implementation-plan.json` も `skill_plan` を含む（called は初期値 false）。
 
 ## この例が示していること（DoD 対応）
 

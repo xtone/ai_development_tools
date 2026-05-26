@@ -11,6 +11,14 @@ description: Firebase Auth を任意のバックエンドに統合するスキ�
 
 `design.schema.json` の認証設計を実装に落とす。本スキルは **言語・フレームワーク非依存の「契約」と「手順」**を定義し、具体的なコードは `references/<stack>.md`（言語別レシピ）に分離する。MVP は Firebase Auth、`AuthAdapter` で IaaS 差し替え可能（DP-007）。
 
+## 呼び出しトリガ（B-13）
+
+以下に該当したら本スキルを起動。`implementation-skill-planner` が判定し `implementation-plan.json.skill_plan` に列挙する:
+
+- `design.yaml.responsibility_split[].owner` に **`backend` または `shared`** が含まれる（ID トークン検証 / セッション確立 / 退会等）
+
+未呼び出しのまま実装フェーズが完了に到達した場合は `delivery/implementation-skill-plan.md` の `called` が false で残り、`docs/pending-decisions.md` に警告される（warn_and_document, T-002）。
+
 > 設計方針: 言語が変わっても **契約は不変**、実装手段（SDK/コード）だけがレシピごとに変わる。Rails 固定にせず、Node/Laravel 等へ展開できる構造にする。
 
 > **スコープ: バックエンド（サーバ）専用。** ID トークン検証・JWT 認可・退会時の Admin SDK 削除・トークン失効など。フロントエンド（サインインUI・パスワード/メール変更・トークン保持・API への Bearer 付与）は対の [`firebase-auth-frontend`](../firebase-auth-frontend/SKILL.md) を参照。`responsibility_split` の **backend = 本スキル / client = firebase-auth-frontend / iaas = Firebase が提供**。MFA（多要素認証, DP-008）は client/backend/iaas 横断のため対の [`firebase-auth-mfa`](../firebase-auth-mfa/SKILL.md) に集約（本スキルが担う MFA 部分は「クレーム検証・管理者強制・変更時の失効」）。

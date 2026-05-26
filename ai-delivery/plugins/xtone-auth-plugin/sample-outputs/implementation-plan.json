@@ -14,6 +14,44 @@
     "branch_naming": "feat/<scope>",
     "merge_strategy": "squash"
   },
+  "skill_plan": [
+    {
+      "skill": "firebase-auth-setup",
+      "recipe": "rails",
+      "trigger": "responsibility_split に backend / shared を含む（ID トークン検証・セッション確立・退会）",
+      "owners": ["backend", "shared"],
+      "applies_to": ["ID トークン検証 / JWT 認可", "セッション確立（アプリ側ユーザー作成）", "退会（IaaS 削除＋アプリ側論理削除）"],
+      "required": true,
+      "called": false
+    },
+    {
+      "skill": "firebase-auth-frontend",
+      "recipe": "hotwire",
+      "trigger": "responsibility_split に client / shared を含む & page_access_control.pages が定義されている",
+      "owners": ["client", "shared"],
+      "applies_to": ["サインイン（メール+パスワード/パスワードレス/OIDC）", "認証方式の追加（アカウント連携）", "退会（IaaS 削除＋アプリ側論理削除）", "/login", "/signup", "/mfa/enroll", "/settings/*", "/", "/clubs"],
+      "required": true,
+      "called": false
+    },
+    {
+      "skill": "firebase-auth-mfa",
+      "recipe": "rails+hotwire",
+      "trigger": "authentication.mfa_requirement = optional（運営管理者は必須なので admin_only 相当のロール強制も実装）",
+      "owners": ["backend", "client", "iaas"],
+      "applies_to": ["DP-008", "/mfa/enroll"],
+      "required": false,
+      "called": false
+    },
+    {
+      "skill": "firebase-auth-emulator",
+      "recipe": "docker-compose",
+      "trigger": "local_dev_stack = emulator_docker（B-12 既定）",
+      "owners": ["shared"],
+      "applies_to": ["ローカル E2E 検証", "SMS MFA のローカル検証"],
+      "required": true,
+      "called": false
+    }
+  ],
   "tasks": [
     { "id": "T-A01", "title": "AuthAdapter インターフェース定義(差し替え可能設計の核, DP-007)", "module": "MOD-001" },
     { "id": "T-A02", "title": "FirebaseAuthAdapter 実装(ID トークン検証/サインイン/ユーザ取得)" },

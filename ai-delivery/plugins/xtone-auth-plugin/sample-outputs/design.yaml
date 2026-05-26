@@ -48,6 +48,20 @@ responsibility_split:   # F-4: 機能の責務を backend/client/iaas/shared に
   - { item: "認証方式の追加（アカウント連携）", owner: "client" }
   - { item: "退会（IaaS 削除＋アプリ側論理削除）", owner: "shared" }
 
+page_access_control:    # B-13: A/B/C アクセス制御パターンの明示
+  default_after_login: "/"
+  callback_param: "callback"
+  signup_separate_page: true
+  pages:
+    - { path: "/login",        pattern: "C", description: "ゲスト専用。?callback でログイン後遷移先を受ける" }
+    - { path: "/signup",       pattern: "C", description: "ゲスト専用。/login と別ページ・相互リンク" }
+    - { path: "/mfa/enroll",   pattern: "A", description: "MFA 第2要素登録（admin_only に該当する管理者は強制リダイレクト）" }
+    - { path: "/settings/*",   pattern: "A", description: "退会・PW変更・メール変更等のアカウント設定" }
+    - { path: "/",             pattern: "B", description: "トップ。認証状態でコンテンツ切替（リダイレクトなし）" }
+    - { path: "/clubs",        pattern: "B", description: "公開コンテンツだが認証状態で参加ボタンが切り替わる" }
+
+local_dev_stack: "emulator_docker"   # B-12 / B-13: 既定。実 Firebase 接続は本番のみ
+
 decision_record:
   - dp_id: "DP-007"
     chosen: "Firebase Auth"
