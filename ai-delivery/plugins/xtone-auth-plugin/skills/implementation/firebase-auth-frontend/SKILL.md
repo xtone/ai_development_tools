@@ -49,6 +49,48 @@ description: Firebase Auth をフロントエンド（クライアント）に�
 
 アプリは `AuthClient` 越しに Firebase を呼ぶ。API 呼び出しには `getIdToken()` の Bearer を付け、サーバ（firebase-auth-setup）が検証する。
 
+## デフォルトページ構成と認証アクセス制御
+
+スキルが既定で要求するページ構成と振る舞い。**要件で別指定がある場合は要件優先**（`design` に `page_access_control` を追加して逸脱を明示・warn_and_document）。
+
+### 3 つのアクセス制御パターン
+
+| パターン | 名前 | ログイン時 | ログアウト時 |
+|---|---|---|---|
+| **A** | `protected-only`（認証必須） | 表示 | **`/login?callback=<元URL>` へリダイレクト** |
+| **B** | `public-aware`（認証感知・公開） | 認証状態でコンテンツ切替（リダイレクトなし） | 同（リダイレクトなし） |
+| **C** | `guest-only`（ゲスト専用） | **`callback`（または既定遷移先）へリダイレクト** | 表示 |
+
+### デフォルトページ一覧（要件で別指定がない限り採用）
+
+| パス | パターン | 振る舞い |
+|---|---|---|
+| `/login` | C: guest-only | サインイン。`?callback=<path>` を受け取り、ログイン後にそのパスへ遷移。`/signup` と**相互リンク**し callback を引き継ぐ |
+| `/signup` | C: guest-only | 新規登録。**`/login` と別ページ**・相互リンク。`callback` を引き継ぐ |
+| `/mfa/enroll` | A: protected-only | MFA 第2要素登録（[`firebase-auth-mfa`](../firebase-auth-mfa/SKILL.md) と組み合わせ） |
+| `/settings/*`（退会・PW変更・メール変更 等） | A: protected-only | アカウント設定 |
+| `/`（トップ） | B: public-aware | 認証状態でコンテンツ切替 |
+
+> 案件のページが上記に無い場合は **A/B/C を明示**して `page_access_control` に追加する。デフォルトに反する設定（例: `/settings` を `public-aware` に開放する等）が要件で出たら、`design.decision_record` に根拠を残して逸脱を記録する。
+
+### コールバックURL の仕様（共通契約）
+
+- パラメータ名: **`callback`**（プロジェクトで統一）
+- 値は **同一オリジンのパス**（先頭 `/`、外部 URL 不可）。**open redirect 防止**のため、`//` 始まり・絶対 URL・別ホストは拒否し、既定遷移先にフォールバック
+- 既定遷移先（未指定時）: `/`（トップ）。案件で別にする場合は `page_access_control.default_after_login` を明示
+- `/login` ↔ `/signup` の相互リンクは `callback` を**そのまま引き継ぐ**（ユーザーが行き来しても遷移先が保たれる）
+- パターン A のページに未認証でアクセスした場合は `callback=<元URL>` を付けて `/login` にリダイレクト
+
+### ガード実装契約（FW 非依存）
+
+| パターン | 実装の意図 |
+|---|---|
+| A: protected-only | レンダー前にセッション無を検出してリダイレクト。**子コンテンツは認証確定後にのみマウント**。ローディング中はスケルトン |
+| B: public-aware | 認証状態を子に渡すだけ。リダイレクトなし。SSR/RSC では session cookie を見て切替 |
+| C: guest-only | セッション有を検出してリダイレクト。`callback` 優先・無ければ既定遷移先 |
+
+各レシピ（`references/<stack>.md`）は **3 パターンの雛形**と上記**デフォルトページのスケルトン**を含む。
+
 ## バックエンド連携（firebase-auth-setup と対）
 
 - ログイン後: `getIdToken()` → `POST /auth/session`（サーバがユーザーを upsert）

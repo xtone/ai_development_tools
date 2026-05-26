@@ -114,7 +114,123 @@ AuthClient.onAuthStateChanged((user) => {
 })
 ```
 
-## 6. 既知の制約 / 注意
+## 6. デフォルトページ構成と認証ガード（3パターン）
+
+SKILL.md の 3 パターン（protected-only / public-aware / guest-only）を Rails + Hotwire で実装する雛形。SSR 主体なのでサーバ側 controller の `before_action` で宣言的にガードする。
+
+### 共通モジュール
+
+```ruby
+# app/controllers/concerns/page_access_control.rb
+module PageAccessControl
+  extend ActiveSupport::Concern
+  DEFAULT_AFTER_LOGIN = "/" # page_access_control.default_after_login
+
+  class_methods do
+    def protected_only(except: []) = before_action(:authenticate_user!,        except: except)
+    def guest_only(except: [])     = before_action(:redirect_if_authenticated, except: except)
+  end
+
+  private
+
+  def authenticate_user!
+    return if user_signed_in?
+    redirect_to login_path(callback: request.fullpath), allow_other_host: false
+  end
+
+  def redirect_if_authenticated
+    return unless user_signed_in?
+    redirect_to safe_callback(params[:callback]) || DEFAULT_AFTER_LOGIN, allow_other_host: false
+  end
+
+  # open redirect 防止: 同一オリジンの「/」始まりのみ・「//」拒否
+  def safe_callback(c) = (c.is_a?(String) && c.start_with?("/") && !c.start_with?("//")) ? c : nil
+end
+```
+
+### `/login`（guest-only）・`/signup`（guest-only） — 別 controller・相互リンク
+
+```ruby
+# app/controllers/sessions_controller.rb — /login
+class SessionsController < ApplicationController
+  include PageAccessControl
+  guest_only
+
+  def new
+    @callback = safe_callback(params[:callback])
+  end
+
+  def create
+    # クライアント SDK でサインイン後、サーバセッションを確立。成功時:
+    redirect_to safe_callback(params[:callback]) || DEFAULT_AFTER_LOGIN
+  end
+end
+```
+
+```ruby
+# app/controllers/registrations_controller.rb — /signup（/login と別 controller）
+class RegistrationsController < ApplicationController
+  include PageAccessControl
+  guest_only
+
+  def new
+    @callback = safe_callback(params[:callback])
+  end
+end
+```
+
+```erb
+<%# app/views/sessions/new.html.erb — /login → /signup へのリンク（callback 引き継ぎ）%>
+<%= link_to "新規登録はこちら", signup_path(callback: @callback) %>
+
+<%# app/views/registrations/new.html.erb — /signup → /login へのリンク（callback 引き継ぎ）%>
+<%= link_to "ログインはこちら", login_path(callback: @callback) %>
+```
+
+### `/mfa/enroll`・`/settings/*`（protected-only）
+
+```ruby
+class MfaEnrollmentsController < ApplicationController
+  include PageAccessControl
+  protected_only
+  # ビューで firebase-auth-mfa の client コード（Stimulus）を読み込む
+end
+
+class SettingsController < ApplicationController # 退会・PW 変更・メール変更
+  include PageAccessControl
+  protected_only
+end
+```
+
+### `/`（public-aware）
+
+```ruby
+class HomeController < ApplicationController
+  include PageAccessControl
+  # ガード無し（public-aware）。user_signed_in? でビューを切替
+end
+```
+
+```erb
+<%# app/views/home/index.html.erb %>
+<% if user_signed_in? %>
+  <%= render "dashboard_preview" %>
+<% else %>
+  <%= render "public_landing" %>
+<% end %>
+```
+
+### routes.rb
+
+```ruby
+get  "login",  to: "sessions#new",      as: :login
+post "login",  to: "sessions#create"
+get  "signup", to: "registrations#new", as: :signup
+# /mfa/enroll, /settings/* も同様に定義
+root to: "home#index"
+```
+
+## 7. 既知の制約 / 注意
 
 - Firebase JS SDK はブラウザ実行。`localStorage` ではなくメモリ保持 ＋ リフレッシュを既定にし、XSS リスクを下げる（戦略 A）。
 - パスワード変更・リセット・メール変更は Firebase JS SDK で完結し **Rails 実装不要**（responsibility=iaas）。

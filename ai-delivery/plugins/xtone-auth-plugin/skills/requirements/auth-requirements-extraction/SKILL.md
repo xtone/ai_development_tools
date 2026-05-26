@@ -38,6 +38,19 @@ description: クライアント要件の説明から認証関連要件を抽出�
 - [ ] セキュリティ規制・業界要件（金融/医療/B2B など → DP-008 MFA、DP-015 dAccount）
 - [ ] docomo / dメニュー系連携の有無（→ DP-015）
 
+## ページ単位のアクセス制御（firebase-auth-frontend と協調）
+
+`firebase-auth-frontend` スキルは 3 パターン（**A: protected-only / B: public-aware / C: guest-only**）と既定ページ（`/login` `/signup` `/mfa/enroll` `/settings/*` `/`）を持つ。要件抽出時に**案件特有のページ**を A/B/C に振り分け、デフォルトに反する設定があれば明示する（要件で別指定がある場合は要件優先）。
+
+- [ ] 認証必須ページ（A）の列挙（例: マイページ / 申込フォーム / 決済 / `/mfa/enroll` / `/settings/*`）
+- [ ] 認証感知ページ（B、公開だが認証で表示が変わる）の列挙（例: トップ / 商品一覧）
+- [ ] ゲスト専用ページ（C）の列挙（通常は `/login` と `/signup`。案件追加があれば）
+- [ ] **既定遷移先（ログイン後のホーム）**: 既定 `/`。案件で別指定がある場合は明示（例 `/dashboard`）
+- [ ] **callback パラメータ**の採用（既定パラメータ名 `callback`）と検証ポリシー（既定: 同一オリジンの `/` 始まりのみ・`//` 拒否で open redirect 防止）
+- [ ] `/login` と `/signup` を**別ページ**で提供することの確認（既定。統合する案件指定があれば理由とともに明示）
+
+検出した内容は `representative_use_cases` / `functional_requirements` に反映し、設計フェーズへ `page_access_control` として引き継ぐ（authentication-architect / firebase-auth-design の責務）。
+
 ## 手順
 
 1. 説明テキストを読み、上記チェックリストで認証要件を洗い出す。
