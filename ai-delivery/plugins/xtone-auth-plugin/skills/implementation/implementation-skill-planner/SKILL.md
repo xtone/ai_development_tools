@@ -30,6 +30,7 @@ design の値から **必ず** 以下を skill_plan に列挙する。
 
 | design のフィールドと値 | 追加するスキル | recipe | owners | required |
 |---|---|---|---|---|
+| `architecture.stack` に**何らかの言語/FW が記述されている**（実装フェーズの全案件で必須） | `tech-version-check` | — | `[shared]` | true（**skill_plan の最先頭に置く**。既に `version-matrix.md` が直近に作成済みなら skip 可、その旨を trigger に明示） |
 | `responsibility_split[].owner` に `backend` or `shared` がある | `firebase-auth-setup` | 採用言語/FW（例: rails / node / laravel） | `[backend]`（shared 含む場合 `[backend, shared]`） | true |
 | `responsibility_split[].owner` に `client` or `shared` がある | `firebase-auth-frontend` | hotwire / nextjs / その他 | `[client]`（shared 含む場合 `[client, shared]`） | true |
 | `authentication.mfa_requirement` ∈ {`required`, `admin_only`, `optional`} | `firebase-auth-mfa` | rails＋hotwire / rails＋nextjs 等の組合せ | `[backend, client, iaas]` | `required`/`admin_only` は true、`optional` は false（推奨） |
@@ -37,6 +38,8 @@ design の値から **必ず** 以下を skill_plan に列挙する。
 | `page_access_control.pages` が定義されている | `firebase-auth-frontend`（既出なら統合） | 同上 | 同上＋`applies_to` に各 page.path を入れる | true |
 
 > **`local_dev_stack` が未指定**でも emulator スキルを追加するのは、B-12（Emulator+Docker を既定とする方針）に整合させるため。`cloud_direct` を選んだ場合のみ planner は emulator を外し、その判断を `decision_record` に残すよう促す。
+
+> **`tech-version-check` は最先頭に置く**（B-11）。バージョン非互換に気付くのが遅れる事故（sample-auth で発生）を防ぐため、setup / frontend / mfa / emulator のいずれよりも前に呼ぶ。既に `delivery/version-matrix.md` が直近で作成済みなら skip 可（trigger に "version-matrix.md is fresh" を残す）。
 
 ## 手順
 
