@@ -15,6 +15,8 @@ description: Firebase Auth をフロントエンド（クライアント）に�
 
 > **MFA（多要素認証, DP-008）は本スキルの対象外。** 第2要素の登録（enrollment）・サインイン時の追加認証（challenge）も client 実装だが、backend/iaas にまたがる横断機能のため対の [`firebase-auth-mfa`](../firebase-auth-mfa/SKILL.md) に集約している。MFA を実装するときはそちらを参照。
 
+> **ローカル検証（Docker で Auth Emulator 起動・E2E）**は対の [`firebase-auth-emulator`](../firebase-auth-emulator/SKILL.md) を参照。`connectAuthEmulator` の初期化と **SMS MFA での E2E 検証**手順をそちらに集約（TOTP MFA はエミュレーター非対応のため、ローカルは SMS で代替し TOTP の E2E は実 Identity Platform）。
+
 ## 入出力（スキーマ）
 
 - 入力: `schemas/design.schema.json`（`authentication` / `responsibility_split` の client 項目 / セッション戦略）
