@@ -66,7 +66,7 @@ enroll / unenroll が成功したら **サーバに通知**し、`backend.revoke
 | `mfa_satisfied?(auth_user) → Bool` | ID トークンが第2要素で発行されたか（`second_factor` が非 nil）。 |
 | `require_mfa!(auth_user, requirement, admin:)` | `mfa_requirement` と管理者フラグに応じて未充足を拒否（`required` は全員、`admin_only` は管理者のみ）。拒否は専用エラー（例: `mfa_required`）で返し、client に enrollment/再ログインを促す。 |
 | `mfa_enrolled?(uid) → Bool` | IaaS 上で第2要素を登録済みか（Admin API の `mfaInfo`）。enrollment 強制の判定や管理画面表示に使う。 |
-| `revoke_tokens(uid)` | enroll/unenroll 通知時にリフレッシュトークンを失効（firebase-auth-setup の運用契約「MFA 変更時の失効」の具体化）。 |
+| `revoke_refresh_tokens(uid)` | enroll/unenroll 通知時に **IaaS の refresh のみ**失効する（他デバイスの古い MFA 無しトークンを無効化）。**サーバ側 `tokens_valid_after` は触らない**（後述「既知の制約」）。`firebase-auth-setup` の「2 段階の失効」の **soft 側**に対応。 |
 
 > backend は AuthAdapter（DP-007）を壊さない。`second_factor` は `AuthUser` への**追加**で、既存の uid/email/provider 契約は不変。別 IaaS では同等のクレーム/状態にマップする。
 
@@ -95,6 +95,8 @@ enroll / unenroll が成功したら **サーバに通知**し、`backend.revoke
 
 ## 既知の制約
 
+- **`auth_time` は MFA enrollment で更新されない**: Firebase の `auth_time` クレームは「最後の認証イベント時刻」（sign-in / MFA challenge）で、**MFA enrollment では更新されない**。そのため backend は MFA 変更時に **IaaS の refresh のみ失効**し、サーバ側の即拒否（`tokens_valid_after` 更新）は行わない（[firebase-auth-setup](../firebase-auth-setup/SKILL.md) の運用契約 3「2 段階の失効」を参照）。**誤って即拒否すると enroll 直後の同セッションが `token revoked` で 401 になる**（実機で再現済み）。
+- **emulator の MFA enrollment は `emailVerified=true` が前提**: Firebase Auth Emulator は `UNVERIFIED_EMAIL` エラーを返すため、signUp 直後に `accounts:update` で `emailVerified=true` を立てる必要がある（[`firebase-auth-emulator`](../firebase-auth-emulator/SKILL.md) を参照）。
 - **Identity Platform 必須**: TOTP / SMS いずれの MFA も Google Cloud Identity Platform（GCIP）へのアップグレードが必要。Firebase コンソール → Authentication → Sign-in method → Advanced で MFA を有効化してから実装・検証する。無印の Firebase Auth プロジェクトのままでは enroll/challenge が失敗する。
 - **SMS のコストと悪用**: SMS MFA は送信コストと SMS ポンピング（不正大量送信）のリスクがある。reCAPTCHA が必須。コスト/不正対策の許容は案件判断（下記「判断ポイント」）。
 - **TOTP の管理 enroll 不可**: TOTP は Admin SDK からの代理登録に非対応で、登録は必ず client の enrollment フローを通る。SMS（phone）は Admin SDK でユーザー作成/更新時に登録情報を設定できる。

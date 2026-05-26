@@ -151,18 +151,30 @@ def public_key_for(kid)
 end
 ```
 
-### トークン失効 / リフレッシュ
+### トークン失効 / リフレッシュ（2 段階の失効）
 
-**毎リクエストで HTTP を叩かない**ため、失効判定は DB で行う。User に `tokens_valid_after`（datetime）カラムを持ち、失効時に更新。検証時はこの DB 値と ID トークンの `auth_time` を比較するだけ（HTTP 不要）。IaaS 側のリフレッシュトークン失効は失効アクション時のみ呼ぶ。
+**毎リクエストで HTTP を叩かない**ため、失効判定は DB で行う。User に `tokens_valid_after`（datetime）カラムを持ち、検証時に ID トークンの `auth_time` と比較するだけ（HTTP 不要）。サーバ側の失効は **2 段階に分ける**:
+
+| 種別 | 用途 | 動作 |
+|---|---|---|
+| **hard 失効** | 退会 / パスワード変更 / 不正検知 | `tokens_valid_after = Time.current`（即拒否）＋ IaaS の refresh 失効 |
+| **soft 失効** | **MFA 変更**（[`firebase-auth-mfa`](../../firebase-auth-mfa/SKILL.md)）| **IaaS の refresh のみ失効**。サーバ側 `tokens_valid_after` は触らない |
+
+> **なぜ MFA 変更だけ soft なのか**: Firebase の `auth_time` クレームは MFA enrollment では更新されない（最後の認証イベント時刻のまま）。サーバ側で `tokens_valid_after = now` に上げると、enroll 直後の同セッションも `auth_time < tokens_valid_after` で 401(`token revoked`) になる。他デバイスの古い MFA 無しトークンを無効化したいだけなら、IaaS の refresh 失効で十分（次回更新で締め出される）。
 
 ```ruby
 # db/migrate: add_column :users, :tokens_valid_after, :datetime
 
 class User < ApplicationRecord
-  # 退会・パスワード変更・MFA 変更・不正検知時に呼ぶ
-  def revoke_tokens!
+  # 強い失効（退会・パスワード変更・不正検知）: サーバ側で即拒否 + IaaS refresh 失効
+  def hard_revoke_tokens!
     update!(tokens_valid_after: Time.current)
-    AppAuth.adapter.revoke(uid)   # IaaS 側のリフレッシュトークンも失効（ベストエフォート）
+    AppAuth.adapter.revoke(uid)
+  end
+
+  # 弱い失効（MFA 変更）: IaaS refresh のみ失効。サーバ側 tokens_valid_after は触らない（同セッション維持）。
+  def revoke_refresh_tokens!
+    AppAuth.adapter.revoke(uid)
   end
 
   # 検証時の失効判定（DB のみ・HTTP なし）。auth_time が失効時刻以降なら有効。
@@ -171,6 +183,8 @@ class User < ApplicationRecord
   end
 end
 ```
+
+退会・パスワード変更・不正検知時は `user.hard_revoke_tokens!`、MFA 変更時は `user.revoke_refresh_tokens!` を呼ぶ。
 
 ```ruby
 # FirebaseAdapter#revoke — IaaS 側のリフレッシュトークンを失効（失効アクション時のみ・冪等）
