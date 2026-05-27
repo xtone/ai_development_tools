@@ -38,12 +38,14 @@ description: Firebase Auth を任意のバックエンドに統合するスキ�
 
 design の `architecture.stack` / 採用言語を見て、該当レシピを参照する。レシピが無い言語は、下記「新しい言語・FW への展開」に従って追加してから実装する。
 
-| 言語 / FW | レシピ | 状態 |
-|---|---|---|
-| Ruby on Rails | [`references/rails.md`](./references/rails.md) | ✅ |
-| Node.js / Express | `references/node.md` | ⬜ 未作成（rails.md を雛形に追加） |
-| Laravel (PHP) | `references/laravel.md` | ⬜ 未作成 |
-| その他 | — | 追加可 |
+| 言語 / FW | レシピ（解説 + 契約の根拠） | コードテンプレ（コピペ起点） | 状態 |
+|---|---|---|---|
+| Ruby on Rails | [`references/rails.md`](./references/rails.md) | [`templates/rails/`](./templates/rails/) | ✅ |
+| Node.js / Express | `references/node.md` | — | ⬜ 未作成（rails.md / templates/rails を雛形に追加） |
+| Laravel (PHP) | `references/laravel.md` | — | ⬜ 未作成 |
+| その他 | — | — | 追加可 |
+
+**レシピ vs テンプレの使い分け**: `references/` は解説（契約の根拠・運用詳細の why）、`templates/` は **ファイル単位でコピーして既存プロジェクトに貼れる** コード雛形（B-09 / Issue #134）。設計を理解する段階では references を、実装着手で素早く骨格を置きたい段階では templates を使う。
 
 ## 実装契約（言語非依存）
 
@@ -88,6 +90,7 @@ T-022 パイロット発見 F-3 / Issue #127 の解消。
 2. 上記 **実装契約**（AuthAdapter ＋ 運用契約）を、その言語の SDK / エコシステムで満たすコードを記述する。
 3. **契約は変えない**（差し替え可能設計を維持）。上のレシピ表に1行追加する。
 4. 言語特有の制約（例: Ruby に公式 Admin SDK が無く REST で代替）はレシピの「既知の制約」に明記する。
+5. （任意・B-09）コピペ起点として `templates/<stack>/` にファイル単位の雛形も同梱する。Rails の例は [`templates/rails/`](./templates/rails/)。実プロジェクトに `cp` で配置できる粒度を目安にする。
 
 ## 判断ポイント（人間判断をスルーさせない）
 

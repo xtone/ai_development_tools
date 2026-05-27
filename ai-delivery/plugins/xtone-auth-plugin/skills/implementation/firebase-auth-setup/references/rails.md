@@ -2,6 +2,8 @@
 
 `firebase-auth-setup` スキルの **Rails 実装レシピ**。スキル本体（SKILL.md）の「実装契約（言語非依存）」を Rails/Ruby で満たす具体コード。契約（AuthAdapter ＋ 運用契約）は変えず、実装手段だけを示す。T-022 パイロット（`~/RubymineProjects/t-021-sample/`）で実証済み。
 
+> **コピペで貼りたい場合は [`../templates/rails/`](../templates/rails/) を使う**（B-09 / Issue #134）。本ドキュメントは「契約の根拠 / 運用詳細の why」を解説する側で、`templates/rails/` は対の **ファイル単位の雛形**（`app/adapters/auth/*.rb` / `controllers/concerns/authenticatable.rb` / `config/initializers/app_auth.rb` / migration 等）。コードが同じ箇所は templates 側がコピーしやすい形に整っている。
+
 - 対象: Rails（API モード）/ Ruby — **いずれも公式の最新安定版を使う**（バージョンは固定しない）。Rails が要求する最小 Ruby は Rails の gemspec / リリースノートで都度確認する。バージョン方針とセットアップは `ai-delivery/docs/environment-setup.md` を参照。
 - 依存: `jwt`（ID トークン検証）・`googleauth`（Admin REST の OAuth2 アクセストークン取得）/ Admin 操作は Identity Toolkit REST API（Ruby 公式 Admin SDK は無いため REST で代替）
 
@@ -139,13 +141,19 @@ end
 def certs
   return @cache[:pem] if @cache && Time.now < @cache[:expires_at]
   res = Net::HTTP.get_response(URI(CERTS_URI))
+  raise Auth::Error, "failed to fetch Firebase certs: #{res.code} #{res.message}" unless res.is_a?(Net::HTTPSuccess)
   ttl = res["cache-control"].to_s[/max-age=(\d+)/, 1]&.to_i || 3600
   @cache = { pem: JSON.parse(res.body), expires_at: Time.now + ttl }
   @cache[:pem]
 end
 
 def public_key_for(kid)
-  pem = certs[kid] || (@cache = nil; certs[kid])  # kid 不一致は強制再取得（ローテーション追従）
+  pem = certs[kid]
+  unless pem
+    # kid 不一致は強制再取得（ローテーション追従）
+    @cache = nil
+    pem = certs[kid]
+  end
   raise Auth::InvalidToken, "unknown kid" unless pem
   OpenSSL::X509::Certificate.new(pem).public_key
 end
@@ -178,6 +186,8 @@ class User < ApplicationRecord
   end
 
   # 検証時の失効判定（DB のみ・HTTP なし）。auth_time が失効時刻以降なら有効。
+  # auth_time が nil の場合は tokens_valid_after 設定済みなら false（安全側で拒否）。
+  # TestAdapter は claims["auth_time"] を必ず埋めるので通常は nil にならない。
   def token_valid?(auth_time)
     tokens_valid_after.nil? || (auth_time.present? && Time.at(auth_time.to_i) >= tokens_valid_after)
   end
@@ -234,7 +244,7 @@ end
 
 ## 4. テスト（実 Firebase 不要）
 
-`TestAdapter`（同じ契約）でトークン形式 `test|<uid>|<email>|<provider>` を検証し、結合テストを実 Firebase なしで回す（パイロットは 8 tests / 0 failures）。
+`TestAdapter`（同じ契約）でトークン形式 `test|<uid>|<email>|<provider>` を検証し、結合テストを実 Firebase なしで回す（パイロットは 8 tests / 0 failures）。**hard 失効テストで `tokens_valid_after` 後に古いトークンの拒否を検証したい場合**は、トークン書式に `auth_time` を加えて `test|<uid>|<email>|<provider>|<auth_time_unix>` を渡せる拡張（templates 同梱）を使うと、`token_valid?(auth_time)` の判定を任意の時刻で再現できる。
 
 ## 5. 既知の制約
 

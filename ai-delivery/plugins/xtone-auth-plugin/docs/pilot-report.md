@@ -65,7 +65,7 @@
   2. **T-021 再パイロット**（[`re-pilot-report.md`](./re-pilot-report.md)）で前回と異なる条件（医療 / MFA required / Next.js + Rails / ロール別認可 / 退会データ分離）で穴の解消を**実機で実証**: backend test **9 runs / 0 failures**、`zeitwerk:check` OK、frontend `tsc/build` 通過、docker emulator E2E **全 12 ステップ PASS**。
   3. **再パイロットでの新発見 RN-1/2/3 も対応済み**: emulator スキル新設（PR #145）で RN-3 解消、フロント 3 パターン既定化（PR #146）、**MFA 失効バグの根本対応**（PR #147、2 段階失効）まで完了。
 - **着手対象**: **T-023〜**（Rollout 計画 / 24 ユースケース展開）。
-- **残バックログ**（[`backlog.md`](./backlog.md)）: **B-07**（検証スクリプト / Med）、~~**B-08**（退会再登録 DP / Low）~~ ✅（DP-28 で起票済）、**B-09**（言語別実装テンプレ / Low）。いずれも型の穴ではないため **Rollout 並行で順次対応**。
+- **残バックログ**（[`backlog.md`](./backlog.md)）: **B-07**（検証スクリプト / Med）。~~**B-08**（退会再登録 DP / Low）~~ ✅（DP-28 で起票済）、~~**B-09**（言語別実装テンプレ / Low）~~ ✅（Rails 向け AuthAdapter テンプレ同梱 / Issue #134）。いずれも型の穴ではないため **Rollout 並行で順次対応**。
 - **関連 PR**: #143（MFA スキル）/ #144（再パイロット報告）/ #145（emulator スキル）/ #146（3 パターン既定化）/ #147（2 段階失効）/ #148-#149（usage-guide）。
 
 ### 判定（履歴）: No-go（条件付き保留）— 2026-05-25 / 豊田
