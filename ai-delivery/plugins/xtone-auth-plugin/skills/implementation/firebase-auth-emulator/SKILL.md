@@ -96,6 +96,7 @@ Firebase Auth Emulator を Docker で起動して、`firebase-auth-setup`（back
 
 ## 既知の制約（くりかえし）
 
+- **コンテナ内 emulator は必ず `0.0.0.0` バインド**: `firebase.json` の `emulators.*.host` を **全サブサービス（`auth` / `ui` / `hub` / `logging`）** で `"0.0.0.0"` に明示する。省略のデフォルト `127.0.0.1` バインドでは Docker コンテナ外（ホスト OS のブラウザ / 別コンテナの backend）からの接続が **HTTP 接続リセット**で到達不能になる。`auth` だけ指定すると Emulator UI（`http://localhost:4000`）が開かない罠を踏む。設定例は [`references/docker-compose.md` §1](./references/docker-compose.md)。
 - **TOTP MFA は不可**（#6224）。設計が TOTP 主体でも、ローカル検証は SMS で代替する。
 - ID トークンは **unsigned**。本番経路で署名検証スキップを誤って有効化すると重大なセキュリティ事故になる。**EMULATOR_HOST が立っているときのみ**スキップする条件分岐を必ず置く。
 - Admin REST の `Bearer owner` は **エミュレーター専用**。本番は OAuth2 アクセストークン（サービスアカウント）。
