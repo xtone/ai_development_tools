@@ -23,6 +23,7 @@
 #   7. デリバリ成果物（sample-outputs/ / delivery/ 配下）の JSON Schema 検証（B-01/B-13 対応）
 #      design*.yaml は plugin.json の `delivery.design_extensions` で宣言された
 #      ドメイン拡張スキーマ（例: design.auth.schema.json）も合成検証する（B-20 / #173）
+#   8. sample-inputs/ 配下の symlink が xtone-shared-plugin/sample-cases/ の実体を指すこと（#174 / B-21）
 
 set -uo pipefail
 
@@ -285,6 +286,38 @@ if [ "$SCHEMA_CHECK" -eq 1 ]; then
       echo "ℹ️  デリバリ成果物（requirements/design/implementation-plan 等）が見つかりませんでした"
     fi
   fi
+fi
+
+# --- 8. sample-inputs/ から sample-cases への参照整合性 (#174 / B-21) --------
+# 各プラグインの sample-inputs/ 配下にある symlink が
+# xtone-shared-plugin/sample-cases/ の実体を指していることを warn_and_document で検証する。
+# 通常ファイルや壊れたリンクは警告のみ（exit 1 にはしない）。
+SAMPLE_INPUTS_DIR="$PLUGIN_DIR/sample-inputs"
+if [ -d "$SAMPLE_INPUTS_DIR" ]; then
+  while IFS= read -r -d '' entry; do
+    rel="${entry#$PLUGIN_DIR/}"
+    base="$(basename "$entry")"
+    # README やプラグイン固有の補足メモ（*.notes.md / *.md）はカタログ参照対象外
+    case "$base" in
+      README.md|*.notes.md) continue ;;
+    esac
+    if [ -L "$entry" ]; then
+      # symlink の実体到達性とリンク先パスを確認
+      if [ ! -e "$entry" ]; then
+        warn "sample-inputs の symlink が壊れています: $rel（#174 / B-21）"
+        continue
+      fi
+      target="$(readlink "$entry")"
+      case "$target" in
+        *xtone-shared-plugin/sample-cases/*) ;;
+        *)
+          # 共通カタログ以外を指す symlink は警告（プラグイン固有のリンクは sample-inputs/ ではなく
+          # 別ディレクトリで扱うのが推奨。例外的に許容する場合は pending-decisions.md に記録）
+          warn "sample-inputs の symlink 先がカタログ外です: $rel -> $target（#174 / B-21）"
+          ;;
+      esac
+    fi
+  done < <(find "$SAMPLE_INPUTS_DIR" -mindepth 1 -maxdepth 1 -print0 2>/dev/null)
 fi
 
 # --- 結果出力 ---------------------------------------------------------------
