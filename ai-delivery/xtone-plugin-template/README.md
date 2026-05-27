@@ -18,37 +18,57 @@ Xtone **AIデリバリシステム**の Claude Code プラグイン用マスタ�
 | Skill | 2 | plugin-guide/SKILL.md.template（運用ガイド＝旧 CLAUDE.md, CONV-06）/ SKILL.md.template（フェーズ別雛形） |
 | スクリプト | 2 | generate-plugin.sh / validate-plugin.sh |
 
-## 新規プラグインの作成（手動コピー）
+## 新規プラグインの作成（generate-plugin.sh）
+
+`scripts/generate-plugin.sh`（TPL-26）でテンプレからプラグインスケルトンを生成する。手動コピーは原則不要。
 
 ```bash
-cd ai-delivery
-cp -r xtone-plugin-template plugins/xtone-<usecase>-plugin
-cd plugins/xtone-<usecase>-plugin
+ai-delivery/scripts/generate-plugin.sh <usecase> \
+  --description "<プラグイン説明>" \
+  --author      "<著者>" \
+  --domains     "<適用ドメイン>" \
+  --modules     "<MOD-XXX>"
 
-# symlink を再作成（コピーで実体化された場合）
-rm -rf schemas
-ln -s ../../xtone-shared-plugin/schemas/v1 schemas
-
-# テンプレファイルを実体化
-mv .claude-plugin/plugin.json.template .claude-plugin/plugin.json
-mv skills/plugin-guide/SKILL.md.template skills/plugin-guide/SKILL.md   # 運用ガイド（旧 CLAUDE.md, DP-27）
-mv skills/SKILL.md.template skills/<phase>/<skill>/SKILL.md             # フェーズ別 Skill
-cp .env.example .env                  # トークンを設定
-# ルート CLAUDE.md は作らない（--strict 非対応 / DP-27）。人間向け概要は README.md に置く（任意）。
+# 例
+ai-delivery/scripts/generate-plugin.sh auth \
+  --description "ユーザー認証とセッション管理を型化する Xtone AIデリバリプラグイン" \
+  --author "Xtone" \
+  --domains "BtoCアプリ,MaaS・モビリティ" \
+  --modules "MOD-001"
 ```
 
-### プレースホルダの置換
+スクリプトは次を自動で行う:
 
-実体化した各ファイルの `{{...}}` をすべて置換する（未置換が残らないこと）。`generate-plugin.sh`（TPL-26）で自動化予定。
+- `plugins/xtone-<usecase>-plugin/` を作成（既存時は `--force` で上書き）
+- `schemas/` を `xtone-shared-plugin/schemas/v1` への symlink で作成
+- `.claude-plugin/plugin.json.template` → `plugin.json` に実体化
+- `skills/plugin-guide/` → `skills/<usecase>-plugin-guide/` にディレクトリ改名、`SKILL.md.template` → `SKILL.md` に実体化
+- 各種ファイル中の `{{usecase}}` / `{{description}}` / `{{author_name}}` / `{{applicable_domains}}` / `{{dependent_modules}}` を置換
+- `hooks/*.sh` に実行権限を付与
+- 未置換 `{{...}}` を検出して警告（warn_and_document）
+- プラグイン用の最小 `README.md` 雛形を生成
+
+> ルート `CLAUDE.md` は作らない（DP-27 本決定: Claude Code が context として読まないため）。運用ガイドは `skills/<usecase>-plugin-guide/SKILL.md` に集約する（CONV-06）。
+
+### 生成後の検証
+
+```bash
+ai-delivery/scripts/validate-plugin.sh ai-delivery/plugins/xtone-<usecase>-plugin
+```
+
+`validate-plugin.sh`（TPL-27）が `plugin.json` 必須フィールド・`schemas/` symlink・各 `SKILL.md` frontmatter・hook 実行権限・トークン参照・未置換プレースホルダ・**デリバリ成果物のスキーマ検証**（`sample-outputs/` / `delivery/` 配下の requirements/design/implementation-plan ほか）を一括チェックする。
+
+### プレースホルダ一覧
+
+`skills/SKILL.md.template`（フェーズ別 Skill の骨格）は実体化されず残るので、各 Skill を増やすときに手動でコピーして使う。
 
 | プレースホルダ | 置換内容 | 出現ファイル |
 |---|---|---|
 | `{{usecase}}` | ユースケース名（例: `auth`） | plugin.json / plugin-guide / SKILL ほか共通 |
 | `{{description}}` / `{{author_name}}` | プラグイン説明・作者 | `.claude-plugin/plugin.json` |
-| `{{applicable_domains}}` | 適用ドメイン（T-008 ドメインタクソノミーから選択） | `skills/plugin-guide/SKILL.md` |
-| `{{dependent_modules}}` | 依存モジュール（MOD-XXX） | `skills/plugin-guide/SKILL.md` |
-
-確認: `grep -rn '{{' .` で未置換のプレースホルダが残っていないことをチェックする。
+| `{{applicable_domains}}` | 適用ドメイン（T-008 ドメインタクソノミーから選択） | `skills/<usecase>-plugin-guide/SKILL.md` |
+| `{{dependent_modules}}` | 依存モジュール（MOD-XXX） | `skills/<usecase>-plugin-guide/SKILL.md` |
+| `{{phase}}` / `{{skill_name}}` / `{{Skill Title}}` | フェーズ別 Skill 用（手動置換） | `skills/SKILL.md.template` |
 
 ## 中核設計原則
 
