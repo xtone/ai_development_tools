@@ -6,17 +6,19 @@
 #     --author "..."             著者名
 #     --domains "BtoCアプリ,..."  適用ドメイン（T-008 ドメインタクソノミー）
 #     --modules "MOD-001,..."    依存モジュール
+#     --domain "認証"             {{domain}} 置換値（ドメイン特化 architect 用の自然言語ラベル）
+#     --no-domain-architect      ドメイン特化 architect / -design テンプレを実体化しない
 #     --force                    既存ディレクトリを上書き
 #   例:
 #     ai-delivery/scripts/generate-plugin.sh auth \
-#       --description "認証モジュール" --author "Xtone"
+#       --description "認証モジュール" --author "Xtone" --domain "認証"
 #
 # 方針: warn_and_document（T-002）— 未置換プレースホルダ等は警告のみ・exit 0。
 
 set -euo pipefail
 
 usage() {
-  sed -n '2,15p' "$0" >&2
+  sed -n '2,17p' "$0" >&2
   exit 1
 }
 
@@ -39,6 +41,8 @@ DESCRIPTION=""
 AUTHOR_NAME=""
 APPLICABLE_DOMAINS=""
 DEPENDENT_MODULES=""
+DOMAIN_LABEL=""
+DOMAIN_ARCHITECT=1
 FORCE=0
 
 while [ "$#" -gt 0 ]; do
@@ -47,6 +51,8 @@ while [ "$#" -gt 0 ]; do
     --author) AUTHOR_NAME="${2:-}"; shift 2 ;;
     --domains) APPLICABLE_DOMAINS="${2:-}"; shift 2 ;;
     --modules) DEPENDENT_MODULES="${2:-}"; shift 2 ;;
+    --domain) DOMAIN_LABEL="${2:-}"; shift 2 ;;
+    --no-domain-architect) DOMAIN_ARCHITECT=0; shift ;;
     --force) FORCE=1; shift ;;
     -h|--help) usage ;;
     *) echo "❌ 未知のオプション: $1" >&2; usage ;;
@@ -113,6 +119,23 @@ GUIDE_DIR_DST="$PLUGIN_DIR/skills/${USECASE}-plugin-guide"
 mv "$GUIDE_DIR_SRC" "$GUIDE_DIR_DST"
 mv "$GUIDE_DIR_DST/SKILL.md.template" "$GUIDE_DIR_DST/SKILL.md"
 
+# 3b. ドメイン特化 architect / -design テンプレを実体化（B-19 / T-021 認証プラグインで確立した型）。
+#     T-023〜T-045 の 23 Rollout プラグインで毎回 authentication-architect.md を見ながら
+#     自作するのを避ける雛形。デフォルトで実体化、`--no-domain-architect` で抑止する。
+DOMAIN_ARCHITECT_SRC="$PLUGIN_DIR/agents/domain-architect.md.template"
+DOMAIN_DESIGN_SRC="$PLUGIN_DIR/commands/domain-design.md.template"
+if [ "$DOMAIN_ARCHITECT" -eq 1 ]; then
+  if [ -f "$DOMAIN_ARCHITECT_SRC" ]; then
+    mv "$DOMAIN_ARCHITECT_SRC" "$PLUGIN_DIR/agents/${USECASE}-architect.md"
+  fi
+  if [ -f "$DOMAIN_DESIGN_SRC" ]; then
+    mv "$DOMAIN_DESIGN_SRC" "$PLUGIN_DIR/commands/${USECASE}-design.md"
+  fi
+else
+  # 抑止指定: テンプレ自体を削除して未置換警告も出さない。
+  rm -f "$DOMAIN_ARCHITECT_SRC" "$DOMAIN_DESIGN_SRC"
+fi
+
 # 4. プレースホルダを置換（macOS / GNU sed どちらでも動くよう .bak 経由）。
 replace_in_file() {
   local pattern="$1" replacement="$2" file="$3"
@@ -130,6 +153,7 @@ while IFS= read -r -d '' f; do
   [ -n "$AUTHOR_NAME" ]        && replace_in_file '{{author_name}}'         "$AUTHOR_NAME"        "$f" || true
   [ -n "$APPLICABLE_DOMAINS" ] && replace_in_file '{{applicable_domains}}'  "$APPLICABLE_DOMAINS" "$f" || true
   [ -n "$DEPENDENT_MODULES" ]  && replace_in_file '{{dependent_modules}}'   "$DEPENDENT_MODULES"  "$f" || true
+  [ -n "$DOMAIN_LABEL" ]       && replace_in_file '{{domain}}'              "$DOMAIN_LABEL"       "$f" || true
 done < <(find "$PLUGIN_DIR" -type f \
   \( -name '*.json' -o -name '*.md' -o -name '*.yaml' -o -name '*.yml' -o -name '*.sh' -o -name '*.template' \) \
   -print0)

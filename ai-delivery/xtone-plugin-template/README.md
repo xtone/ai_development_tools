@@ -13,8 +13,8 @@ Xtone **AIデリバリシステム**の Claude Code プラグイン用マスタ�
 | テンプレートファイル | 4 | plugin.json / README / .mcp.json.sample / .env.example（ルート CLAUDE.md は置かない＝DP-27） |
 | スキーマリンク | 1 | xtone-shared-plugin への symlink |
 | 横断スキルリンク | 2 | `skills/implementation/tech-version-check`（B-17）／ `skills/implementation/implementation-skill-planner`（B-18） → xtone-shared-plugin への symlink |
-| Subagent | 6 | requirements-analyst / designer / implementer / decision-recorder / pending-watcher / reviewer |
-| Slash Command | 8 | /req-collect /design /implement /decide /status /next /pending-list /skip-review |
+| Subagent | 6 + ドメイン特化 1 | 基盤 6（requirements-analyst / designer / implementer / decision-recorder / pending-watcher / reviewer）＋ `agents/domain-architect.md.template`（B-19） |
+| Slash Command | 8 + ドメイン特化 1 | 基盤 8（/req-collect /design /implement /decide /status /next /pending-list /skip-review）＋ `commands/domain-design.md.template`（B-19） |
 | Hook | 4 | pre-phase-transition / post-decision-record / pre-pr-merge / post-pr-merge |
 | Skill | 2 | plugin-guide/SKILL.md.template（運用ガイド＝旧 CLAUDE.md, CONV-06）/ SKILL.md.template（フェーズ別雛形） |
 | スクリプト | 2 | generate-plugin.sh / validate-plugin.sh |
@@ -28,14 +28,16 @@ ai-delivery/scripts/generate-plugin.sh <usecase> \
   --description "<プラグイン説明>" \
   --author      "<著者>" \
   --domains     "<適用ドメイン>" \
-  --modules     "<MOD-XXX>"
+  --modules     "<MOD-XXX>" \
+  --domain      "<ドメイン特化 architect 用ラベル, 例: 認証>"
 
 # 例
 ai-delivery/scripts/generate-plugin.sh auth \
   --description "ユーザー認証とセッション管理を型化する Xtone AIデリバリプラグイン" \
   --author "Xtone" \
   --domains "BtoCアプリ,MaaS・モビリティ" \
-  --modules "MOD-001"
+  --modules "MOD-001" \
+  --domain "認証"
 ```
 
 スクリプトは次を自動で行う:
@@ -46,7 +48,9 @@ ai-delivery/scripts/generate-plugin.sh auth \
 - `skills/implementation/implementation-skill-planner/` を `xtone-shared-plugin/skills/implementation/implementation-skill-planner` への symlink で作成（B-18）
 - `.claude-plugin/plugin.json.template` → `plugin.json` に実体化
 - `skills/plugin-guide/` → `skills/<usecase>-plugin-guide/` にディレクトリ改名、`SKILL.md.template` → `SKILL.md` に実体化
-- 各種ファイル中の `{{usecase}}` / `{{description}}` / `{{author_name}}` / `{{applicable_domains}}` / `{{dependent_modules}}` を置換
+- `agents/domain-architect.md.template` → `agents/<usecase>-architect.md` に実体化（B-19, `--no-domain-architect` で抑止可）
+- `commands/domain-design.md.template` → `commands/<usecase>-design.md` に実体化（B-19, 同上）
+- 各種ファイル中の `{{usecase}}` / `{{description}}` / `{{author_name}}` / `{{applicable_domains}}` / `{{dependent_modules}}` / `{{domain}}` を置換
 - `hooks/*.sh` に実行権限を付与
 - 未置換 `{{...}}` を検出して警告（warn_and_document）
 - プラグイン用の最小 `README.md` 雛形を生成
@@ -71,6 +75,7 @@ ai-delivery/scripts/validate-plugin.sh ai-delivery/plugins/xtone-<usecase>-plugi
 | `{{description}}` / `{{author_name}}` | プラグイン説明・作者 | `.claude-plugin/plugin.json` |
 | `{{applicable_domains}}` | 適用ドメイン（T-008 ドメインタクソノミーから選択） | `skills/<usecase>-plugin-guide/SKILL.md` |
 | `{{dependent_modules}}` | 依存モジュール（MOD-XXX） | `skills/<usecase>-plugin-guide/SKILL.md` |
+| `{{domain}}` | ドメイン特化 architect 用の自然言語ラベル（`--domain` で指定。例: `認証` / `決済`） | `agents/<usecase>-architect.md` / `commands/<usecase>-design.md` |
 | `{{phase}}` / `{{skill_name}}` / `{{Skill Title}}` | フェーズ別 Skill 用（手動置換） | `skills/SKILL.md.template` |
 
 ## 中核設計原則
