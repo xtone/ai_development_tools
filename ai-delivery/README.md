@@ -33,7 +33,8 @@ ai-delivery/
 ├── xtone-shared-plugin/            # 各プラグインが共有するスキーマ・横断スキル（SSoT, CONV-14）
 │   ├── schemas/v1/
 │   │   ├── requirements.schema.json
-│   │   ├── design.schema.json
+│   │   ├── design.schema.json          # ドメイン非依存の base（B-20 で汎用化）
+│   │   ├── design.auth.schema.json     # 認証ドメイン拡張（B-20 で分離）
 │   │   ├── implementation-plan.schema.json
 │   │   ├── modules.schema.json
 │   │   ├── risks.schema.json

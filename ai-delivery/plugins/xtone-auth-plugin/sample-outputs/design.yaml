@@ -1,6 +1,9 @@
 # 架空案件「みんなの読書会」の設計成果物（design.yaml サンプル）
 # firebase-auth-design スキル / authentication-architect の出力例。
-# schemas/design.schema.json（B-01 本実装、B-03 responsibility_split、B-13 page_access_control / local_dev_stack 追加）準拠。
+# schemas/design.schema.json（B-01 本実装、B-03 responsibility_split、B-13 page_access_control / local_dev_stack 追加）
+# ＋ schemas/design.auth.schema.json（B-20 / #173 で分離した認証ドメイン拡張）の合成スキーマに準拠。
+# plugin.json の delivery.design_extensions で拡張スキーマを宣言し、
+# validate-plugin.sh が base + 拡張で合成検証する（B-20 / #173）。
 # YAML 表現（同内容を JSON 化すれば jsonschema で検証可能）。
 
 architecture:

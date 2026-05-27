@@ -132,7 +132,109 @@ test スタブのみだと**型の穴を見逃す**。Docker + emulator + Playwr
 
 実機で不具合を踏んだら、スキルの型を直すまでが 1 タスク。認証プラグインの auth_time 不具合は **Playwright で再現 → 原因（Firebase 仕様）特定 → スキルの 2 段階失効化**まで進めた。これにより他案件での再発を防ぐ。
 
-## 3. 参考実装と便利リンク
+## 3. ドメイン拡張フィールドの追加方法（B-20 / #173）
+
+`design.schema.json` 等の共通スキーマは**ドメイン非依存の共通部分のみ**を持つ（B-20 でドメイン汎用化）。決済・通知・MaaS・IaC など、各プラグイン固有のフィールドは次のいずれかで追加する。**ここに書かれていない経路で共通スキーマを直接編集してはならない**（CONV-14: Single Source of Truth）。
+
+### 3.1 どちらの経路を使うか
+
+| 経路 | 用途 | 例 |
+|---|---|---|
+| **(A) `domain_specific` スロット** | 軽量・少数のフィールド、構造化が浅い | 数個の boolean フラグ・ID・URL |
+| **(B) `design.<domain>.schema.json` を追加** | 構造化が必要・配列・enum などで型強制したい | 認証の `page_access_control` / 決済の `payment_provider` ＋ `pci_dss_scope` |
+
+迷ったら **(B)** を選ぶ。後から (A) → (B) への昇格は安全（後方互換あり）だが、逆は壊しやすい。
+
+### 3.2 経路 (A): `domain_specific` を使う
+
+base `design.schema.json` のトップレベルに `domain_specific` という自由形式オブジェクトがある。フィールドを増減するだけで済む小さな拡張はここに入れる:
+
+```yaml
+domain_specific:
+  payment_test_mode: true
+  webhook_endpoint: "https://example.com/stripe/webhook"
+```
+
+判断ポイント／逸脱理由は通常通り `decision_record` に残す。`domain_specific` 自体は型強制されないため、後で命名が他プラグインと衝突しないよう **プラグイン固有のプレフィックスを推奨**（例: `payment_*`, `notif_*`）。
+
+### 3.3 経路 (B): ドメイン拡張スキーマを追加する
+
+以下の 3 ステップで完結する。
+
+#### Step 1: `design.<domain>.schema.json` を `xtone-shared-plugin/schemas/v1/` に追加
+
+JSON Schema (draft-07) で**ドメイン固有のトップレベルフィールドのみ**を定義する。共通フィールド（`architecture`, `db_schema` 等）は base 側で既に定義されているので**重複させない**。
+
+```jsonc
+// xtone-shared-plugin/schemas/v1/design.payment.schema.json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://xtone.dev/ai-delivery/schemas/v1/design.payment.schema.json",
+  "title": "Design (payment domain extension)",
+  "type": "object",
+  "required": ["payment_provider"],
+  "properties": {
+    "payment_provider": {
+      "type": "object",
+      "required": ["name", "test_mode"],
+      "properties": {
+        "name": { "type": "string", "enum": ["Stripe", "GMO", "Komoju"] },
+        "test_mode": { "type": "boolean" }
+      },
+      "additionalProperties": true
+    },
+    "pci_dss_scope": {
+      "type": "string",
+      "enum": ["SAQ-A", "SAQ-A-EP", "SAQ-D", "none"]
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+参考実装は [`design.auth.schema.json`](../xtone-shared-plugin/schemas/v1/design.auth.schema.json)。
+
+#### Step 2: プラグインの `plugin.json` に拡張を宣言する
+
+`.claude-plugin/plugin.json` に `delivery.design_extensions` を追加する（配列で複数指定可）:
+
+```json
+{
+  "name": "xtone-payment-plugin",
+  "version": "0.1.0",
+  ...,
+  "delivery": {
+    "design_extensions": ["design.payment.schema.json"]
+  }
+}
+```
+
+#### Step 3: `validate-plugin.sh` で合成検証が通ることを確認する
+
+`validate-plugin.sh` は `delivery.design_extensions` を読み取り、`design*.yaml`／`design*.json` を **base + 各拡張で順に検証する**（B-20）。すべて pass で OK:
+
+```bash
+ai-delivery/scripts/validate-plugin.sh ai-delivery/plugins/xtone-payment-plugin --strict
+# → ✅ sample-outputs/design.yaml: OK
+# → ✅ sample-outputs/design.yaml [+design.payment.schema.json]: OK
+```
+
+### 3.4 既存ドメイン拡張一覧
+
+| ドメイン | スキーマ | 主なフィールド |
+|---|---|---|
+| 認証 | `design.auth.schema.json` | `authentication`, `page_access_control` |
+
+新規ドメインを追加したら本表にも追記する。
+
+### 3.5 やってはいけないこと
+
+- ❌ base `design.schema.json` に **ドメイン固有のフィールド**を追加する（B-20 で剥がす前の状態に戻る）
+- ❌ 拡張スキーマで base と**同名のフィールドを再定義**する（合成検証で意図しないバリデーション結果になる）
+- ❌ プラグインの `schemas/` 配下に**シンボリックリンク以外のファイル**を置く（CONV-14 違反）
+- ❌ 拡張スキーマを `additionalProperties: false` にする（base と合成すると base 由来のフィールドが落ちる）
+
+## 4. 参考実装と便利リンク
 
 - **xtone-auth-plugin（リファレンス実装）**
   - 全体ガイド: [`auth-plugin-guide`](../plugins/xtone-auth-plugin/skills/auth-plugin-guide/SKILL.md)
@@ -143,7 +245,7 @@ test スタブのみだと**型の穴を見逃す**。Docker + emulator + Playwr
 - **環境前提**: [`environment-setup.md`](./environment-setup.md)（バージョンは固定せず公式の最新安定版）
 - **MCP 設定**: [`mcp-setup-guide.md`](./mcp-setup-guide.md)
 
-## 4. レビュー・フィードバックの流れ
+## 5. レビュー・フィードバックの流れ
 
 ### あなたから外への流れ
 
@@ -160,7 +262,7 @@ test スタブのみだと**型の穴を見逃す**。Docker + emulator + Playwr
 
 認証プラグインの auth_time 不具合はこのフォーマットで「実機再現 → 原因特定 → スキル根本対応」まで到達した好例。プラグインユーザーからの報告も同じ流れで型を改善できる。
 
-## 5. 複数プラグインを並行で開発するときの進め方
+## 6. 複数プラグインを並行で開発するときの進め方
 
 - **新しいプラグインのキックオフ**: 担当ドメインの背景を整理し、本ガイドの Step 1〜5 で実装着手
 - **複数並行**: 1 人で全部はやらない。プラグインごとに**担当者**を明示する

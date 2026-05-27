@@ -20,6 +20,8 @@
 #   5. .mcp.json.sample のトークン参照（MCP-08）
 #   6. プレースホルダ {{...}} の未置換チェック
 #   7. デリバリ成果物（sample-outputs/ / delivery/ 配下）の JSON Schema 検証（B-01/B-13 対応）
+#      design*.yaml は plugin.json の `delivery.design_extensions` で宣言された
+#      ドメイン拡張スキーマ（例: design.auth.schema.json）も合成検証する（B-20 / #173）
 
 set -uo pipefail
 
@@ -192,6 +194,14 @@ if [ "$SCHEMA_CHECK" -eq 1 ]; then
       DELIVERABLE_DIRS=("$PLUGIN_DIR/sample-outputs" "$PLUGIN_DIR/delivery")
     fi
 
+    # plugin.json の delivery.design_extensions を読み取り（B-20 / #173）
+    DESIGN_EXTENSIONS=()
+    if [ -f "$PLUGIN_JSON" ] && command -v jq >/dev/null 2>&1; then
+      while IFS= read -r ext; do
+        [ -n "$ext" ] && DESIGN_EXTENSIONS+=("$ext")
+      done < <(jq -r '.delivery.design_extensions // [] | .[]' "$PLUGIN_JSON" 2>/dev/null)
+    fi
+
     declare_schema_for() {
       # ファイル名から対応スキーマ名を推定する。
       local file="$1" base
@@ -232,6 +242,22 @@ if [ "$SCHEMA_CHECK" -eq 1 ]; then
         # validate_schema.py: 0=OK, 1=スキーマ違反, 2=依存欠如（warn にカウントしない）
         if [ "$rc" -eq 1 ]; then
           WARN=$((WARN + 1))
+        fi
+
+        # design*.{json,yaml} はドメイン拡張スキーマも合成検証する（B-20 / #173）
+        if [ "$schema_name" = "design.schema.json" ] && [ "${#DESIGN_EXTENSIONS[@]}" -gt 0 ]; then
+          for ext in "${DESIGN_EXTENSIONS[@]}"; do
+            ext_path="$SCHEMA_ROOT/$ext"
+            if [ ! -f "$ext_path" ]; then
+              warn "拡張スキーマが見つかりません: $ext（plugin.json: delivery.design_extensions、対象: $label）"
+              continue
+            fi
+            ext_rc=0
+            python3 "$SCRIPT_DIR/lib/validate_schema.py" "$ext_path" "$file" --label "$label [+$ext]" || ext_rc=$?
+            if [ "$ext_rc" -eq 1 ]; then
+              WARN=$((WARN + 1))
+            fi
+          done
         fi
       done < <(find "$dir" -maxdepth 2 -type f \
         \( -name '*.json' -o -name '*.yaml' -o -name '*.yml' \) -print0)

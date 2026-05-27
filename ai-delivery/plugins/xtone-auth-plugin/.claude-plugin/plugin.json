@@ -5,5 +5,8 @@
   "author": {
     "name": "Xtone"
   },
-  "keywords": ["auth", "firebase", "xtone", "ai-delivery"]
+  "keywords": ["auth", "firebase", "xtone", "ai-delivery"],
+  "delivery": {
+    "design_extensions": ["design.auth.schema.json"]
+  }
 }
