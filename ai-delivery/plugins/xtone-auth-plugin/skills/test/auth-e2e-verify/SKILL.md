@@ -128,6 +128,6 @@ design からマップして、最低でも以下を通す（不該当は skip�
 
 ## 関連
 
-- 前提スキル: `firebase-auth-emulator`（B-12）/ `firebase-auth-setup` / `firebase-auth-frontend` / `firebase-auth-mfa` / `tech-version-check`（B-11、**マージ後に有効**）
-- planner 連携: `implementation-skill-planner` の skill_plan 最末尾エントリ。**B-11（PR #162）とのコンフリクト回避**のため、本 PR では planner 表への `auth-e2e-verify` 行追加は行わず、**B-11 マージ後のフォロー PR**で追記する
+- 前提スキル: `firebase-auth-emulator`（B-12）/ `firebase-auth-setup` / `firebase-auth-frontend` / `firebase-auth-mfa` / `tech-version-check`（B-11）
+- planner 連携: `implementation-skill-planner` の **skill_plan 最末尾エントリ**として `representative_use_cases` のいずれかが定義 & setup/frontend のどちらかが skill_plan に入る場合に必須化（[`../../implementation/implementation-skill-planner/SKILL.md`](../../implementation/implementation-skill-planner/SKILL.md) の導出ルール表参照）
 - 関連方針: B-16（`alert()` / `confirm()` 禁止＝ E2E 固まり防止）
