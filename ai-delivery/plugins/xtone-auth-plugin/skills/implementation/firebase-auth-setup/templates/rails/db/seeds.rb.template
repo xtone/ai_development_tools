@@ -1,0 +1,134 @@
+# db/seeds.rb の雛形（B-23 / Issue #182）
+#
+# このテンプレートは **LLM (implementer agent) が処理して** プロジェクトの
+# `db/seeds.rb` を生成する想定。Ruby ERB のように実行時に評価されるのでは
+# なく、implementer が `delivery/design.yaml` の decision_record から
+# DP-AUTHFLOW-001（運用ユーザー作成ポリシー）を読み取り、`<% if … %>` …
+# `<% end %>` の分岐ブロックのうち**該当する側だけ**を残して書き出す。
+#
+# DP-AUTHFLOW-001 の取りうる値:
+#   - "invitation_based" … 運用ユーザー（operator）は招待制。
+#     seeds では operator を作らず、bin/setup（B-26 / Issue #185）で
+#     「Emulator REST accounts:signUp → 招待トークン発行 → Invitation.accept!」
+#     を通じて初回 operator を作る。chicken-and-egg はこの seed + bin/setup
+#     の組合せで解消する。
+#   - "self_signup"      … 自己サインアップ。seeds で固定 UID の operator
+#     を作って良いが、Firebase Auth Emulator にも **同じ UID** を
+#     `accounts:signUp` REST で登録しないとログイン時に 422
+#     (Email has already been taken) を踏む。本テンプレはその REST 呼び出しを
+#     含める。
+#
+# 共通の前提:
+#   - 環境変数 `FIREBASE_AUTH_EMULATOR_HOST`（既定 `localhost:9099`）が設定済み。
+#     未設定の場合、招待制では何もしない／自己サインアップでは ENV ガードで
+#     skip する（本番混入防止）。
+#   - 招待モデル / Invitation.accept! / User.upsert_from_auth! は B-24
+#     （Issue #183）で導入される雛形を前提とする。未導入なら implementer は
+#     pending-decisions.md に「B-24 雛形が未配置」を残してから生成する
+#     （warn_and_document, T-002）。
+#
+# 関連:
+#   - DP-AUTHFLOW-001（判断ポイントカタログDB）
+#   - B-23 / #182: 本テンプレ
+#   - B-24 / #183: invitation.rb / invitations_controller.rb / sessions_controller.rb の雛形
+#   - B-26 / #185: bin/setup テンプレ（初回 operator 作成）
+
+require "net/http"
+require "json"
+require "uri"
+
+# ---------------------------------------------------------------------------
+# マスタデータ（DP-AUTHFLOW-001 に依存しない共通部分）
+# 案件固有のマスタ（roles / plans / 固定 enum 等）はここで定義する。
+# implementer は案件の design.yaml.db_schema からマスタ候補を抽出し、
+# 必要に応じて以下を編集する。
+# ---------------------------------------------------------------------------
+
+# 例: Role マスタ（案件で Role モデルを持つ場合のみ）
+# Role.find_or_create_by!(name: "operator")
+# Role.find_or_create_by!(name: "corporate")
+
+<% if invitation_based? %>
+# ---------------------------------------------------------------------------
+# DP-AUTHFLOW-001 = invitation_based（招待制 operator）
+#
+# 方針: seeds.rb では operator を作らない。初回 operator は bin/setup
+# （B-26 / Issue #185）が以下を順番に行う:
+#   1. Emulator REST `accounts:signUp` で Firebase 側ユーザを作成（UID 取得）
+#   2. アプリ側で招待レコードを発行（`Invitation.create!(role: :operator, ...)`)
+#   3. `Invitation#accept_for_session!` を呼び、上記 UID と紐付けて
+#      User.upsert_from_auth!(default_role: :operator) する
+#
+# したがって seeds 側では「初回 operator を作る固定 UID」を**置かない**こと。
+# 置いてしまうと bin/setup の招待受け入れと UID 衝突して 422 を踏む（パイロット
+# で発生した chicken-and-egg + UID 不整合の再発）。
+#
+# 案件で「招待リンクのサンプル」を seed に残しておきたい場合のみ、以下のように
+# 招待レコード単体（User 不在）を作る:
+#
+#   Invitation.find_or_create_by!(email: "sample-operator@example.com") do |inv|
+#     inv.role  = :operator
+#     inv.token = SecureRandom.urlsafe_base64(32)
+#     inv.expires_at = 7.days.from_now
+#   end
+#
+# このサンプル招待は development / staging のみで作成し、production では
+# 作らないこと（環境分岐は下のガード参照）。
+# ---------------------------------------------------------------------------
+
+if Rails.env.development? || Rails.env.staging?
+  # 必要に応じてサンプル招待を作成（実体の operator は bin/setup が作る）
+  # Invitation.find_or_create_by!(email: "sample-operator@example.com") do |inv|
+  #   inv.role  = :operator
+  #   inv.token = SecureRandom.urlsafe_base64(32)
+  #   inv.expires_at = 7.days.from_now
+  # end
+end
+<% else %>
+# ---------------------------------------------------------------------------
+# DP-AUTHFLOW-001 = self_signup（自己サインアップ）
+#
+# 方針: seeds.rb で固定 UID の operator を作って良い。ただし Firebase Auth
+# Emulator にも **同じ UID** を `accounts:signUp` REST で同時登録する。
+# これをやらないと、開発者がローカル UI からサインインしたときに Emulator が
+# 新規 UID を発行し、アプリ側の固定 UID と一致せず、メールが衝突して 422
+# (Email has already been taken) を踏む（パイロット F-D-1 の再発防止）。
+#
+# 本番（production）ではこの seed は走らせない（ENV ガード）。
+# ---------------------------------------------------------------------------
+
+if Rails.env.production?
+  Rails.logger.warn("[seeds] skipping operator seed in production")
+else
+  emulator_host = ENV.fetch("FIREBASE_AUTH_EMULATOR_HOST", "localhost:9099")
+  email         = "admin@example.com"
+  password      = "changeme"
+
+  # 1. Emulator にユーザを登録（UID は Emulator が払い出す）。冪等のため
+  #    既存ユーザ (EMAIL_EXISTS) は無視して既存 localId を取りに行く。
+  signup_uri = URI("http://#{emulator_host}/identitytoolkit.googleapis.com/v1/accounts:signUp?key=demo-key")
+  resp = Net::HTTP.post(signup_uri, { email: email, password: password, returnSecureToken: true }.to_json,
+                        "Content-Type" => "application/json")
+  body = JSON.parse(resp.body) rescue {}
+
+  uid =
+    if resp.is_a?(Net::HTTPSuccess)
+      body.fetch("localId")
+    elsif body.dig("error", "message") == "EMAIL_EXISTS"
+      # 既存ユーザの localId を lookup で取得
+      lookup_uri = URI("http://#{emulator_host}/identitytoolkit.googleapis.com/v1/accounts:lookup?key=demo-key")
+      lookup = Net::HTTP.post(lookup_uri, { email: [email] }.to_json,
+                              "Content-Type" => "application/json")
+      JSON.parse(lookup.body).dig("users", 0, "localId")
+    else
+      raise "[seeds] failed to ensure emulator user: #{resp.code} #{resp.body}"
+    end
+
+  # 2. アプリ側ユーザを upsert（UID を Emulator と一致させる）
+  User.find_or_create_by!(firebase_uid: uid) do |u|
+    u.email = email
+    u.role  = :operator
+    u.mfa_enabled = false
+  end
+end
+<% end %>

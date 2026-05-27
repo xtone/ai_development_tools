@@ -16,6 +16,7 @@
 | `app/controllers/concerns/authenticatable.rb` | JWT 認可 concern |
 | `config/initializers/app_auth.rb` | `AppAuth.adapter` 選択（ENV `AUTH_ADAPTER` 切替） |
 | `db/migrate/00000000000000_add_tokens_valid_after_to_users.rb.template` | `users.tokens_valid_after` 追加マイグレーションの雛形 |
+| `db/seeds.rb.template` | seeds.rb 雛形（B-23 / Issue #182）。implementer が **DP-AUTHFLOW-001** に応じて `<% if invitation_based? %>` ブランチを残す側だけ書き出す |
 
 > **契約は `references/rails.md` の「実装契約（言語非依存）」と同一。** 本テンプレは契約を変えずに具体コードを提供するだけ（DP-007 差し替え可能設計を維持）。
 
@@ -41,6 +42,8 @@ cp    "$PLUGIN"/templates/rails/db/migrate/00000000000000_add_tokens_valid_after
 `Gemfile.snippet` の内容は `Gemfile` に追記、`dotenv.sample` の項目は `.env` / Secrets に展開（`.env` はコミット禁止）。
 
 **マイグレーションの置換**: コピー後の migration ファイル冒頭 `ActiveRecord::Migration[<RAILS_MAJOR.MINOR>]` の `<RAILS_MAJOR.MINOR>` は、`bundle exec rails -v` で確認した Rails のメジャー.マイナーに置換する（バージョンを固定しない方針: `ai-delivery/docs/environment-setup.md`）。
+
+**`db/seeds.rb.template` の取り扱い**（B-23 / Issue #182）: 本テンプレは **LLM (implementer agent) が処理して** `db/seeds.rb` を生成する想定（実行時 ERB ではない）。implementer は `delivery/design.yaml.decision_record[]` を走査して **DP-AUTHFLOW-001**（運用ユーザー作成ポリシー）の `chosen` を取得し、`<% if invitation_based? %>` … `<% else %>` … `<% end %>` のうち**該当する側だけを残して**書き出す。生成した戦略は `delivery/seeds-strategy.md` に残すこと。bin/setup（B-26 / Issue #185）と招待モデル雛形（B-24 / Issue #183）と一体で動かす前提。
 
 ### 3. User モデルに失効ヘルパーを追加する
 
