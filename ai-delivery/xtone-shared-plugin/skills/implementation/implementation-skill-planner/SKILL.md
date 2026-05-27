@@ -20,7 +20,7 @@ description: 設計成果物（design.yaml）から実装フェーズで呼び�
   - `delivery/implementation-plan.json` の **`skill_plan` フィールド**（`implementation-plan.schema.json` 上 **required**。本スキルが Step 0 で必ず埋める）
   - `delivery/implementation-skill-plan.md`（人間向けチェックリスト）
 
-> **MVP 期の互換性方針**: 本プラグインは MVP ステータスのため、CONV-14（v1/v2 並行保持）を**厳格適用しない**。最新スキーマで型化を強制する。GA 移行時に並行保持戦略を立てる（[`docs/pending-decisions.md`](../../../docs/pending-decisions.md) の `DP-MVP-COMPAT` 参照）。
+> **MVP 期の互換性方針**: MVP ステータスのプラグインでは、CONV-14（v1/v2 並行保持）を**厳格適用しない**。最新スキーマで型化を強制する。GA 移行時に並行保持戦略を立てる（auth-plugin では `docs/pending-decisions.md` の `DP-MVP-COMPAT` に起票。各プラグインで同等の判断を pending-decisions に残してから本スキルを適用する）。
 
 スキーマは編集しない（CONV-14）。
 
@@ -93,3 +93,4 @@ design.yaml から自動導出（implementation-skill-planner / B-13）。
 - 受け入れ先: `firebase-auth-setup` / `firebase-auth-frontend` / `firebase-auth-mfa` / `firebase-auth-emulator`（各 SKILL.md 冒頭に「いつ呼ばれるか」のトリガ条件を明記）
 - 設計入力: `design.schema.json` の `responsibility_split` / `page_access_control` / `authentication` / `local_dev_stack`
 - B-13（実装スキル呼び出し漏れ防止）の中核成果物
+- 配置（横断スキル）: 本スキルは `xtone-shared-plugin/skills/implementation/implementation-skill-planner/` に実体を置き、各プラグイン（`plugins/xtone-*-plugin/skills/implementation/implementation-skill-planner`）と `xtone-plugin-template/skills/implementation/implementation-skill-planner` からは **symlink** で参照する（CONV-14 / B-18）。新規プラグイン生成時は `tech-version-check` と同じく symlink を再作成する（[`xtone-plugin-template/README.md`](../../../../xtone-plugin-template/README.md)）。導出ルール表の `firebase-auth-*` は auth-plugin の例。他プラグインでは各 usecase のスキル名に置き換える

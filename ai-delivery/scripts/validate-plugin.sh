@@ -14,6 +14,7 @@
 #   1. .claude-plugin/plugin.json の必須フィールド（CONV-01）
 #   2. schemas/ が symlink で xtone-shared-plugin を指している（CONV-14）
 #   2b. skills/implementation/tech-version-check/ が symlink で xtone-shared-plugin を指している（B-17）
+#   2c. skills/implementation/implementation-skill-planner/ が symlink で xtone-shared-plugin を指している（B-18）
 #   3. skills/<usecase>-plugin-guide/SKILL.md と他 skills/**/SKILL.md の frontmatter（SKL-20）
 #      ※ プラグインルートの CLAUDE.md は CONV-06 改訂（B-05 / DP-27）で不要
 #   4. hooks/hooks.json + hooks/*.sh の実行権限
@@ -115,6 +116,20 @@ else
   case "$target" in
     *xtone-shared-plugin/skills/implementation/tech-version-check*) ;;
     *) warn "skills/implementation/tech-version-check の symlink 先が不正です: $target（CONV-14 / B-17）" ;;
+  esac
+fi
+
+# --- 2c. 横断スキル implementation-skill-planner が symlink (CONV-14 / B-18) -
+SKILL_PLANNER_PATH="$PLUGIN_DIR/skills/implementation/implementation-skill-planner"
+if [ ! -e "$SKILL_PLANNER_PATH" ]; then
+  warn "skills/implementation/implementation-skill-planner がありません（B-18: xtone-shared-plugin への symlink を作成）"
+elif [ ! -L "$SKILL_PLANNER_PATH" ]; then
+  warn "skills/implementation/implementation-skill-planner が symlink ではありません（CONV-14: 横断スキルは Single Source of Truth）"
+else
+  target="$(readlink "$SKILL_PLANNER_PATH")"
+  case "$target" in
+    *xtone-shared-plugin/skills/implementation/implementation-skill-planner*) ;;
+    *) warn "skills/implementation/implementation-skill-planner の symlink 先が不正です: $target（CONV-14 / B-18）" ;;
   esac
 fi
 
