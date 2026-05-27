@@ -120,4 +120,4 @@ Phase 1（実機テスト＝TestAdapter / frontend=ビルドのみ）に **実�
 - 訂正バックログ: [`backlog.md`](./backlog.md)
 - 再パイロット成果物: `~/RubymineProjects/t-021-repilot-telemedicine/`（`delivery/` にプラグイン成果物、`backend/` `frontend/` に実装）
 - 使用スキル: `firebase-auth-setup` / `firebase-auth-frontend` / `firebase-auth-mfa` / `firebase-auth-design` / `auth-requirements-extraction`
-- 関連タスク: T-021 / T-022 / T-004 / T-002 / T-005、判断ポイント DP-007/008/015/028
+- 関連タスク: T-021 / T-022 / T-004 / T-002 / T-005、判断ポイント DP-007/008/015 / DP-28
