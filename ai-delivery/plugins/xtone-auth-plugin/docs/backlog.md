@@ -25,11 +25,12 @@ T-022 内部パイロット（[pilot-report.md](./pilot-report.md)）で発見�
 | **B-12** | [#157](https://github.com/xtone/ai_development_tools/issues/157) | Architecture | High | **Firebase Emulator + Docker をローカル開発の既定化**。B-13 で schema 側 `local_dev_stack` は導入済み。本件は **スキル中身**（docker-compose テンプレ / Adapter 分岐 / connectAuthEmulator 統合）を整備。B-14 の前提 | SKL- | sample-auth |
 | **B-15** | [#158](https://github.com/xtone/ai_development_tools/issues/158) | Architecture | Med | **`auth-e2e-verify` スキル新設**。Playwright で `representative_use_cases` を全件通すまで責務化。`alert()` 禁止 等の MCP/Headless 配慮も込み。前提: B-12 | SKL- | sample-auth |
 | **B-16** | [#159](https://github.com/xtone/ai_development_tools/issues/159) | Plugin | Low | hotwire レシピ細部修正（Rails singular resource / `alert()` 禁止 / Firebase v9 modular 統一） | SKL- | sample-auth |
+| **B-17** | [#164](https://github.com/xtone/ai_development_tools/issues/164) | Architecture | Med | **`tech-version-check` を横断スキル化**。`xtone-shared-plugin` / `xtone-plugin-template` への移管（配置先は判断ポイント）。B-11 で auth-plugin 内に暫定配置したため、複数プラグイン展開時に複製が発生する | SKL- / CONV-14 | PR #162（B-11）|
 
 ## 優先度の考え方
 
 - **High（Rollout 前に解消推奨）**: B-01 / B-02 / B-05 / B-06。いずれも「型の穴」で、24 ユースケース展開で繰り返しコスト化する。
-- **Med（Rollout と並行可）**: B-03 / B-04 / B-07 / B-10 / B-14 / B-15。
+- **Med（Rollout と並行可）**: B-03 / B-04 / B-07 / B-10 / B-14 / B-15 / B-17。
 - **Low（任意・改善）**: B-08 / ~~B-09~~ ✅ / B-16。
 - **Rollout 後追加 High**（24 ユースケース展開と並行で塞ぐ）: B-11（バージョン取得）/ B-12（Emulator 既定化）/ B-13（スキル呼び出し計画）。いずれもサンプル案件 sample-auth 由来。
 
