@@ -1,0 +1,113 @@
+# 架空案件「みんなの読書会」の設計成果物（design.yaml サンプル）
+# firebase-auth-design スキル / authentication-architect の出力例。
+# schemas/design.schema.json（B-01 本実装、B-03 responsibility_split、B-13 page_access_control / local_dev_stack 追加）準拠。
+# YAML 表現（同内容を JSON 化すれば jsonschema で検証可能）。
+
+architecture:
+  stack: "Rails 8 (API) + React (Web SPA) + iOS/Android"
+  cloud: "Firebase（認証）+ アプリサーバ（任意）"
+  db_type: "PostgreSQL（本番）/ SQLite（パイロット）"
+  rationale: >
+    認証は AuthAdapter インターフェース越しに呼び、Firebase 固有処理は FirebaseAuthAdapter
+    に閉じ込める（DP-007 差し替え可能設計）。バックエンド（Rails）は API ミドルウェアで
+    Firebase 発行の ID トークン（JWT）を検証してユーザーを解決。Web/アプリは ID トークンと
+    リフレッシュトークンをメモリ保持し API リクエストに Bearer 付与。セッションは ID トークン
+    TTL=1h、リフレッシュで更新、退会時は Firebase ユーザー削除 + サーバ側論理削除。
+
+db_schema:
+  er_diagram_url: "https://www.figma.com/(架空)/minna-bookclub-er"
+  normalization_level: "3NF"
+  tables:
+    - { name: "users", columns: ["uid", "email", "providers", "mfa_enabled", "tokens_valid_after", "role", "deleted_at"] }
+    - { name: "clubs", columns: ["id", "host_uid", "name", "description"] }
+    - { name: "memberships", columns: ["club_id", "user_uid", "joined_at"] }
+
+api_spec:
+  openapi_path: "docs/openapi.yaml"
+  style: "REST"
+
+authentication:
+  stack: "Firebase Auth"          # DP-007 採用（MVP 推奨、AuthAdapter で差し替え可能）
+  mfa_requirement: "admin_only"   # DP-008（運営管理者は必須、一般はオプトイン）
+
+ui_design:
+  figma_url: "https://www.figma.com/(架空)/minna-bookclub-ui"
+  screen_count: 18
+  key_screens:
+    - "ログイン / 新規登録"
+    - "MFA 第2要素登録（管理者）"
+    - "ホーム（公開・認証感知）"
+    - "クラブ一覧 / 詳細"
+    - "アカウント設定（プロフィール / メール / パスワード / 退会）"
+
+adr_list:
+  - { id: "ADR-001", title: "認証スタックに Firebase Auth を採用", status: "accepted", path: "sample-outputs/ADR-001-auth-stack.md" }
+
+design_review_completed:
+  approved: true
+  approved_by: "豊田"
+  approved_at: "2026-05-27T10:00:00+09:00"
+
+domain_specific_checks:
+  dAccount: false       # DP-015 非該当（docomo 連携なし）
+  pci_dss: false        # 決済なし
+  community_guidelines: true  # コミュニティ規約あり（DP-018）
+
+responsibility_split:   # B-03 / #130: 機能の責務を backend/client/iaas/shared に仕分け
+  - { item: "サインイン（メール+パスワード/パスワードレス/OIDC）", owner: "client" }
+  - { item: "ID トークン検証 / JWT 認可", owner: "backend" }
+  - { item: "セッション確立（アプリ側ユーザー upsert）", owner: "backend" }
+  - { item: "パスワード変更・リセット", owner: "iaas" }      # Firebase クライアント SDK で完結＝BE 対象外
+  - { item: "メールアドレス変更", owner: "iaas" }
+  - { item: "認証方式の追加（アカウント連携）", owner: "client" }
+  - { item: "退会（IaaS 削除＋アプリ側論理削除）", owner: "shared" }
+  - { item: "MFA 第2要素の登録・追加認証", owner: "shared" }   # client(enroll/challenge) + backend(検証/強制/失効) + iaas(第2要素検証)
+  - { item: "MFA 変更時のトークン失効", owner: "backend" }     # soft 失効: refresh のみ、tokens_valid_after は触らない
+
+page_access_control:    # B-13: A/B/C アクセス制御パターンの確定（requirements.page_access_control_candidates → ここで確定）
+  default_after_login: "/"
+  callback_param: "callback"
+  signup_separate_page: true
+  pages:
+    - { path: "/login",                pattern: "C", description: "ゲスト専用。?callback でログイン後遷移先を受ける" }
+    - { path: "/signup",               pattern: "C", description: "ゲスト専用。/login と別ページ・相互リンク" }
+    - { path: "/mfa/enroll",           pattern: "A", description: "MFA 第2要素登録（admin_only に該当する管理者は強制リダイレクト）" }
+    - { path: "/settings/profile",     pattern: "A", description: "プロフィール設定（singular resource）" }
+    - { path: "/settings/email",       pattern: "A", description: "メール変更（iaas で完結、UI のみ）" }
+    - { path: "/settings/password",    pattern: "A", description: "パスワード変更（iaas で完結、UI のみ）" }
+    - { path: "/settings/withdrawal",  pattern: "A", description: "退会（shared、DELETE /account を呼ぶ）" }
+    - { path: "/clubs/new",            pattern: "A", description: "クラブ作成（ホスト権限）" }
+    - { path: "/clubs/:id/manage",     pattern: "A", description: "クラブ管理（ホスト権限）" }
+    - { path: "/",                     pattern: "B", description: "トップ。認証状態でコンテンツ切替（リダイレクトなし）" }
+    - { path: "/clubs",                pattern: "B", description: "クラブ一覧（公開、参加ボタンは認証状態で切替）" }
+    - { path: "/clubs/:id",            pattern: "B", description: "クラブ詳細（公開、参加ボタンは認証状態で切替）" }
+    - { path: "/books",                pattern: "B", description: "本一覧（公開）" }
+
+local_dev_stack: "emulator_docker"   # B-12 / B-13: 既定。実 Firebase 接続は本番のみ
+
+decision_record:
+  - dp_id: "DP-007"
+    chosen: "Firebase Auth"
+    compared: ["Firebase Auth", "Devise+OmniAuth"]
+    decided_by: "豊田"
+    decided_at: "2026-05-27T10:00:00+09:00"
+    rationale: >
+      チームに Firebase 経験があり、メール/パスワードレス/OIDC を標準機能で満たせる。
+      代替の Devise+OmniAuth はパスワードレスや Apple ログインで追加実装が増える。
+      ベンダーロックイン懸念は AuthAdapter 層で差し替え可能にして緩和。
+    adr_ref: "sample-outputs/ADR-001-auth-stack.md"
+  - dp_id: "DP-008"
+    chosen: "admin_only（管理者必須・一般オプトイン）"
+    decided_by: "豊田"
+    decided_at: "2026-05-27T10:00:00+09:00"
+    rationale: >
+      一般ユーザーに必須化すると離脱リスク。運営管理者は権限が強いため必須、
+      一般・ホストはオプトインで UX とセキュリティを両立。
+      Issue #131（B-04）の指針に整合。
+  - dp_id: "DP-015"
+    chosen: "非該当（スコープ外）"
+    decided_by: "豊田"
+    decided_at: "2026-05-27T10:00:00+09:00"
+    rationale: "docomo / dメニュー連携の予定がないため適用外。"
+
+undecided: []

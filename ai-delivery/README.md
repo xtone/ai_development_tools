@@ -25,6 +25,10 @@ ai-delivery/
 │   ├── plugin-developer-guide.md
 │   ├── environment-setup.md
 │   └── mcp-setup-guide.md
+├── scripts/                        # プラグイン生成・検証ツール（TPL-26/27, B-07）
+│   ├── generate-plugin.sh
+│   ├── validate-plugin.sh
+│   └── lib/validate_schema.py
 ├── xtone-plugin-template/          # 新規プラグインのマスターテンプレ
 ├── xtone-shared-plugin/            # 各プラグインが共有するスキーマ・横断スキル（SSoT, CONV-14）
 │   ├── schemas/v1/
