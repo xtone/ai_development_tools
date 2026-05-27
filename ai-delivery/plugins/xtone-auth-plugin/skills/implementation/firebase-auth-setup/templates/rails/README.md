@@ -60,6 +60,8 @@ class User < ApplicationRecord
   end
 
   # 検証時の失効判定（DB のみ・HTTP なし）
+  # auth_time が nil の場合は tokens_valid_after 設定済みなら false（安全側で拒否）。
+  # TestAdapter は claims["auth_time"] を必ず埋めるので通常は nil にならない。
   def token_valid?(auth_time)
     tokens_valid_after.nil? || (auth_time.present? && Time.at(auth_time.to_i) >= tokens_valid_after)
   end

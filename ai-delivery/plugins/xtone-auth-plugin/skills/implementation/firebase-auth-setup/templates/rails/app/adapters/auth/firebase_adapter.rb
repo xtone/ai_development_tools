@@ -15,6 +15,8 @@ module Auth
     def initialize(project_id: ENV["FIREBASE_PROJECT_ID"])
       @project_id = project_id.to_s
       raise Auth::Error, "FIREBASE_PROJECT_ID が未設定です" if @project_id.empty?
+      @cache = nil  # 公開鍵キャッシュ（{pem:, expires_at:}）— 初回 certs() で fetch
+      @token = nil  # OAuth2 アクセストークンキャッシュ（{value:, expires_at:}）— 初回 access_token() で fetch
     end
 
     def verify_token(id_token)
