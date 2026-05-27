@@ -27,13 +27,15 @@ cp -r xtone-plugin-template plugins/xtone-<usecase>-plugin
 cd plugins/xtone-<usecase>-plugin
 
 # symlink を再作成（コピーで実体化された場合 / パスの深さが template とプラグインで異なる）
-rm -rf schemas
-ln -s ../../xtone-shared-plugin/schemas/v1 schemas
+# schemas (CONV-14) と skills/implementation/tech-version-check (B-17) をまとめて整備するヘルパー:
+../../scripts/regenerate-symlinks.sh ../../plugins/xtone-<usecase>-plugin
 
-# 横断スキル tech-version-check（B-17）の symlink を再作成
-rm -rf skills/implementation/tech-version-check
-ln -s ../../../../xtone-shared-plugin/skills/implementation/tech-version-check \
-      skills/implementation/tech-version-check
+# 手作業で行う場合は以下と等価:
+#   rm -rf schemas
+#   ln -s ../../xtone-shared-plugin/schemas/v1 schemas
+#   rm -rf skills/implementation/tech-version-check
+#   ln -s ../../../../xtone-shared-plugin/skills/implementation/tech-version-check \
+#         skills/implementation/tech-version-check
 
 # テンプレファイルを実体化
 mv .claude-plugin/plugin.json.template .claude-plugin/plugin.json
