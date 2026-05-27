@@ -35,13 +35,13 @@ xtone-shared-plugin/sample-cases/
 
 | 業種 / 案件 | 認証 | 決済 | 通知 | コンテンツ | 検索 | 管理画面 | 帳票 | 位置情報 | QR | 予約 | RBAC | 監査ログ | 分析 | コミュニティ | OGP / 静的 | キャンペーン |
 |---|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
-| [ec-d2c-app](./ec-d2c-app/) | ✔ | ✔ | ✔ | ✔ | ✔ |  |  |  |  |  |  |  | ✔ | ✔ |  |  |
-| [maas-carshare](./maas-carshare/) | ✔ | ✔ | ✔ |  |  |  |  | ✔ | ✔ | ✔ |  |  |  |  |  |  |
+| [ec-d2c-app](./ec-d2c-app/) | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |  |  |  |  |  |  | ✔ | ✔ |  |  |
+| [maas-carshare](./maas-carshare/) | ✔ | ✔ | ✔ |  |  | ✔ |  | ✔ | ✔ | ✔ |  |  |  |  |  |  |
 | [media-content](./media-content/) | ✔ |  |  | ✔ | ✔ |  |  |  |  |  |  |  | ✔ |  | ✔ |  |
 | [education-voucher](./education-voucher/) | ✔ |  | ✔ |  |  | ✔ | ✔ |  |  |  | ✔ | ✔ |  |  |  |  |
 | [corporate-site](./corporate-site/) |  |  | ✔ | ✔ |  | ✔ |  |  |  |  |  |  | ✔ |  | ✔ |  |
 | [business-saas](./business-saas/) | ✔ |  | ✔ |  |  | ✔ |  |  |  |  | ✔ | ✔ |  |  |  |  |
-| [event-campaign-lp](./event-campaign-lp/) | ✔ |  | ✔ |  |  |  |  |  | ✔ |  |  |  | ✔ |  | ✔ | ✔ |
+| [event-campaign-lp](./event-campaign-lp/) | ✔ |  | ✔ |  |  | ✔ |  |  | ✔ |  |  |  | ✔ |  | ✔ | ✔ |
 
 > マトリクスは雛形であり、各 Rollout プラグイン側で対応関係を見直したうえで `sample-inputs/` から symlink を張る運用にする。新規プラグインが「自分のユースケースは✔がないので新案件追加」と判断したら、本カタログに追加して PR を立てる（カタログ更新は本ガイドの責務）。
 
