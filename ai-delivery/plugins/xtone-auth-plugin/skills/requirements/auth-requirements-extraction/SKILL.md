@@ -38,6 +38,31 @@ description: クライアント要件の説明から認証関連要件を抽出�
 - [ ] セキュリティ規制・業界要件（金融/医療/B2B など → DP-008 MFA、DP-015 dAccount）
 - [ ] docomo / dメニュー系連携の有無（→ DP-015）
 
+## 運用方針（招待 / 監査ログ / 通知）
+
+要件抽出段階で気づける運用系の判断ポイント。要件で言及されたら必ず `representative_use_cases` / `functional_requirements` / `non_functional_requirements` に反映し、未確定の項目は `undecided` に該当 DP を追加して `docs/pending-decisions.md` に起票する（warn_and_document）。**要件に登場しなくても**、operator 招待制／監査ログ／通知メールは BtoB 系や規制業界で実装直前まで未決のまま持ち越されやすい構造的論点なので、ヒアリングで明示的に有無を確認する。
+
+### 招待制サインアップ（採用される場合 → DP-INVITATION-POLICY-001）
+
+- [ ] 招待トークンの有効期限（既定: 72h / 案件指定）
+- [ ] 1 回限り使い切り / 再発行ポリシー
+- [ ] 招待リンク送信の通知手段（メール / Slack）
+- [ ] 失効通知の有無
+
+### 監査ログ（→ DP-AUDIT-VIEW-001）
+
+- [ ] 対象操作（ログイン / ログアウト / パスワード変更 / 退会 / 招待発行 / role 変更 等）
+- [ ] 保存期間
+- [ ] 閲覧権限（operator / admin / 限定 admin 等）
+- [ ] 閲覧 UI の有無（管理画面 / CSV エクスポートのみ / なし）
+
+### 通知（→ DP-NOTIFY-001）
+
+- [ ] 通知手段（メール / Slack / Web push / なし）
+- [ ] 通知イベント（パスワード変更 / 新規ログイン / MFA 設定変更 / 退会受付 / 招待発行 等）
+- [ ] オプトアウト可否
+- [ ] 開発環境での実送信 vs Mailcatcher 等
+
 ## ページ単位のアクセス制御（firebase-auth-frontend と協調）
 
 `firebase-auth-frontend` スキルは 3 パターン（**A: protected-only / B: public-aware / C: guest-only**）と既定ページ（`/login` `/signup` `/mfa/enroll` `/settings/*` `/`）を持つ。要件抽出時に**案件特有のページ**を A/B/C に振り分け、デフォルトに反する設定があれば明示する（要件で別指定がある場合は要件優先）。
@@ -56,8 +81,10 @@ description: クライアント要件の説明から認証関連要件を抽出�
 1. 説明テキストを読み、上記チェックリストで認証要件を洗い出す。
 2. 各フィールドへマッピングする（`scope` で Must/Should/Could を振り分け、認証ユースケースは `representative_use_cases` / `functional_requirements` へ）。
 3. 不足・曖昧な点は人間に質問する。
-4. 人間判断が必要な点（スタック・MFA・dAccount 等）は勝手に決めず、`undecided` に `DP-007` / `DP-008` / `DP-015` を追加し、`docs/pending-decisions.md` に起票する。
+4. 人間判断が必要な点（スタック・MFA・dAccount・招待ポリシー・監査ログ・通知 等）は勝手に決めず、`undecided` に該当 DP（`DP-007` / `DP-008` / `DP-015` / `DP-INVITATION-POLICY-001` / `DP-AUDIT-VIEW-001` / `DP-NOTIFY-001`）を追加し、`docs/pending-decisions.md` に起票する。
 
 ## 判断ポイント（人間判断をスルーさせない）
 
-要件段階で確定しない認証方針は AI が決めない。推奨だけ提示し、未決は `undecided` と `docs/pending-decisions.md` に残す。設計フェーズ（`/auth-design`）の authentication-architect が DP-007/008/015 を引き継ぐ（T-002 warn_and_document）。
+要件段階で確定しない認証方針は AI が決めない。推奨だけ提示し、未決は `undecided` と `docs/pending-decisions.md` に残す。設計フェーズ（`/auth-design`）の authentication-architect が DP-007/008/015 と運用系 DP（DP-INVITATION-POLICY-001 / DP-AUDIT-VIEW-001 / DP-NOTIFY-001）を引き継ぐ（T-002 warn_and_document）。
+
+運用系 DP は要件段階で抽出されないと設計 ADR で「設計フェーズで具体化する」のリスク記述として残り、実装直前まで未決のまま持ち越される構造的問題があるため、本スキルで先回りして起票する（B-22 / Issue #181）。判断ポイントカタログDB（`64248f5c-b2f5-4c90-8ccb-7f53692b59b2`）への正式採番は別途行う。

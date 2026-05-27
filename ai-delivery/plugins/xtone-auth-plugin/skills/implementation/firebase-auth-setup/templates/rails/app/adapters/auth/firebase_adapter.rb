@@ -10,8 +10,6 @@ module Auth
   class FirebaseAdapter < Adapter
     CERTS_URI = "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com".freeze
 
-    class NotFoundError < Auth::Error; end
-
     def initialize(project_id: ENV["FIREBASE_PROJECT_ID"])
       @project_id = project_id.to_s
       raise Auth::Error, "FIREBASE_PROJECT_ID が未設定です" if @project_id.empty?
@@ -57,7 +55,7 @@ module Auth
     def delete_user(uid)
       identitytoolkit_post("accounts:delete", localId: uid)
       true
-    rescue NotFoundError
+    rescue Auth::NotFoundError
       true
     end
 
@@ -65,7 +63,7 @@ module Auth
     def revoke(uid)
       identitytoolkit_post("accounts:update", localId: uid, validSince: Time.now.to_i.to_s)
       true
-    rescue NotFoundError
+    rescue Auth::NotFoundError
       true
     end
 
@@ -111,7 +109,7 @@ module Auth
       req["Content-Type"]  = "application/json"
       req.body = JSON.dump(body)
       res = Net::HTTP.start(uri.host, uri.port, use_ssl: true) { |h| h.request(req) }
-      raise NotFoundError if res.code == "404"
+      raise Auth::NotFoundError if res.code == "404"
       raise Auth::Error, "identitytoolkit #{method}: #{res.code}" unless res.is_a?(Net::HTTPSuccess)
       res.body.to_s.empty? ? {} : JSON.parse(res.body)
     end

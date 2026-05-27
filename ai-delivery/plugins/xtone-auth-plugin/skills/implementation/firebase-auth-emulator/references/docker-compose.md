@@ -5,20 +5,24 @@
 - 対象: Docker / docker-compose / firebase-tools — **いずれも公式の最新安定版**（バージョン方針は `ai-delivery/docs/environment-setup.md`）
 - 構成: emulator サービス（`firebase-tools` 入り）＋ backend ＋ frontend を1つの compose で起動。
 
+> **前提（コンテナ内 emulator は必ず `0.0.0.0` バインド）**: `firebase.json` の `emulators.*.host` を **全サブサービス（`auth` / `ui` / `hub` / `logging`）** で `"0.0.0.0"` にすること。省略するとデフォルトは `127.0.0.1` バインドになり、Docker コンテナ外（ホスト OS のブラウザ / curl）からは **接続リセット**になる（`auth` だけ指定しても UI の `http://localhost:4000` は開けない）。詳細は SKILL.md「既知の制約」も参照。
+
 ## 1. firebase.json（最小）
 
-emulator のポートだけ指定。auth と UI のみ。
+emulator のポートとバインドアドレスを **全サブサービスで明示**する（前提の繰り返し: 省略不可）。
 
 ```json
 {
   "emulators": {
-    "auth": { "host": "0.0.0.0", "port": 9099 },
-    "ui":   { "enabled": true, "port": 4000 }
+    "auth":    { "host": "0.0.0.0", "port": 9099 },
+    "ui":      { "host": "0.0.0.0", "enabled": true, "port": 4000 },
+    "hub":     { "host": "0.0.0.0", "port": 4400 },
+    "logging": { "host": "0.0.0.0", "port": 4500 }
   }
 }
 ```
 
-> `host: 0.0.0.0` にしておかないと、Docker コンテナ外から接続できない。
+> `host: "0.0.0.0"` を全 emulator サブサービスで揃えないと、Docker コンテナ外から接続できない。`auth` だけ指定したパイロット案件で `http://localhost:4000`（Emulator UI）が接続リセットになりデバッグ工数を消費した実例あり。`hub`（4400）と `logging`（4500）は UI が裏で叩く管理ポート — UI を使うなら一緒に `0.0.0.0` で公開する。
 
 ## 2. emulator サービスの Dockerfile
 
