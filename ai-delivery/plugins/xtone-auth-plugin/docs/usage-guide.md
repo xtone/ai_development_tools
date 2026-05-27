@@ -67,6 +67,7 @@ claude plugin validate --strict plugins/xtone-auth-plugin
 | DP-007 | 認証スタック選択（Firebase Auth 推奨 + 代替比較・差し替え可能設計） |
 | DP-008 | MFA 要件の振り分け |
 | DP-015 | dAccount / docomo 規約の適用範囲 |
+| DP-28 | 退会済みアカウントの再登録ポリシー（MVP 既定推奨 = 403 拒否、案件要件次第でクールダウン等へ） |
 
 詳細は [`decision-points.md`](./decision-points.md)。AI は決めず推奨だけ提示。未決は各スキーマの `undecided` と [`pending-decisions.md`](./pending-decisions.md) に残る（warn_and_document, T-002）。フェーズ移行時に未決があると pre-phase-transition Hook が警告する（ブロックはしない）。
 

@@ -112,7 +112,7 @@ Phase 1（実機テスト＝TestAdapter / frontend=ビルドのみ）に **実�
 
 ### 最終判定: **Go** — 2026-05-26 / 豊田
 
-本書をもとに、T-022 内部パイロット報告書（[`pilot-report.md`](./pilot-report.md)）の Rollout 推進可否判定を **No-go → Go** に再判定。T-023〜の Rollout に進む。残バックログ B-07（検証スクリプト / Med）/ B-08（退会再登録 DP / Low）/ B-09（言語別実装テンプレ / Low）は **Rollout 並行**で順次対応する。
+本書をもとに、T-022 内部パイロット報告書（[`pilot-report.md`](./pilot-report.md)）の Rollout 推進可否判定を **No-go → Go** に再判定。T-023〜の Rollout に進む。残バックログ B-07（検証スクリプト / Med）/ ~~B-08（退会再登録 DP / Low）~~ ✅（DP-28 で起票済）/ B-09（言語別実装テンプレ / Low）は **Rollout 並行**で順次対応する。
 
 ## 8. 関連
 
@@ -120,4 +120,4 @@ Phase 1（実機テスト＝TestAdapter / frontend=ビルドのみ）に **実�
 - 訂正バックログ: [`backlog.md`](./backlog.md)
 - 再パイロット成果物: `~/RubymineProjects/t-021-repilot-telemedicine/`（`delivery/` にプラグイン成果物、`backend/` `frontend/` に実装）
 - 使用スキル: `firebase-auth-setup` / `firebase-auth-frontend` / `firebase-auth-mfa` / `firebase-auth-design` / `auth-requirements-extraction`
-- 関連タスク: T-021 / T-022 / T-004 / T-002 / T-005、判断ポイント DP-007/008/015
+- 関連タスク: T-021 / T-022 / T-004 / T-002 / T-005、判断ポイント DP-007/008/015 / DP-28
