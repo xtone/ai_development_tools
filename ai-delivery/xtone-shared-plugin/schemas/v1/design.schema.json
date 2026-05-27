@@ -1,11 +1,11 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://xtone.dev/ai-delivery/schemas/v1/design.schema.json",
-  "$comment": "T-011 I/O契約スキーマDB（FLD-, 0f997761-9259-4f76-9056-3f209e3a3afc）を真実の源とする本実装（#126 / B-01）。warn_and_document のため decision_record / undecided を追加保持（T-002）。",
-  "title": "Design",
-  "description": "設計フェーズの成果物。designer / authentication-architect Subagent が生成する。",
+  "$comment": "T-011 I/O契約スキーマDB（FLD-, 0f997761-9259-4f76-9056-3f209e3a3afc）を真実の源とする本実装（#126 / B-01）。warn_and_document のため decision_record / undecided を追加保持（T-002）。B-20（#173）でドメイン汎用化: authentication / page_access_control を design.auth.schema.json に分離し、ハイブリッド拡張パターンを採用（CONV-14 SSoT）。各プラグインは plugin.json の delivery.design_extensions で拡張 schema を宣言する。",
+  "title": "Design (base)",
+  "description": "設計フェーズの成果物（ドメイン非依存の共通部分）。designer Subagent が生成する。ドメイン固有のフィールドは domain_specific スロットか、別途 design.<domain>.schema.json で合成する（B-20）。",
   "type": "object",
-  "required": ["architecture", "db_schema", "authentication", "adr_list", "design_review_completed"],
+  "required": ["architecture", "db_schema", "adr_list", "design_review_completed"],
   "properties": {
     "architecture": {
       "type": "object",
@@ -37,22 +37,6 @@
       "properties": {
         "openapi_path": { "type": "string" },
         "style": { "type": "string", "enum": ["REST", "GraphQL", "tRPC", "gRPC"] }
-      },
-      "additionalProperties": true
-    },
-    "authentication": {
-      "type": "object",
-      "description": "認証設計（DP-007 スタック選択 / DP-008 MFA）。",
-      "required": ["stack", "mfa_requirement"],
-      "properties": {
-        "stack": {
-          "type": "string",
-          "enum": ["Firebase Auth", "Devise", "Cognito", "dAccount", "NextAuth.js", "Laravel Sanctum"]
-        },
-        "mfa_requirement": {
-          "type": "string",
-          "enum": ["required", "optional", "admin_only", "none"]
-        }
       },
       "additionalProperties": true
     },
@@ -96,7 +80,7 @@
     },
     "domain_specific_checks": {
       "type": "object",
-      "description": "ドメイン特有チェック（条件付き必須）。docomo規約(DP-015)/PCI-DSS(DP-016)/コミュニティ規約(DP-018) 等を true/false で明示。",
+      "description": "ドメイン特有チェック（条件付き必須）。docomo規約(DP-015)/PCI-DSS(DP-016)/コミュニティ規約(DP-018) 等を true/false で明示する軽量フリーフォーム。構造化が必要な拡張は design.<domain>.schema.json を用いる（B-20）。",
       "additionalProperties": true
     },
     "responsibility_split": {
@@ -112,49 +96,15 @@
         "additionalProperties": true
       }
     },
-    "page_access_control": {
-      "type": "object",
-      "description": "ページ単位のアクセス制御（B-13 / firebase-auth-frontend と協調）。auth-requirements-extraction で抽出した内容を設計フェーズで確定し、実装フェーズの firebase-auth-frontend が参照する。A: protected-only / B: public-aware / C: guest-only の 3 パターンに振り分ける。要件で別指定がある場合のみ既定（/login=C, /signup=C, /mfa/enroll=A, /settings/*=A, /=B）に反する逸脱を pages に明示する。",
-      "required": ["pages"],
-      "properties": {
-        "default_after_login": {
-          "type": "string",
-          "description": "ログイン後の既定遷移先パス。既定 '/'。案件で別にする場合は明示。"
-        },
-        "callback_param": {
-          "type": "string",
-          "description": "コールバックパラメータ名。既定 'callback'。"
-        },
-        "signup_separate_page": {
-          "type": "boolean",
-          "description": "/login と /signup を別ページにするか。既定 true（別ページ）。統合する場合は false にし、decision_record に理由を残す。"
-        },
-        "pages": {
-          "type": "array",
-          "description": "アクセス制御を明示するページ一覧。最低 1 件。",
-          "minItems": 1,
-          "items": {
-            "type": "object",
-            "required": ["path", "pattern"],
-            "properties": {
-              "path": { "type": "string", "description": "ページのパス。'*' でワイルドカード可（例: /settings/*）。" },
-              "pattern": {
-                "type": "string",
-                "description": "A: protected-only（認証必須） / B: public-aware（認証感知・公開） / C: guest-only（ゲスト専用・ログイン済みは退避）。",
-                "enum": ["A", "B", "C"]
-              },
-              "description": { "type": "string" }
-            },
-            "additionalProperties": true
-          }
-        }
-      },
-      "additionalProperties": true
-    },
     "local_dev_stack": {
       "type": "string",
-      "description": "ローカル開発時の Firebase 接続方式（B-12 と協調）。emulator_docker / emulator_host / cloud_direct のいずれか。既定は emulator_docker（実 Firebase 接続は本番のみ）。",
+      "description": "ローカル開発時の依存サービス接続方式（B-12 と協調）。emulator_docker / emulator_host / cloud_direct のいずれか。既定は emulator_docker（実クラウド接続は本番のみ）。",
       "enum": ["emulator_docker", "emulator_host", "cloud_direct"]
+    },
+    "domain_specific": {
+      "type": "object",
+      "description": "ドメイン固有の小規模な追加情報を自由形式で保持するスロット（B-20 ハイブリッドパターンの (A) 部）。トップレベルの構造化が必要なフィールド（例: 認証の page_access_control）は design.<domain>.schema.json で別途定義し、plugin.json の delivery.design_extensions で宣言する（合成検証は validate-plugin.sh が担う）。",
+      "additionalProperties": true
     },
     "decision_record": {
       "type": "array",
