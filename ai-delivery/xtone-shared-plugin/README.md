@@ -8,6 +8,7 @@
 |---|---|---|
 | スキーマ | `schemas/v1/` | 5 フェーズの I/O 契約（requirements / design / implementation-plan / modules / risks / decision-point / module / quality-gate-rules） |
 | 横断スキル | `skills/implementation/tech-version-check/` | 採用言語・FW・主要ライブラリの最新安定版と相互互換性を実装前に取得・記録するスキル（B-11 で起票 → B-17 で横断化） |
+| 横断スキル | `skills/implementation/implementation-skill-planner/` | `design.yaml` から「実装フェーズで呼び出すべきスキル」を導出して `implementation-plan.json.skill_plan` を生成する Step 0 スキル（B-13 で起票 → B-18 で横断化） |
 
 ## 参照方式
 
@@ -17,6 +18,8 @@
 schemas             -> ../../xtone-shared-plugin/schemas/v1
 skills/implementation/tech-version-check
                     -> ../../../../xtone-shared-plugin/skills/implementation/tech-version-check
+skills/implementation/implementation-skill-planner
+                    -> ../../../../xtone-shared-plugin/skills/implementation/implementation-skill-planner
 ```
 
 `xtone-plugin-template/` も同じ構造で symlink を持つ。新規プラグイン生成時の symlink 再作成手順は [`../xtone-plugin-template/README.md`](../xtone-plugin-template/README.md) を参照。

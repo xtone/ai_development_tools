@@ -12,7 +12,7 @@ Xtone **AIデリバリシステム**の Claude Code プラグイン用マスタ�
 |---|---|---|
 | テンプレートファイル | 4 | plugin.json / README / .mcp.json.sample / .env.example（ルート CLAUDE.md は置かない＝DP-27） |
 | スキーマリンク | 1 | xtone-shared-plugin への symlink |
-| 横断スキルリンク | 1 | `skills/implementation/tech-version-check` → xtone-shared-plugin への symlink（B-17） |
+| 横断スキルリンク | 2 | `skills/implementation/tech-version-check`（B-17）／ `skills/implementation/implementation-skill-planner`（B-18） → xtone-shared-plugin への symlink |
 | Subagent | 6 + ドメイン特化 1 | 基盤 6（requirements-analyst / designer / implementer / decision-recorder / pending-watcher / reviewer）＋ `agents/domain-architect.md.template`（B-19） |
 | Slash Command | 8 + ドメイン特化 1 | 基盤 8（/req-collect /design /implement /decide /status /next /pending-list /skip-review）＋ `commands/domain-design.md.template`（B-19） |
 | Hook | 4 | pre-phase-transition / post-decision-record / pre-pr-merge / post-pr-merge |
@@ -45,6 +45,7 @@ ai-delivery/scripts/generate-plugin.sh auth \
 - `plugins/xtone-<usecase>-plugin/` を作成（既存時は `--force` で上書き）
 - `schemas/` を `xtone-shared-plugin/schemas/v1` への symlink で作成
 - `skills/implementation/tech-version-check/` を `xtone-shared-plugin/skills/implementation/tech-version-check` への symlink で作成（B-17）
+- `skills/implementation/implementation-skill-planner/` を `xtone-shared-plugin/skills/implementation/implementation-skill-planner` への symlink で作成（B-18）
 - `.claude-plugin/plugin.json.template` → `plugin.json` に実体化
 - `skills/plugin-guide/` → `skills/<usecase>-plugin-guide/` にディレクトリ改名、`SKILL.md.template` → `SKILL.md` に実体化
 - `agents/domain-architect.md.template` → `agents/<usecase>-architect.md` に実体化（B-19, `--no-domain-architect` で抑止可）
@@ -62,7 +63,7 @@ ai-delivery/scripts/generate-plugin.sh auth \
 ai-delivery/scripts/validate-plugin.sh ai-delivery/plugins/xtone-<usecase>-plugin
 ```
 
-`validate-plugin.sh`（TPL-27）が `plugin.json` 必須フィールド・`schemas/` symlink・`skills/implementation/tech-version-check/` symlink（B-17）・各 `SKILL.md` frontmatter・hook 実行権限・トークン参照・未置換プレースホルダ・**デリバリ成果物のスキーマ検証**（`sample-outputs/` / `delivery/` 配下の requirements/design/implementation-plan ほか）を一括チェックする。
+`validate-plugin.sh`（TPL-27）が `plugin.json` 必須フィールド・`schemas/` symlink・`skills/implementation/tech-version-check/` symlink（B-17）・`skills/implementation/implementation-skill-planner/` symlink（B-18）・各 `SKILL.md` frontmatter・hook 実行権限・トークン参照・未置換プレースホルダ・**デリバリ成果物のスキーマ検証**（`sample-outputs/` / `delivery/` 配下の requirements/design/implementation-plan ほか）を一括チェックする。
 
 ### プレースホルダ一覧
 
@@ -81,7 +82,7 @@ ai-delivery/scripts/validate-plugin.sh ai-delivery/plugins/xtone-<usecase>-plugi
 
 - **人間判断をスルーさせない**: 未決は `docs/pending-decisions.md` に記録し pending-watcher が可視化（4チャネル）。
 - **warn_and_document（T-002）**: すべて警告のみ・ブロックなし。
-- **Single Source of Truth（CONV-14）**: `schemas/` と `skills/implementation/tech-version-check/`（B-17）は symlink。コピーしない。
+- **Single Source of Truth（CONV-14）**: `schemas/` ／ `skills/implementation/tech-version-check/`（B-17） ／ `skills/implementation/implementation-skill-planner/`（B-18）は symlink。コピーしない。
 
 ## 関連
 

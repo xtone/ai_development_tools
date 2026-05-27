@@ -41,7 +41,8 @@ ai-delivery/
 │   │   ├── module.schema.json
 │   │   └── quality-gate-rules.yaml
 │   └── skills/implementation/
-│       └── tech-version-check/     # 横断スキル（B-17）。各プラグインから symlink で参照
+│       ├── tech-version-check/     # 横断スキル（B-17）。各プラグインから symlink で参照
+│       └── implementation-skill-planner/  # 横断スキル（B-18）。design.yaml から skill_plan を導出
 └── plugins/
     └── xtone-auth-plugin/          # 認証プラグイン（リファレンス実装）
         ├── .claude-plugin/plugin.json

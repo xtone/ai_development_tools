@@ -101,6 +101,12 @@ mkdir -p "$PLUGIN_DIR/skills/implementation"
 rm -rf "$TECH_VERSION_LINK"
 ln -s ../../../../xtone-shared-plugin/skills/implementation/tech-version-check "$TECH_VERSION_LINK"
 
+# 2c. 横断スキル implementation-skill-planner の symlink を再作成（CONV-14 / B-18）。
+#     design.yaml から呼び出すべきスキルを導出する Step 0 用スキル（B-13 由来）。tech-version-check と同じ方式。
+SKILL_PLANNER_LINK="$PLUGIN_DIR/skills/implementation/implementation-skill-planner"
+rm -rf "$SKILL_PLANNER_LINK"
+ln -s ../../../../xtone-shared-plugin/skills/implementation/implementation-skill-planner "$SKILL_PLANNER_LINK"
+
 # 3. .template ファイルを実体化。
 #    - plugin.json.template → plugin.json
 #    - skills/plugin-guide/SKILL.md.template → skills/<usecase>-plugin-guide/SKILL.md
