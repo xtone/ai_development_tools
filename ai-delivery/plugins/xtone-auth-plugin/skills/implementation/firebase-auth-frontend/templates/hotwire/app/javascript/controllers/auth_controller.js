@@ -16,11 +16,16 @@ export default class extends Controller {
 
 	async signIn(e) {
 		e.preventDefault();
+		// HTML 側で required を付ける前提だが、Stimulus からの呼び出しが
+		// プログラム的にも発生し得るため二重ガード。空文字は Firebase に渡す前に弾く。
+		const email = this.emailTarget.value.trim();
+		const password = this.passwordTarget.value;
+		if (!email || !password) {
+			this.notify("メールアドレスとパスワードを入力してください。");
+			return;
+		}
 		try {
-			await AuthClient.signInWithPassword(
-				this.emailTarget.value,
-				this.passwordTarget.value,
-			);
+			await AuthClient.signInWithPassword(email, password);
 			await this.establishSession();
 		} catch (err) {
 			this.notify(

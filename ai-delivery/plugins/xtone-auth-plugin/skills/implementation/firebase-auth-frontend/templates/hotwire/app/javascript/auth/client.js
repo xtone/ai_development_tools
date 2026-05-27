@@ -30,6 +30,12 @@ setPersistence(auth, inMemoryPersistence);
 const providerOf = (id) =>
 	id === "apple" ? new OAuthProvider("apple.com") : new GoogleAuthProvider();
 
+// Hotwire（サーバ HTML）構成では protect_from_forgery が有効なため、
+// 状態変更系 fetch（POST/PUT/PATCH/DELETE）には必ず X-CSRF-Token を付ける。
+// 欠落すると Rails が ActionController::InvalidAuthenticityToken（422）を返す。
+const csrfToken = () =>
+	document.querySelector("meta[name='csrf-token']")?.content;
+
 export const AuthClient = {
 	signInWithPassword: (email, pw) =>
 		signInWithEmailAndPassword(auth, email, pw),
@@ -37,7 +43,11 @@ export const AuthClient = {
 	signInWithEmailLink: (email) => {
 		window.localStorage.setItem("emailForSignIn", email); // completeEmailLink で参照
 		return sendSignInLinkToEmail(auth, email, {
-			url: window.location.origin + "/auth/email-link", // ActionCodeSettings（要件に合わせ調整）
+			// ActionCodeSettings.url は **本テンプレ既定の "/auth/email-link" を必ず案件要件に合わせて差し替える**:
+			//   - 受信側のルーティング（Rails ルートまたは Next.js ページ）を実装した URL に変更
+			//   - 環境ごとに変える場合は ENV / Rails.application.credentials から注入
+			//   - Firebase コンソールの「承認済みドメイン」に当該ドメインを登録（未登録だと Firebase が拒否）
+			url: window.location.origin + "/auth/email-link",
 			handleCodeInApp: true,
 		});
 	},
@@ -68,14 +78,21 @@ export const AuthClient = {
 	onAuthStateChanged: (cb) => onAuthStateChanged(auth, cb),
 
 	// 退会（responsibility=shared）: サーバが論理削除 + Admin SDK で IaaS 削除
+	// CSRF トークンを付与しないと Rails が 422 を返し、退会が常に失敗する。
+	// レスポンスを必ず検証し、サーバ側で失敗していたら signOut せずに throw する
+	// （クライアントだけ抜けてアカウントが残る不整合を防ぐ）。
 	withdraw: async () => {
 		const idToken = auth.currentUser
 			? await auth.currentUser.getIdToken(true)
 			: null;
-		await fetch("/account", {
+		const res = await fetch("/account", {
 			method: "DELETE",
-			headers: { Authorization: `Bearer ${idToken}` },
+			headers: {
+				Authorization: `Bearer ${idToken}`,
+				"X-CSRF-Token": csrfToken(),
+			},
 		});
+		if (!res.ok) throw new Error(`DELETE /account failed: ${res.status}`);
 		return signOut(auth);
 	},
 };

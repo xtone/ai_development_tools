@@ -129,10 +129,18 @@ export const AuthClient = {
   signOut: () => signOut(auth),
   getIdToken: (force = false) => auth.currentUser ? auth.currentUser.getIdToken(force) : Promise.resolve(null),  // 期限切れは自動リフレッシュ
   onAuthStateChanged: (cb) => onAuthStateChanged(auth, cb),
-  withdraw: async () => {                                                // 退会（responsibility=shared）
+  // 退会（responsibility=shared）: サーバが論理削除＋Admin SDK 削除
+  // CSRF トークン必須（Rails の protect_from_forgery）。レスポンス検証必須
+  // （サーバ失敗時に signOut しないことでクライアント/サーバの不整合を防ぐ）。
+  withdraw: async () => {
     const idToken = auth.currentUser ? await auth.currentUser.getIdToken(true) : null
-    await fetch("/account", { method: "DELETE", headers: { Authorization: `Bearer ${idToken}` } })
-    return signOut(auth)                                                 // サーバが論理削除＋Admin SDK 削除
+    const csrf = document.querySelector("meta[name='csrf-token']")?.content
+    const res = await fetch("/account", {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${idToken}`, "X-CSRF-Token": csrf },
+    })
+    if (!res.ok) throw new Error(`DELETE /account failed: ${res.status}`)
+    return signOut(auth)
   },
 }
 ```

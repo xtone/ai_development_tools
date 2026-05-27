@@ -23,5 +23,10 @@ pin_all_from "app/javascript/auth", under: "auth"
 
 # Firebase JS SDK（v9+ modular CDN）
 #   → import { ... } from "firebase/app" / "firebase/auth"
-pin "firebase/app",  to: "https://www.gstatic.com/firebasejs/<latest>/firebase-app.js"
-pin "firebase/auth", to: "https://www.gstatic.com/firebasejs/<latest>/firebase-auth.js"
+#
+# !!! 要置換 !!! <latest> はプレースホルダ。tech-version-check（B-11/B-17）が
+# delivery/version-matrix.md に記録した公式最新安定版に必ず置換してから commit する。
+# 未置換のまま Rails を起動すると、ブラウザは "/firebasejs/<latest>/..." をそのまま
+# fetch して 404 になり、Firebase JS SDK 自体がロードされない。
+pin "firebase/app",  to: "https://www.gstatic.com/firebasejs/<latest>/firebase-app.js"   # TODO: <latest> を実バージョンに置換
+pin "firebase/auth", to: "https://www.gstatic.com/firebasejs/<latest>/firebase-auth.js"  # TODO: <latest> を実バージョンに置換
