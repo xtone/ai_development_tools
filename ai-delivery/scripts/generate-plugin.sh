@@ -88,6 +88,13 @@ SCHEMAS_LINK="$PLUGIN_DIR/schemas"
 rm -rf "$SCHEMAS_LINK"
 ln -s ../../xtone-shared-plugin/schemas/v1 "$SCHEMAS_LINK"
 
+# 2b. 横断スキル tech-version-check の symlink を再作成（CONV-14 / B-17）。
+#     template と plugins では shared-plugin への相対距離が異なるため、ここで張り直す。
+TECH_VERSION_LINK="$PLUGIN_DIR/skills/implementation/tech-version-check"
+mkdir -p "$PLUGIN_DIR/skills/implementation"
+rm -rf "$TECH_VERSION_LINK"
+ln -s ../../../../xtone-shared-plugin/skills/implementation/tech-version-check "$TECH_VERSION_LINK"
+
 # 3. .template ファイルを実体化。
 #    - plugin.json.template → plugin.json
 #    - skills/plugin-guide/SKILL.md.template → skills/<usecase>-plugin-guide/SKILL.md

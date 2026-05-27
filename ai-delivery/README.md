@@ -30,16 +30,18 @@ ai-delivery/
 │   ├── validate-plugin.sh
 │   └── lib/validate_schema.py
 ├── xtone-plugin-template/          # 新規プラグインのマスターテンプレ
-├── xtone-shared-plugin/            # 各プラグインが共有するスキーマ
-│   └── schemas/v1/
-│       ├── requirements.schema.json
-│       ├── design.schema.json
-│       ├── implementation-plan.schema.json
-│       ├── modules.schema.json
-│       ├── risks.schema.json
-│       ├── decision-point.schema.json
-│       ├── module.schema.json
-│       └── quality-gate-rules.yaml
+├── xtone-shared-plugin/            # 各プラグインが共有するスキーマ・横断スキル（SSoT, CONV-14）
+│   ├── schemas/v1/
+│   │   ├── requirements.schema.json
+│   │   ├── design.schema.json
+│   │   ├── implementation-plan.schema.json
+│   │   ├── modules.schema.json
+│   │   ├── risks.schema.json
+│   │   ├── decision-point.schema.json
+│   │   ├── module.schema.json
+│   │   └── quality-gate-rules.yaml
+│   └── skills/implementation/
+│       └── tech-version-check/     # 横断スキル（B-17）。各プラグインから symlink で参照
 └── plugins/
     └── xtone-auth-plugin/          # 認証プラグイン（リファレンス実装）
         ├── .claude-plugin/plugin.json

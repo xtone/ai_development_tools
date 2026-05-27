@@ -13,6 +13,7 @@
 # 検証項目:
 #   1. .claude-plugin/plugin.json の必須フィールド（CONV-01）
 #   2. schemas/ が symlink で xtone-shared-plugin を指している（CONV-14）
+#   2b. skills/implementation/tech-version-check/ が symlink で xtone-shared-plugin を指している（B-17）
 #   3. skills/<usecase>-plugin-guide/SKILL.md と他 skills/**/SKILL.md の frontmatter（SKL-20）
 #      ※ プラグインルートの CLAUDE.md は CONV-06 改訂（B-05 / DP-27）で不要
 #   4. hooks/hooks.json + hooks/*.sh の実行権限
@@ -100,6 +101,20 @@ else
   case "$target" in
     *xtone-shared-plugin/schemas/v1*) ;;
     *) warn "schemas/ の symlink 先が不正です: $target（CONV-14）" ;;
+  esac
+fi
+
+# --- 2b. 横断スキル tech-version-check が symlink (CONV-14 / B-17) -----------
+TECH_VERSION_PATH="$PLUGIN_DIR/skills/implementation/tech-version-check"
+if [ ! -e "$TECH_VERSION_PATH" ]; then
+  warn "skills/implementation/tech-version-check がありません（B-17: xtone-shared-plugin への symlink を作成）"
+elif [ ! -L "$TECH_VERSION_PATH" ]; then
+  warn "skills/implementation/tech-version-check が symlink ではありません（CONV-14: 横断スキルは Single Source of Truth）"
+else
+  target="$(readlink "$TECH_VERSION_PATH")"
+  case "$target" in
+    *xtone-shared-plugin/skills/implementation/tech-version-check*) ;;
+    *) warn "skills/implementation/tech-version-check の symlink 先が不正です: $target（CONV-14 / B-17）" ;;
   esac
 fi
 

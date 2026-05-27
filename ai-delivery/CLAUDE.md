@@ -86,11 +86,12 @@ ai-delivery/scripts/validate-plugin.sh ai-delivery/plugins/<plugin> [--strict] [
 
 1. `.claude-plugin/plugin.json` 必須フィールド・命名規約（CONV-01）
 2. `schemas/` symlink（CONV-14: Single Source of Truth）
-3. `skills/<usecase>-plugin-guide/SKILL.md` と各 `SKILL.md` の frontmatter（SKL-20 / CONV-06 / DP-27）
-4. `hooks/hooks.json` ＋ シェルの実行権限
-5. `.mcp.json.sample` のトークン参照（MCP-08）
-6. テンプレ未置換プレースホルダ `{{...}}` の残存
-7. **デリバリ成果物のスキーマ検証**（`sample-outputs/` / `delivery/` 配下の `requirements*.json`／`design*.yaml`／`implementation-plan*.json` ほか）
+3. `skills/implementation/tech-version-check/` symlink（B-17: 横断スキル）
+4. `skills/<usecase>-plugin-guide/SKILL.md` と各 `SKILL.md` の frontmatter（SKL-20 / CONV-06 / DP-27）
+5. `hooks/hooks.json` ＋ シェルの実行権限
+6. `.mcp.json.sample` のトークン参照（MCP-08）
+7. テンプレ未置換プレースホルダ `{{...}}` の残存
+8. **デリバリ成果物のスキーマ検証**（`sample-outputs/` / `delivery/` 配下の `requirements*.json`／`design*.yaml`／`implementation-plan*.json` ほか）
 
 依存: `bash`, `jq`, `python3`, `jsonschema`, `PyYAML`。jsonschema/PyYAML は `pip3 install --user jsonschema PyYAML` で導入。
 
