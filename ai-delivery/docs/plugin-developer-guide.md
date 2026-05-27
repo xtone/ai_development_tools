@@ -80,6 +80,33 @@ plugins/xtone-<domain>-plugin/
 4. High を解消した後で**再パイロット**（前回と異なる条件で）
 5. 再判定でリリース可否を決める
 
+#### 架空案件カタログ（`xtone-shared-plugin/sample-cases/`）から借りる
+
+T-021 認証プラグインのパイロットは `bookclub-app` という独自の架空案件 1 本で通した。23 個の Rollout プラグイン（T-023〜T-045）でも同じ Verification が要るが、プラグインごとに別案件を作ると同じ案件が認証では使えても決済では使えないといった整合性崩れが起きる。
+
+そのため、**業種別の架空案件カタログ**を [`xtone-shared-plugin/sample-cases/`](../xtone-shared-plugin/sample-cases/) に集約してある（EC / D2C / MaaS / メディア / 教育バウチャー / コーポレートサイト / 業務 SaaS / イベント LP の 7 業種）。各プラグインは、自分のユースケースが該当する案件を**カタログから symlink で取り込んでパイロットの入力にする**。
+
+| ステップ | やること |
+|---|---|
+| 1 | [`sample-cases/README.md`](../xtone-shared-plugin/sample-cases/README.md) の「案件 × ユースケース マトリクス」で、自分のプラグインに該当する案件を選ぶ（複数選択可・1 件以上） |
+| 2 | プラグインの `sample-inputs/` に symlink を張る（リンク名はカタログ側のディレクトリ名と一致させる） |
+| 3 | プラグイン固有の追加ヒアリングが必要なら `sample-inputs/<case-name>.notes.md` を並置する（カタログ本体は編集しない） |
+
+```bash
+# 例: 決済プラグインが ec-d2c-app と event-campaign-lp を使う
+cd plugins/xtone-payment-plugin/sample-inputs
+ln -s ../../../xtone-shared-plugin/sample-cases/ec-d2c-app ec-d2c-app
+ln -s ../../../xtone-shared-plugin/sample-cases/event-campaign-lp event-campaign-lp
+```
+
+各案件は `requirements-input.md`（自然言語のヒアリングメモ）と `requirements.json`（`requirements.schema.json` 準拠の構造化要件）を持つ。`/req-collect` 系スキルの入力には `requirements-input.md` を、後段の design / implementation スキルが直接入力にする場合は `requirements.json` を使う。
+
+`validate-plugin.sh` は `sample-inputs/` 配下の symlink について **xtone-shared-plugin/sample-cases/ を指している symlink が壊れていないか**を warn_and_document でチェックする。壊れている / 通常ファイルになっていると警告（exit 1 にはしない）。
+
+> **既存 `bookclub-app` の扱い**: 認証プラグインに先行運用していた [`plugins/xtone-auth-plugin/sample-inputs/bookclub-app.requirements-input.md`](../plugins/xtone-auth-plugin/sample-inputs/bookclub-app.requirements-input.md) は **そのまま残す（並存）**。リファレンス実装の経緯保存のため。新規 Rollout プラグインの Verification では原則として本カタログを使う。
+>
+> 該当する案件がカタログにない場合は、本カタログに**新案件を追加して PR**する（カタログ更新は本ガイドの責務）。プラグイン内で個別案件を抱えるよりカタログ追加が優先。
+
 ## 2. 認証プラグインから学べる設計パターン（必読）
 
 リファレンス実装である [`xtone-auth-plugin`](../plugins/xtone-auth-plugin/) はパイロット → 訂正 → 再パイロットを経てリリース判定済み。設計判断の根拠は再パイロット報告と一連の PR に残っているので、自分のドメインでも踏襲する。

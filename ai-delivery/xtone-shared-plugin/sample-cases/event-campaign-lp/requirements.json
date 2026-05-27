@@ -1,0 +1,73 @@
+{
+  "project_name": "ぐるっと信州 地域スタンプラリーキャンペーン",
+  "overview": "長野県内 5 つの観光協会が連携する 3 ヶ月限定のスタンプラリー。QR 読取でスタンプ収集、ランク別抽選、SNS シェアによる追加抽選券を扱う。",
+  "scope": {
+    "must": [
+      { "id": "SCP-001", "title": "参加者の簡易登録（メール + ニックネーム + マジックリンク）" },
+      { "id": "SCP-002", "title": "拠点 80 箇所の動的 QR + 位置情報判定による不正対策付き読取" },
+      { "id": "SCP-003", "title": "スタンプ収集・ランク化（ゴールド / シルバー / ブロンズ）" },
+      { "id": "SCP-004", "title": "ランク別抽選応募と中間 / 最終抽選の 2 回実施" },
+      { "id": "SCP-005", "title": "達成バッジ動的生成と SNS シェアによる追加抽選券" },
+      { "id": "SCP-006", "title": "友人紹介リンク（紹介者・被紹介者ともに抽選券 1 枚）" },
+      { "id": "SCP-007", "title": "LP（参加方法・拠点地図・景品案内）と拠点 / 達成バッジ単位の OGP 自動生成" },
+      { "id": "SCP-008", "title": "事務局・協賛企業向け管理画面とリアルタイムダッシュボード" }
+    ],
+    "should": [
+      { "id": "SCP-101", "title": "期間終了 1 週間前のリマインド通知" },
+      { "id": "SCP-102", "title": "終了後の最終レポート PDF 発行（協賛企業向け）" }
+    ],
+    "could": [
+      { "id": "SCP-201", "title": "PWA 化（オフライン QR 一覧表示）" }
+    ]
+  },
+  "representative_use_cases": [
+    { "id": "UC-001", "name": "参加者の簡易登録 → メールマジックリンクで再ログイン", "kind": "core" },
+    { "id": "UC-002", "name": "拠点 QR 読取 → スタンプ獲得 → 達成バッジ表示", "kind": "core" },
+    { "id": "UC-003", "name": "ランク達成 → 抽選応募", "kind": "core" },
+    { "id": "UC-004", "name": "SNS シェアで追加抽選券獲得", "kind": "core" },
+    { "id": "UC-005", "name": "事務局の中間抽選 / 最終抽選実施", "kind": "core" },
+    { "id": "UC-006", "name": "友人紹介リンクから新規登録 → 双方に抽選券", "kind": "sub" },
+    { "id": "UC-007", "name": "協賛企業が自社拠点の利用統計を閲覧", "kind": "sub" }
+  ],
+  "functional_requirements": [
+    { "id": "FR-001", "description": "参加者はメール + ニックネーム + マジックリンクで簡易登録・ログインする" },
+    { "id": "FR-002", "description": "事務局・協賛企業担当はメール + PW + MFA で認証する" },
+    { "id": "FR-003", "description": "ソーシャルログインは提供しない（短期キャンペーンのため過剰機能を避ける）" },
+    { "id": "FR-004", "description": "拠点 80 箇所に動的 QR（または位置情報判定付き QR）を発行し、リプレイ・写真撮影による不正獲得を防ぐ" },
+    { "id": "FR-005", "description": "QR 読取時に位置情報を取得して拠点近傍であることを判定する" },
+    { "id": "FR-006", "description": "スタンプ数に応じてゴールド（30+）/ シルバー（15+）/ ブロンズ（5+）にランク化する" },
+    { "id": "FR-007", "description": "ランクごとに県産品セット / 宿泊券 / 食事券の抽選応募を提供する" },
+    { "id": "FR-008", "description": "達成バッジを動的生成し、ユーザー専用 OGP 画像を生成して SNS シェアに利用する" },
+    { "id": "FR-009", "description": "SNS シェア（X / Instagram / LINE）で 1 日 1 回まで追加抽選券 1 枚を付与する" },
+    { "id": "FR-010", "description": "友人紹介リンクで紹介者・被紹介者ともに抽選券 1 枚を付与する" },
+    { "id": "FR-011", "description": "中間抽選と最終抽選の 2 回を事務局画面から実施する" },
+    { "id": "FR-012", "description": "拠点別スタンプ数・ランク別到達者数・SNS シェア / 友人紹介数のリアルタイムダッシュボードを提供する" },
+    { "id": "FR-013", "description": "終了後の最終レポート PDF を協賛企業向けに発行する" },
+    { "id": "FR-014", "description": "登録完了・スタンプ獲得・抽選結果・期間終了リマインドをメールで通知する" }
+  ],
+  "non_functional_requirements": [
+    { "category": "performance", "description": "連休初日ピークで同時アクセス 3,000 ユーザーに対応し、QR 読取 → スタンプ獲得を 2 秒以内で完了する" },
+    { "category": "security", "description": "QR 不正対策は「現地に来た人だけ」が満たせるレベル（リプレイ・写真撮影対策）を担保する" },
+    { "category": "security", "description": "個人情報はメールアドレスのみとし、期間終了後 6 ヶ月で削除する" },
+    { "category": "availability", "description": "キャンペーン期間中は 99.9% の稼働率を目標とする" },
+    { "category": "maintainability", "description": "Next.js + サーバレスで構築し、期間終了後は最小コストでアーカイブできる構成にする" },
+    { "category": "other", "description": "アプリインストール不要（PWA 化は Could）" }
+  ],
+  "domain_tags": ["campaign", "gamification", "stamp-rally", "lp", "qr", "ogp", "social-sharing", "analytics", "public-sector"],
+  "stakeholders": {
+    "client": "5 観光協会連合 + 協賛企業 12 社",
+    "pm": "受託側 PM（1 名）",
+    "lead": "受託側テックリード（1 名）",
+    "engineers": "BE 1 名 / FE 2 名",
+    "designer": "デザイン 1 名"
+  },
+  "client_approval": {
+    "approved": false,
+    "approved_by": null,
+    "approved_at": null
+  },
+  "undecided": [
+    "DP-007",
+    "DP-013"
+  ]
+}
