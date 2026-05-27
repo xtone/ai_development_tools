@@ -101,25 +101,39 @@ if Rails.env.production?
   Rails.logger.warn("[seeds] skipping operator seed in production")
 else
   emulator_host = ENV.fetch("FIREBASE_AUTH_EMULATOR_HOST", "localhost:9099")
+  # Emulator は API key 検証をしないため `demo-key` でよい。実 Firebase 接続が
+  # 必要なケース（本番では本 seed を呼ばない設計だが、staging 等で差し替えたい
+  # 場合）は ENV で上書きする。
+  api_key       = ENV.fetch("FIREBASE_API_KEY", "demo-key")
   email         = "admin@example.com"
   password      = "changeme"
 
+  parse_body = ->(http_resp) do
+    JSON.parse(http_resp.body)
+  rescue JSON::ParserError => e
+    Rails.logger.warn("[seeds] non-JSON response (#{http_resp.code}): #{e.message} body=#{http_resp.body.to_s[0, 200]}")
+    {}
+  end
+
   # 1. Emulator にユーザを登録（UID は Emulator が払い出す）。冪等のため
-  #    既存ユーザ (EMAIL_EXISTS) は無視して既存 localId を取りに行く。
-  signup_uri = URI("http://#{emulator_host}/identitytoolkit.googleapis.com/v1/accounts:signUp?key=demo-key")
+  #    既存ユーザ (EMAIL_EXISTS) は signInWithPassword で既存 localId を取得。
+  signup_uri = URI("http://#{emulator_host}/identitytoolkit.googleapis.com/v1/accounts:signUp?key=#{api_key}")
   resp = Net::HTTP.post(signup_uri, { email: email, password: password, returnSecureToken: true }.to_json,
                         "Content-Type" => "application/json")
-  body = JSON.parse(resp.body) rescue {}
+  body = parse_body.call(resp)
 
   uid =
     if resp.is_a?(Net::HTTPSuccess)
       body.fetch("localId")
     elsif body.dig("error", "message") == "EMAIL_EXISTS"
-      # 既存ユーザの localId を lookup で取得
-      lookup_uri = URI("http://#{emulator_host}/identitytoolkit.googleapis.com/v1/accounts:lookup?key=demo-key")
-      lookup = Net::HTTP.post(lookup_uri, { email: [email] }.to_json,
-                              "Content-Type" => "application/json")
-      JSON.parse(lookup.body).dig("users", 0, "localId")
+      # 既存ユーザの localId を取得する。`accounts:lookup` は email 検索に
+      # サービスアカウント認証（Bearer owner）が必要なため、ここでは
+      # `accounts:signInWithPassword`（client REST、API key 認証）で取得する。
+      sign_in_uri = URI("http://#{emulator_host}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=#{api_key}")
+      sign_in = Net::HTTP.post(sign_in_uri, { email: email, password: password, returnSecureToken: true }.to_json,
+                               "Content-Type" => "application/json")
+      raise "[seeds] failed to sign in existing emulator user: #{sign_in.code} #{sign_in.body}" unless sign_in.is_a?(Net::HTTPSuccess)
+      parse_body.call(sign_in).fetch("localId")
     else
       raise "[seeds] failed to ensure emulator user: #{resp.code} #{resp.body}"
     end
