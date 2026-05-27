@@ -2,6 +2,8 @@
 
 `firebase-auth-setup` スキルの **Rails 実装レシピ**。スキル本体（SKILL.md）の「実装契約（言語非依存）」を Rails/Ruby で満たす具体コード。契約（AuthAdapter ＋ 運用契約）は変えず、実装手段だけを示す。T-022 パイロット（`~/RubymineProjects/t-021-sample/`）で実証済み。
 
+> **コピペで貼りたい場合は [`../templates/rails/`](../templates/rails/) を使う**（B-09 / Issue #134）。本ドキュメントは「契約の根拠 / 運用詳細の why」を解説する側で、`templates/rails/` は対の **ファイル単位の雛形**（`app/adapters/auth/*.rb` / `controllers/concerns/authenticatable.rb` / `config/initializers/app_auth.rb` / migration 等）。コードが同じ箇所は templates 側がコピーしやすい形に整っている。
+
 - 対象: Rails（API モード）/ Ruby — **いずれも公式の最新安定版を使う**（バージョンは固定しない）。Rails が要求する最小 Ruby は Rails の gemspec / リリースノートで都度確認する。バージョン方針とセットアップは `ai-delivery/docs/environment-setup.md` を参照。
 - 依存: `jwt`（ID トークン検証）・`googleauth`（Admin REST の OAuth2 アクセストークン取得）/ Admin 操作は Identity Toolkit REST API（Ruby 公式 Admin SDK は無いため REST で代替）
 
