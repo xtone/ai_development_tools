@@ -97,21 +97,27 @@ end
 # 本番（production）ではこの seed は走らせない（ENV ガード）。
 # ---------------------------------------------------------------------------
 
+# Emulator の既定 API key。Emulator は key 検証をしないため "demo-key" でよい。
+# 実 Firebase 接続が必要なケース（本番では本 seed を呼ばない設計だが、staging
+# 等で差し替えたい場合）は ENV `FIREBASE_API_KEY` で上書きする。
+DEFAULT_EMULATOR_API_KEY = "demo-key"
+# 失敗ログ／例外で出力するレスポンスボディの最大文字数（先頭から切り詰める）。
+RESPONSE_BODY_LOG_LIMIT = 200
+
 if Rails.env.production?
   Rails.logger.warn("[seeds] skipping operator seed in production")
 else
   emulator_host = ENV.fetch("FIREBASE_AUTH_EMULATOR_HOST", "localhost:9099")
-  # Emulator は API key 検証をしないため `demo-key` でよい。実 Firebase 接続が
-  # 必要なケース（本番では本 seed を呼ばない設計だが、staging 等で差し替えたい
-  # 場合）は ENV で上書きする。
-  api_key       = ENV.fetch("FIREBASE_API_KEY", "demo-key")
+  api_key       = ENV.fetch("FIREBASE_API_KEY", DEFAULT_EMULATOR_API_KEY)
   email         = "admin@example.com"
   password      = "changeme"
+
+  truncate_body = ->(http_resp) { http_resp.body.to_s[0, RESPONSE_BODY_LOG_LIMIT] }
 
   parse_body = ->(http_resp) do
     JSON.parse(http_resp.body)
   rescue JSON::ParserError => e
-    Rails.logger.warn("[seeds] non-JSON response (#{http_resp.code}): #{e.message} body=#{http_resp.body.to_s[0, 200]}")
+    Rails.logger.warn("[seeds] non-JSON response (#{http_resp.code}): #{e.message} body=#{truncate_body.call(http_resp)}")
     {}
   end
 
@@ -132,10 +138,12 @@ else
       sign_in_uri = URI("http://#{emulator_host}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=#{api_key}")
       sign_in = Net::HTTP.post(sign_in_uri, { email: email, password: password, returnSecureToken: true }.to_json,
                                "Content-Type" => "application/json")
-      raise "[seeds] failed to sign in existing emulator user: #{sign_in.code} #{sign_in.body}" unless sign_in.is_a?(Net::HTTPSuccess)
+      unless sign_in.is_a?(Net::HTTPSuccess)
+        raise "[seeds] failed to sign in existing emulator user: #{sign_in.code} body=#{truncate_body.call(sign_in)}"
+      end
       parse_body.call(sign_in).fetch("localId")
     else
-      raise "[seeds] failed to ensure emulator user: #{resp.code} #{resp.body}"
+      raise "[seeds] failed to ensure emulator user: #{resp.code} body=#{truncate_body.call(resp)}"
     end
 
   # 2. アプリ側ユーザを upsert（UID を Emulator と一致させる）
