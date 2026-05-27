@@ -37,11 +37,13 @@ description: Firebase Auth をフロントエンド（クライアント）に�
 
 ## 言語・フレームワーク別レシピ
 
-| FW | レシピ | 状態 |
-|---|---|---|
-| Ruby on Rails + Hotwire | [`references/hotwire.md`](./references/hotwire.md) | ✅ |
-| Next.js | [`references/nextjs.md`](./references/nextjs.md) | ✅ |
-| その他（Vue / Flutter 等） | — | 追加可（rails 同様に契約を満たす） |
+| FW | レシピ | テンプレ（コピー用） | 状態 |
+|---|---|---|---|
+| Ruby on Rails + Hotwire | [`references/hotwire.md`](./references/hotwire.md) | [`templates/hotwire/`](./templates/hotwire/) | ✅ |
+| Next.js | [`references/nextjs.md`](./references/nextjs.md) | — | ✅ |
+| その他（Vue / Flutter 等） | — | — | 追加可（rails 同様に契約を満たす） |
+
+> **Rails + Hotwire は `templates/hotwire/` のコピー導入を推奨**（Issue #179）。Propshaft + importmap-rails で動く構成のスナップショット（`application.js` / `controllers/index.js` / `auth/client.js` / `config/importmap.rb` 等）を pin 名と物理パスが一致した状態で同梱しているため、references の写経で起きていた相対パス import → Propshaft 503 → Stimulus 未起動の事故を回避できる。references は契約と説明、templates は動く構成、と役割を分けて両者を同期維持する。
 
 ## 実装契約（FW 非依存）— AuthClient
 
