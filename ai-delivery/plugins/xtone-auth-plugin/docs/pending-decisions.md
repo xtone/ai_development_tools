@@ -14,6 +14,7 @@ warn_and_document（T-002 本決定）の出力先。認証設計・実装中に
 |---|---|---|---|---|---|
 | 2026-05-25 | DP候補（RN-1） | **フロントエンドのセッション戦略**（BFF=HttpOnly クッキー / クライアント直接 Bearer=メモリ保持）。`firebase-auth-frontend` のスキル内判断どまりで、案件横断の DP-XXX になっていない。要配慮個人情報案件では重要判断（再パイロットでは BFF を採用＝ADR-002）。判断ポイントカタログDB への正式起票が必要 | 設計 | Claude（T-021 再パイロット） | 未決 |
 | 2026-05-26 | **DP-MVP-COMPAT** | **MVP 期のスキーマ互換性方針**（CONV-14 の例外運用）。本プラグインは MVP ステータスのため、`xtone-shared-plugin/schemas/v1/` の breaking change（required フィールド追加など）に対して **v1/v2 並行保持を厳格適用しない**。最新スキーマで型化を強制し、既存サンプル成果物が新スキーマに合わなければ削除・再生成する（B-14 の方針）。GA 移行時に CONV-14 並行保持戦略を正式策定する。本方針自体を判断ポイントカタログ DB に DP-XXX として正式起票するかは未決（豊田判断）| 規約 / Architecture | 豊田（PR #154 レビュー指示）| 未決 |
+| 2026-05-27 | **B-20-E2E** | **`firebase-auth-frontend/templates/hotwire/` のまっさら Rails アプリでの実機検証が未実施**（Issue #179 受け入れ基準4）。本 PR では bare specifier 統一・pin と物理パスの 1:1 対応・grep / validate-plugin.sh による静的検証までを担保。実機検証（`rails new` → テンプレ展開 → `bin/dev` → ブラウザで 503 が出ず Stimulus が起動）は **次のパイロット案件着手前に必須**（Rails / Ruby のバージョンマネージャ整備とセットで実施）。検証担当・実施タイミングは未決 | 実装 | Claude（Issue #179）| 未決 |
 
 ## 決定済み（トレース）
 

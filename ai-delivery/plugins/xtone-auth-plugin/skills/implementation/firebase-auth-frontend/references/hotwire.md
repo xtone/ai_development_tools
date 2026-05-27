@@ -9,7 +9,21 @@
 
 > **前提: Firebase JS SDK v9+（modular API）を採用する。** v8 namespaced API（`firebase.auth().signInWithEmailAndPassword(...)` 形式）は非推奨。本レシピのコード片はすべて modular（`import { signInWithEmailAndPassword } from "firebase/auth"`）。`package.json` の `firebase` が `^9.0.0` 未満の場合は更新してから本レシピを適用する。
 
-importmap（Rails 標準）の例:
+### 1.1 import パスの大原則: **bare specifier 必須**（Propshaft + importmap）
+
+Rails 標準の **Propshaft + importmap-rails** 構成では、ブラウザは `<script type="importmap">` に登録された **論理名（bare specifier）** だけを解決できる。`import "./controllers"` や `import "../auth/client"` のような **相対パス import は Propshaft がフィンガープリント無しで配信できず 503 を返し、Stimulus が起動しない**（= 認証フォームの submit ハンドラが動かない）。
+
+本レシピのコード片および [`templates/hotwire/`](../templates/hotwire/) のテンプレファイルは、すべて bare specifier に統一されている。実装時も**必ず** bare specifier で書くこと。
+
+| ❌ NG（相対パス・503） | ✅ OK（bare specifier） |
+|---|---|
+| `import "./controllers"` | `import "controllers"` |
+| `import "./firebase_init"` | `import "auth/firebase_init"` |
+| `import "../auth/client"` | `import "auth/client"` |
+
+bare specifier は `config/importmap.rb` の `pin` / `pin_all_from` で物理パスに紐付ける（1.3 参照）。pin が無い名前を import すると同じく 503 になる。
+
+### 1.2 importmap（Firebase 関連の pin）
 
 ```ruby
 # config/importmap.rb
@@ -19,19 +33,74 @@ pin "firebase/auth", to: "https://www.gstatic.com/firebasejs/<latest>/firebase-a
 
 > `<latest>` は固定値でなく公式の最新安定版を使う（[`ai-delivery/docs/environment-setup.md`](../../../../../../docs/environment-setup.md)）。特定バージョン固定は判断ポイントとして `pending-decisions.md` に起票する。esbuild/jsbundling を使う場合は `npm i firebase`。Firebase の Web 設定値（apiKey 等）は公開前提の値だが、`config/credentials` か ENV から埋め込む。
 
+### 1.3 importmap（アプリ側 JS の pin・bare specifier の根拠）
+
+`app/javascript/` 配下を bare specifier で参照するための pin。`pin_all_from` がディレクトリ単位で論理名を生成し、相対パス import を不要にする。
+
+```ruby
+# config/importmap.rb （続き）
+pin "application"
+pin "@hotwired/turbo-rails", to: "turbo.min.js"
+pin "@hotwired/stimulus",    to: "stimulus.min.js"
+pin "@hotwired/stimulus-loading", to: "stimulus-loading.js"
+pin_all_from "app/javascript/controllers", under: "controllers"  # → import "controllers" / "controllers/auth_controller"
+pin_all_from "app/javascript/auth",        under: "auth"         # → import "auth/client" / "auth/firebase_init"
+```
+
+完全なテンプレ一式（importmap + application.js + controllers/index.js + auth/client.js 等）は [`templates/hotwire/`](../templates/hotwire/) に同梱。**新規 Rails アプリには references の写経ではなくテンプレのコピーが推奨**（pin 名とファイル配置が一致した状態を保証できる）。
+
+### 1.4 application.js（Stimulus / Turbo の起動 + controllers ロード）
+
+```javascript
+// app/javascript/application.js
+import "@hotwired/turbo-rails"
+import "controllers"   // ✅ bare specifier。"./controllers" にすると Propshaft が 503 を返す
+```
+
+### 1.5 controllers/index.js（Stimulus 起動と自動登録）
+
+```javascript
+// app/javascript/controllers/index.js
+import { application } from "controllers/application"
+import { eagerLoadControllersFrom } from "@hotwired/stimulus-loading"
+eagerLoadControllersFrom("controllers", application)
+```
+
+```javascript
+// app/javascript/controllers/application.js
+import { Application } from "@hotwired/stimulus"
+
+const application = Application.start()
+application.debug = false
+window.Stimulus = application
+
+export { application }
+```
+
 ## 2. AuthClient（契約の実装）
+
+Firebase の初期化は `auth/firebase_init.js` に分離し、`auth/client.js` から bare specifier で取り込む（テンプレも同構成）。
+
+```javascript
+// app/javascript/auth/firebase_init.js
+import { initializeApp } from "firebase/app"
+import { getAuth } from "firebase/auth"
+
+// FIREBASE_CONFIG は <meta name="firebase-config" content="<%= ... %>"> や
+// window.FIREBASE_CONFIG = <%= raw ... %> 等でビューから注入する（apiKey 等は公開前提）
+export const firebaseApp = initializeApp(window.FIREBASE_CONFIG)
+export const auth = getAuth(firebaseApp)
+```
 
 ```javascript
 // app/javascript/auth/client.js
-import { initializeApp } from "firebase/app"
+import { auth } from "auth/firebase_init"   // ✅ bare specifier
 import {
-  getAuth, setPersistence, inMemoryPersistence,
+  setPersistence, inMemoryPersistence,
   signInWithEmailAndPassword, sendSignInLinkToEmail, isSignInWithEmailLink,
   signInWithEmailLink, GoogleAuthProvider, OAuthProvider, signInWithPopup, linkWithPopup,
   sendPasswordResetEmail, updatePassword, updateEmail, signOut, onAuthStateChanged
 } from "firebase/auth"
-
-const auth = getAuth(initializeApp(window.FIREBASE_CONFIG))
 
 // XSS 配慮: トークンをメモリのみに保持（Firebase 既定の localStorage/indexedDB を使わない）。
 // 注意: リロードでセッションが切れるため、戦略B（クッキーセッション）と併用するか SSR でログイン状態を保持する（下記「セッション戦略」）。
