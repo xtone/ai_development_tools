@@ -215,6 +215,9 @@ if [ "$SCHEMA_CHECK" -eq 1 ]; then
       while IFS= read -r ext; do
         [ -n "$ext" ] && DESIGN_EXTENSIONS+=("$ext")
       done < <(jq -r '.delivery.design_extensions // [] | .[]' "$PLUGIN_JSON" 2>/dev/null)
+    elif [ -f "$PLUGIN_JSON" ]; then
+      # jq 未導入時は拡張スキーマの検証漏れを防ぐため明示的に警告（warn_and_document）。
+      warn "jq が見つからず delivery.design_extensions の読み取りをスキップ（拡張スキーマ検証なし）"
     fi
 
     declare_schema_for() {
