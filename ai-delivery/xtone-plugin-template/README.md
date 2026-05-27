@@ -12,6 +12,7 @@ Xtone **AIデリバリシステム**の Claude Code プラグイン用マスタ�
 |---|---|---|
 | テンプレートファイル | 4 | plugin.json / README / .mcp.json.sample / .env.example（ルート CLAUDE.md は置かない＝DP-27） |
 | スキーマリンク | 1 | xtone-shared-plugin への symlink |
+| 横断スキルリンク | 1 | `skills/implementation/tech-version-check` → xtone-shared-plugin への symlink（B-17） |
 | Subagent | 6 | requirements-analyst / designer / implementer / decision-recorder / pending-watcher / reviewer |
 | Slash Command | 8 | /req-collect /design /implement /decide /status /next /pending-list /skip-review |
 | Hook | 4 | pre-phase-transition / post-decision-record / pre-pr-merge / post-pr-merge |
@@ -25,9 +26,14 @@ cd ai-delivery
 cp -r xtone-plugin-template plugins/xtone-<usecase>-plugin
 cd plugins/xtone-<usecase>-plugin
 
-# symlink を再作成（コピーで実体化された場合）
+# symlink を再作成（コピーで実体化された場合 / パスの深さが template とプラグインで異なる）
 rm -rf schemas
 ln -s ../../xtone-shared-plugin/schemas/v1 schemas
+
+# 横断スキル tech-version-check（B-17）の symlink を再作成
+rm -rf skills/implementation/tech-version-check
+ln -s ../../../../xtone-shared-plugin/skills/implementation/tech-version-check \
+      skills/implementation/tech-version-check
 
 # テンプレファイルを実体化
 mv .claude-plugin/plugin.json.template .claude-plugin/plugin.json
@@ -54,7 +60,7 @@ cp .env.example .env                  # トークンを設定
 
 - **人間判断をスルーさせない**: 未決は `docs/pending-decisions.md` に記録し pending-watcher が可視化（4チャネル）。
 - **warn_and_document（T-002）**: すべて警告のみ・ブロックなし。
-- **Single Source of Truth（CONV-14）**: `schemas/` は symlink。コピーしない。
+- **Single Source of Truth（CONV-14）**: `schemas/` と `skills/implementation/tech-version-check/`（B-17）は symlink。コピーしない。
 
 ## 関連
 

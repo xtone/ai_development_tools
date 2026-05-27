@@ -13,7 +13,7 @@ description: 採用予定の言語/FW/主要ライブラリの **最新安定版
 
 サンプル案件 sample-auth で **Ruby/Rails の最新版確認が事前に行われず**、`connection_pool 3.0.2` が Ruby 3.3 非互換に当たって途中で気づく事故が発生した（B-11）。本スキルはこの種の事故を未然に塞ぐ。
 
-> 方針: バージョンは固定しない（陳腐化回避）、基本は公式の最新安定版、特定バージョンが必要な場合は判断ポイント — [`ai-delivery/docs/environment-setup.md`](../../../../../docs/environment-setup.md)。本スキルはその「公式最新を取得する」手順の実体。
+> 方針: バージョンは固定しない（陳腐化回避）、基本は公式の最新安定版、特定バージョンが必要な場合は判断ポイント — [`ai-delivery/docs/environment-setup.md`](../../../../docs/environment-setup.md)。本スキルはその「公式最新を取得する」手順の実体。
 
 ## 呼び出しトリガ（B-13 連携）
 
@@ -90,5 +90,5 @@ description: 採用予定の言語/FW/主要ライブラリの **最新安定版
 ## 関連スキル
 
 - 後続: `firebase-auth-setup` / `firebase-auth-frontend` / `firebase-auth-mfa` / `firebase-auth-emulator`（本スキルの version-matrix.md に従って Gemfile / package.json / Dockerfile を埋める）
-- バージョン方針: [`ai-delivery/docs/environment-setup.md`](../../../../../docs/environment-setup.md)
-- 横展開: 本スキルは現状 xtone-auth-plugin 内に配置するが、本来は **横断スキル**（複数プラグインで共通利用）。`xtone-shared-plugin` / `xtone-plugin-template` への移管は **backlog B-17（PR #162 マージ後に起票予定）** で扱う。本 PR ではプラグイン内配置のままで進める。
+- バージョン方針: [`ai-delivery/docs/environment-setup.md`](../../../../docs/environment-setup.md)
+- 配置（横断スキル）: 本スキルは `xtone-shared-plugin/skills/implementation/tech-version-check/` に実体を置き、各プラグイン（`plugins/xtone-*-plugin/skills/implementation/tech-version-check`）と `xtone-plugin-template/skills/implementation/tech-version-check` からは **symlink** で参照する（CONV-14 / B-17）。新規プラグイン生成時は `schemas/` と同じく symlink を再作成する（[`xtone-plugin-template/README.md`](../../../../xtone-plugin-template/README.md)）。

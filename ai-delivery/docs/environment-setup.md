@@ -45,4 +45,4 @@ mise use node@lts   # または nvm install --lts
 
 - プラグインの**言語別レシピ**: `plugins/<plugin>/skills/implementation/<skill>/references/<stack>.md`
 - 特定バージョン固定が必要な場合の起票先: プラグインの `docs/pending-decisions.md`
-- **本方針を実行するスキル（B-11）**: `plugins/xtone-auth-plugin/skills/implementation/tech-version-check/` — 実装着手前に context7（WebFetch / WebSearch fallback）で公式最新を取得し `delivery/version-matrix.md` に記録する。`firebase-auth-setup` / `firebase-auth-frontend` を呼ぶ前提として実行する（横断スキルへの移管は別 Issue）。
+- **本方針を実行するスキル（B-11 / B-17）**: `xtone-shared-plugin/skills/implementation/tech-version-check/` — 実装着手前に context7（WebFetch / WebSearch fallback）で公式最新を取得し `delivery/version-matrix.md` に記録する横断スキル。各プラグイン（例: `plugins/xtone-auth-plugin/skills/implementation/tech-version-check`）と `xtone-plugin-template` からは symlink で参照される（CONV-14）。`firebase-auth-setup` / `firebase-auth-frontend` を呼ぶ前提として実行する。
