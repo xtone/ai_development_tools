@@ -1,0 +1,13 @@
+---
+description: {{domain}}設計。{{usecase}}-architect を起動し、{{domain}}関連スキルで requirements の{{domain}}要件から design.schema.json を生成する（{{domain}}スタックを複数比較）。
+---
+
+{{usecase}}-architect サブエージェントを使い、{{domain}}関連スキル（`skills/design/<{{usecase}}-design>` 等）に沿って{{domain}}設計を進めてください。
+
+1. `schemas/requirements.schema.json` 準拠の要件から、{{domain}}関連（機能要件・非機能要件・制約・規制）を読み取る。
+2. **主要 DP（{{domain}}スタック選択）** は推奨候補を含め **2 つ以上を比較**し、MVP 推奨と根拠、IaaS / プロバイダ差し替え可能設計の担保を示す（最終決定は人間）。
+3. **案件固有の DP** を案件条件に当てはめ、決められないものは推奨だけ提示する。
+4. `schemas/design.schema.json` を生成し、決定済みは `decision_record`、未決は `undecided` に `DP-XXX` を残す（warn_and_document）。
+5. 重要な決定は `docs/adr/ADR-NNN.md` に記録する。
+
+> 基盤の汎用設計でよい場合は `/design`（designer）を使う。`/{{usecase}}-design` は{{domain}}ドメイン特化版。

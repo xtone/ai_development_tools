@@ -132,6 +132,39 @@ test スタブのみだと**型の穴を見逃す**。Docker + emulator + Playwr
 
 実機で不具合を踏んだら、スキルの型を直すまでが 1 タスク。認証プラグインの auth_time 不具合は **Playwright で再現 → 原因（Firebase 仕様）特定 → スキルの 2 段階失効化**まで進めた。これにより他案件での再発を防ぐ。
 
+### 2.7 ドメイン特化 Subagent（domain-architect）を最初から用意する
+
+T-021 認証プラグインでは、基盤の `designer`（SCH-2）を認証ドメインに特化させた `authentication-architect` を新設し、`/auth-design` で起動する型を確立した（複数スタックを比較し、IaaS / プロバイダ差し替え可能設計を担保）。**T-023〜T-045 の 23 Rollout プラグインでも同じ型が必要**になる（例: 決済 → `payment-architect` / 位置情報 → `geo-architect` / IaC → `iac-architect` / API 仕様 → `api-spec-architect`）。
+
+そのため、雛形を `xtone-plugin-template` 側に置いてある:
+
+| ファイル | 生成後 | 役割 |
+|---|---|---|
+| `xtone-plugin-template/agents/domain-architect.md.template` | `agents/<usecase>-architect.md` | ドメイン特化 Subagent（基盤 designer の特化版） |
+| `xtone-plugin-template/commands/domain-design.md.template` | `commands/<usecase>-design.md` | 上記 Subagent を起動する Slash Command |
+
+**置換プレースホルダ**（`generate-plugin.sh` が処理）:
+
+| プレースホルダ | 置換内容 | 例 |
+|---|---|---|
+| `{{usecase}}` | ユースケース名 | `payment`, `geo`, `iac`, `api-spec` |
+| `{{domain}}` | ドメインの自然言語ラベル（`--domain` で渡す） | `決済`, `位置情報`, `CI/CD・IaC`, `API 仕様` |
+
+**フラグ**:
+
+- 既定: 上記 2 ファイルを自動で実体化する（23 Rollout プラグインで毎回作成する想定のため）
+- `--no-domain-architect`: 実体化しない（プラグインに{{usecase}}-architect が不要なケース）
+- `--domain "<ラベル>"`: `{{domain}}` を置換。省略時は未置換のまま残り、`validate-plugin.sh` で警告（warn_and_document）
+
+**生成後の埋め直し作業（必須）**: 雛形は DP セクションが骨格のため、各プラグインで以下を埋める。
+
+1. **主要 DP**（`<usecase>-スタック選択`）の DP-XXX を割り当て、選択肢・判断軸・MVP 推奨を具体化する
+2. **案件固有の DP**（適用判定する規約・MFA 等の方針）を追加する
+3. `MOD-XXX` / `T-XXX` を該当 ID で置き換える
+4. リファレンス実装: [`plugins/xtone-auth-plugin/agents/authentication-architect.md`](../plugins/xtone-auth-plugin/agents/authentication-architect.md)
+
+> 認証プラグイン自身は B-19 以前に手で書いた `authentication-architect.md` / `auth-design.md` を保持している（usecase が `auth` でも agent 名は `authentication-architect`）。本テンプレを使うと `<usecase>-architect` 形式に揃うため、既存実装との文字列差は許容したうえで構造（役割・入出力・DP 比較・差し替え可能設計の明示）の等価性を担保する。
+
 ## 3. ドメイン拡張フィールドの追加方法（B-20 / #173）
 
 `design.schema.json` 等の共通スキーマは**ドメイン非依存の共通部分のみ**を持つ（B-20 でドメイン汎用化）。決済・通知・MaaS・IaC など、各プラグイン固有のフィールドは次のいずれかで追加する。**ここに書かれていない経路で共通スキーマを直接編集してはならない**（CONV-14: Single Source of Truth）。
