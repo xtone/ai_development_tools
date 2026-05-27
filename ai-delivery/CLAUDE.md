@@ -70,8 +70,29 @@ Xtone の開発プロセスを Claude Code プラグインで型化する。中�
 
 ## 検証
 
-> ⚠️ 現状、検証スクリプトは未整備。`scripts/validate-plugin.sh`（TPL-27）作成後、実行コマンドをこのセクションに追記すること。
-> プラグイン実装時は `xtone-shared-plugin/schemas/v1/` の JSON Schema に対するバリデーションを必ず通す（CI の 18 ルール検証 = T-014 と整合させる）。
+プラグイン生成と品質ゲート＋スキーマ検証は `scripts/` 配下のシェルで行う（TPL-26 / TPL-27, B-07）。両スクリプトとも warn_and_document（T-002）— 既定では警告を出しても exit 0、`--strict` で CI 用に exit 1。
+
+```bash
+# 新規プラグイン生成（usecase は小文字英数とハイフンのみ）
+ai-delivery/scripts/generate-plugin.sh <usecase> \
+  --description "<説明>" --author "<著者>" \
+  --domains "<適用ドメイン>" --modules "<MOD-XXX>"
+
+# 既存プラグインの品質ゲート＋デリバリ成果物のスキーマ検証
+ai-delivery/scripts/validate-plugin.sh ai-delivery/plugins/<plugin> [--strict] [--no-schema]
+```
+
+`validate-plugin.sh` は以下を一括チェックする:
+
+1. `.claude-plugin/plugin.json` 必須フィールド・命名規約（CONV-01）
+2. `schemas/` symlink（CONV-14: Single Source of Truth）
+3. `skills/<usecase>-plugin-guide/SKILL.md` と各 `SKILL.md` の frontmatter（SKL-20 / CONV-06 / DP-27）
+4. `hooks/hooks.json` ＋ シェルの実行権限
+5. `.mcp.json.sample` のトークン参照（MCP-08）
+6. テンプレ未置換プレースホルダ `{{...}}` の残存
+7. **デリバリ成果物のスキーマ検証**（`sample-outputs/` / `delivery/` 配下の `requirements*.json`／`design*.yaml`／`implementation-plan*.json` ほか）
+
+依存: `bash`, `jq`, `python3`, `jsonschema`, `PyYAML`。jsonschema/PyYAML は `pip3 install --user jsonschema PyYAML` で導入。
 
 ## ID プレフィックス体系（CONV-19）
 
