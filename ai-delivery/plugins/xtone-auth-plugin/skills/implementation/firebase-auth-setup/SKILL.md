@@ -82,6 +82,7 @@ T-022 パイロット発見 F-3 / Issue #127 の解消。
 6. **運用契約**（退会削除・証明書キャッシュ・トークン失効）を実装する。
 7. ローカル動作確認（テストは `TestAdapter` で実 Firebase 不要）。
 8. 実装タスク・依存・テスト方針を `implementation-plan.schema.json` に記録する。
+8a. **seeds 生成（Rails 案件）**（B-23 / Issue #182）: `templates/rails/db/seeds.rb.template` を起点に、implementer が `design.yaml.decision_record[]` から **DP-AUTHFLOW-001**（運用ユーザー作成ポリシー）を読み取って分岐ブロック（`<% if invitation_based? %>` … `<% else %>` …）を解決し `db/seeds.rb` を出力する。生成戦略（採用ブランチ / 根拠 DP / `bin/setup` との分担）は `delivery/seeds-strategy.md` に残す（implementer の出力契約）。`bin/setup`（B-26 / Issue #185）と招待モデル雛形（B-24 / Issue #183）と一体で動かす前提。**DP-AUTHFLOW-001 が未確定なら seeds は確定生成せず** pending-decisions に残す（warn_and_document, T-002）。
 9. **DoD（B-15）**: 本スキルだけで完了扱いにしない。`design.yaml.representative_use_cases` の **backend 関連 UC を [`auth-e2e-verify`](../../test/auth-e2e-verify/SKILL.md) でブラウザ実機検証 PASS** するまでが完了。`delivery/e2e-verification-report.md` に通過証跡を残す。DP 決定済みなのに未実装な UC（例: パスワード変更フローのサーバ受け口）があれば pending-decisions に警告として残す（warn_and_document）。
 
 ## 新しい言語・FW への展開
