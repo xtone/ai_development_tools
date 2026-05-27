@@ -73,13 +73,19 @@ module Auth
     def certs
       return @cache[:pem] if @cache && Time.now < @cache[:expires_at]
       res = Net::HTTP.get_response(URI(CERTS_URI))
+      raise Auth::Error, "failed to fetch Firebase certs: #{res.code} #{res.message}" unless res.is_a?(Net::HTTPSuccess)
       ttl = res["cache-control"].to_s[/max-age=(\d+)/, 1]&.to_i || 3600
       @cache = { pem: JSON.parse(res.body), expires_at: Time.now + ttl }
       @cache[:pem]
     end
 
     def public_key_for(kid)
-      pem = certs[kid] || (@cache = nil; certs[kid])
+      pem = certs[kid]
+      unless pem
+        # kid 不一致は強制再取得（ローテーション追従）
+        @cache = nil
+        pem = certs[kid]
+      end
       raise Auth::InvalidToken, "unknown kid" unless pem
       OpenSSL::X509::Certificate.new(pem).public_key
     end

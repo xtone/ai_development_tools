@@ -87,7 +87,12 @@ end
 
 ### 5. テストを TestAdapter で回す
 
-`AUTH_ADAPTER=test`（または `Rails.env.test?` で既定） で `Auth::TestAdapter` に切り替わる。トークン形式 `test|<uid>|<email>|<provider>` を結合テストで使えば実 Firebase 不要。
+`AUTH_ADAPTER=test`（または `Rails.env.test?` で既定） で `Auth::TestAdapter` に切り替わる。トークン書式は以下の 2 形（後者は失効テスト等で `auth_time` を任意の時刻に固定したいときに使う）:
+
+- `test|<uid>|<email>|<provider>` — `auth_time` は検証時の現在時刻が自動で入る
+- `test|<uid>|<email>|<provider>|<auth_time_unix>` — `auth_time` を明示指定（hard 失効後の古いトークンを再現する等）
+
+`token_valid?(auth_time)` の判定が `tokens_valid_after` と比較されるため、`auth_time` を nil のままにすると `tokens_valid_after` 設定済みユーザーの失効テストで挙動が非直感的になる。テンプレ版は上記書式で常に `claims["auth_time"]` が入る。
 
 ## 既知の制約
 

@@ -141,13 +141,19 @@ end
 def certs
   return @cache[:pem] if @cache && Time.now < @cache[:expires_at]
   res = Net::HTTP.get_response(URI(CERTS_URI))
+  raise Auth::Error, "failed to fetch Firebase certs: #{res.code} #{res.message}" unless res.is_a?(Net::HTTPSuccess)
   ttl = res["cache-control"].to_s[/max-age=(\d+)/, 1]&.to_i || 3600
   @cache = { pem: JSON.parse(res.body), expires_at: Time.now + ttl }
   @cache[:pem]
 end
 
 def public_key_for(kid)
-  pem = certs[kid] || (@cache = nil; certs[kid])  # kid 不一致は強制再取得（ローテーション追従）
+  pem = certs[kid]
+  unless pem
+    # kid 不一致は強制再取得（ローテーション追従）
+    @cache = nil
+    pem = certs[kid]
+  end
   raise Auth::InvalidToken, "unknown kid" unless pem
   OpenSSL::X509::Certificate.new(pem).public_key
 end
@@ -236,7 +242,7 @@ end
 
 ## 4. テスト（実 Firebase 不要）
 
-`TestAdapter`（同じ契約）でトークン形式 `test|<uid>|<email>|<provider>` を検証し、結合テストを実 Firebase なしで回す（パイロットは 8 tests / 0 failures）。
+`TestAdapter`（同じ契約）でトークン形式 `test|<uid>|<email>|<provider>` を検証し、結合テストを実 Firebase なしで回す（パイロットは 8 tests / 0 failures）。**hard 失効テストで `tokens_valid_after` 後に古いトークンの拒否を検証したい場合**は、トークン書式に `auth_time` を加えて `test|<uid>|<email>|<provider>|<auth_time_unix>` を渡せる拡張（templates 同梱）を使うと、`token_valid?(auth_time)` の判定を任意の時刻で再現できる。
 
 ## 5. 既知の制約
 
