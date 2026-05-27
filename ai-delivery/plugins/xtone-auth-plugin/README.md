@@ -37,6 +37,7 @@ claude plugin validate --strict plugins/xtone-auth-plugin
 - **DP-007** 認証スタック選択（Firebase Auth 推奨 + 代替比較）
 - **DP-008** MFA 要件の振り分け
 - **DP-015** dAccount / docomo 規約の適用範囲
+- **DP-28** 退会済みアカウントの再登録ポリシー（MVP 既定推奨 = 403 拒否）
 
 詳細は [`docs/decision-points.md`](./docs/decision-points.md)。
 
