@@ -20,16 +20,18 @@ import sys
 from pathlib import Path
 
 
+class DependencyMissing(Exception):
+    """jsonschema / PyYAML 等の依存ライブラリが未導入。warn_and_document で exit 2 に対応。"""
+
+
 def _load_yaml(path: Path):
     try:
         import yaml  # type: ignore
-    except ImportError:
-        print(
-            "⚠️  PyYAML 未導入のため YAML 検証をスキップ: "
-            "pip3 install --user PyYAML jsonschema",
-            file=sys.stderr,
-        )
-        sys.exit(2)
+    except ImportError as e:
+        raise DependencyMissing(
+            "PyYAML 未導入のため YAML 検証をスキップ: "
+            "pip3 install --user PyYAML jsonschema"
+        ) from e
     with path.open("r", encoding="utf-8") as f:
         return yaml.safe_load(f)
 
@@ -69,6 +71,9 @@ def main() -> int:
 
     try:
         data = _load_data(args.data)
+    except DependencyMissing as e:
+        print(f"⚠️  {e}", file=sys.stderr)
+        return 2
     except (OSError, json.JSONDecodeError) as e:
         print(f"⚠️  {label}: データ読み込み失敗: {e}", file=sys.stderr)
         return 1

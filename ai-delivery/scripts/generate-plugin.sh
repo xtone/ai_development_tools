@@ -103,8 +103,11 @@ mv "$GUIDE_DIR_DST/SKILL.md.template" "$GUIDE_DIR_DST/SKILL.md"
 # 4. プレースホルダを置換（macOS / GNU sed どちらでも動くよう .bak 経由）。
 replace_in_file() {
   local pattern="$1" replacement="$2" file="$3"
-  # `|` 区切り。replacement に `|` が含まれないことを前提に呼び出し側で配慮。
-  sed -i.bak "s|${pattern}|${replacement}|g" "$file"
+  # replacement 中の sed 特殊文字（デリミタ `|`、後方参照 `&`、エスケープ `\`）を
+  # エスケープしないと `--description "BtoC & BtoB"` 等でマッチ文字列が挿入される。
+  local safe_replacement
+  safe_replacement="$(printf '%s' "$replacement" | sed -e 's/[&\\|]/\\&/g')"
+  sed -i.bak "s|${pattern}|${safe_replacement}|g" "$file"
   rm -f "${file}.bak"
 }
 
