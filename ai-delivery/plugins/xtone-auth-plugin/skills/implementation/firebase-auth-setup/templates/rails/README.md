@@ -6,18 +6,30 @@
 
 ## 含まれるもの
 
-| パス | 役割 |
-|---|---|
-| `Gemfile.snippet` | 追加する gem（`jwt` / `googleauth`） |
-| `dotenv.sample` | 必要な ENV 変数（`FIREBASE_PROJECT_ID` / `AUTH_ADAPTER` / `GOOGLE_APPLICATION_CREDENTIALS`） |
-| `app/adapters/auth/adapter.rb` | `Auth::Adapter` 抽象（契約）と `AuthUser` / エラー |
-| `app/adapters/auth/firebase_adapter.rb` | `FirebaseAdapter` 実装（JWT 検証 / 公開鍵キャッシュ / Admin REST） |
-| `app/adapters/auth/test_adapter.rb` | `TestAdapter`（実 Firebase 不要のテスト用） |
-| `app/controllers/concerns/authenticatable.rb` | JWT 認可 concern |
-| `config/initializers/app_auth.rb` | `AppAuth.adapter` 選択（ENV `AUTH_ADAPTER` 切替） |
-| `db/migrate/00000000000000_add_tokens_valid_after_to_users.rb.template` | `users.tokens_valid_after` 追加マイグレーションの雛形 |
+| パス | 役割 | 定義する定数 |
+|---|---|---|
+| `Gemfile.snippet` | 追加する gem（`jwt` / `googleauth`） | — |
+| `dotenv.sample` | 必要な ENV 変数（`FIREBASE_PROJECT_ID` / `AUTH_ADAPTER` / `GOOGLE_APPLICATION_CREDENTIALS`） | — |
+| `app/adapters/auth.rb` | `Auth` namespace と共通定数（AuthUser / Error / InvalidToken / NotFoundError） | `Auth`, `Auth::AuthUser`, `Auth::Error`, `Auth::InvalidToken`, `Auth::NotFoundError` |
+| `app/adapters/auth/adapter.rb` | `Auth::Adapter` 抽象（契約） | `Auth::Adapter` |
+| `app/adapters/auth/firebase_adapter.rb` | `Auth::FirebaseAdapter` 実装（JWT 検証 / 公開鍵キャッシュ / Admin REST） | `Auth::FirebaseAdapter` |
+| `app/adapters/auth/test_adapter.rb` | `Auth::TestAdapter`（実 Firebase 不要のテスト用） | `Auth::TestAdapter` |
+| `app/controllers/concerns/authenticatable.rb` | JWT 認可 concern | `Authenticatable` |
+| `config/initializers/app_auth.rb` | `AppAuth.adapter` 選択（ENV `AUTH_ADAPTER` 切替） | `AppAuth` |
+| `db/migrate/00000000000000_add_tokens_valid_after_to_users.rb.template` | `users.tokens_valid_after` 追加マイグレーションの雛形 | — |
 
 > **契約は `references/rails.md` の「実装契約（言語非依存）」と同一。** 本テンプレは契約を変えずに具体コードを提供するだけ（DP-007 差し替え可能設計を維持）。
+
+### Zeitwerk 規約への準拠（重要）
+
+Rails 6+ の Zeitwerk autoloader は「1 ファイル 1 定数」が原則。**1 つのファイルに複数のトップレベル定数を同居させると autoload テーブルから漏れ**、起動初回の参照で `NameError (uninitialized constant ...)` が出る（B-19 / Issue #178）。本テンプレは以下のように分割している:
+
+- `app/adapters/auth.rb` — `Auth` namespace と「補助的な値・例外クラス」を集約（`AuthUser` / `Error` / `InvalidToken` / `NotFoundError`）。これは Zeitwerk が `Auth` をディレクトリ namespace として認識するための **規約上の正規ファイル**で、同一 namespace 直下の補助定数を同居させるのは規約に準拠する。
+- `app/adapters/auth/adapter.rb` — `Auth::Adapter`（抽象クラス）のみ
+- `app/adapters/auth/firebase_adapter.rb` — `Auth::FirebaseAdapter` のみ
+- `app/adapters/auth/test_adapter.rb` — `Auth::TestAdapter` のみ
+
+検証コマンド: `bin/rails zeitwerk:check` が PASS すること、`bin/rails runner 'puts Auth::AuthUser'` がエラーなく実行できることを **eager_load なしの開発環境** で確認する（`config.eager_load = false` のままで動くことが必須。`true` だと偶然動く可能性がある）。
 
 ## 使い方
 
@@ -36,6 +48,17 @@ cp -r "$PLUGIN"/templates/rails/app/.     ./app/
 cp    "$PLUGIN"/templates/rails/config/initializers/app_auth.rb       ./config/initializers/
 cp    "$PLUGIN"/templates/rails/db/migrate/00000000000000_add_tokens_valid_after_to_users.rb.template \
       ./db/migrate/"$(date +%Y%m%d%H%M%S)"_add_tokens_valid_after_to_users.rb
+```
+
+配置後の `app/adapters/` 配下は次の構造になる（Zeitwerk 規約に準拠する 1 ファイル 1 定数）:
+
+```
+app/adapters/
+├── auth.rb                  # Auth namespace + AuthUser / Error / InvalidToken / NotFoundError
+└── auth/
+    ├── adapter.rb           # Auth::Adapter
+    ├── firebase_adapter.rb  # Auth::FirebaseAdapter
+    └── test_adapter.rb      # Auth::TestAdapter
 ```
 
 `Gemfile.snippet` の内容は `Gemfile` に追記、`dotenv.sample` の項目は `.env` / Secrets に展開（`.env` はコミット禁止）。

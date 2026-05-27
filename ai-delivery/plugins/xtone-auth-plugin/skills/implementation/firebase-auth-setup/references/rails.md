@@ -20,13 +20,21 @@ gem "googleauth"   # Admin REST の OAuth2 アクセストークン取得（退�
 
 ## 2. AuthAdapter 契約の実装
 
+> **Zeitwerk 規約**: Rails 6+ は「1 ファイル 1 定数」が原則。共通定数は `app/adapters/auth.rb` に集約し、各クラスは個別ファイルへ分割する（B-19 / Issue #178）。1 ファイルに複数のトップレベル定数を同居させると autoload テーブルから漏れ、起動初回参照で `NameError` が出る。
+
 ```ruby
-# app/adapters/auth/adapter.rb — 抽象（契約）
+# app/adapters/auth.rb — 共通定数（namespace 定義）
 module Auth
   AuthUser = Struct.new(:uid, :email, :provider, :claims, keyword_init: true)
   class Error < StandardError; end
   class InvalidToken < Error; end
+  class NotFoundError < Error; end
+end
+```
 
+```ruby
+# app/adapters/auth/adapter.rb — 抽象（契約）
+module Auth
   class Adapter
     def verify_token(_id_token); raise NotImplementedError; end
     def get_user(_uid);          raise NotImplementedError; end
@@ -130,7 +138,7 @@ def delete_user(uid)
   # Identity Toolkit REST: POST /v1/projects/{pid}/accounts:delete （要 OAuth2 アクセストークン）
   identitytoolkit_post("accounts:delete", localId: uid)
   true
-rescue NotFoundError
+rescue Auth::NotFoundError
   true  # 冪等: 既に存在しない
 end
 ```
@@ -201,18 +209,16 @@ end
 def revoke(uid)
   identitytoolkit_post("accounts:update", localId: uid, validSince: Time.now.to_i.to_s)
   true
-rescue NotFoundError
+rescue Auth::NotFoundError
   true
 end
 ```
 
 ### Admin REST ヘルパー（FirebaseAdapter private）
 
-Ruby に公式 Admin SDK が無いため、Admin 操作（削除・失効）は Identity Toolkit REST ＋ サービスアカウントの OAuth2 アクセストークンで行う。`NotFoundError` も定義する。
+Ruby に公式 Admin SDK が無いため、Admin 操作（削除・失効）は Identity Toolkit REST ＋ サービスアカウントの OAuth2 アクセストークンで行う。404 を表す `Auth::NotFoundError` は共通定数として `app/adapters/auth.rb` 側で定義済み（B-19 / Zeitwerk 規約）。
 
 ```ruby
-class NotFoundError < Auth::Error; end
-
 private
 
 # サービスアカウント鍵から OAuth2 アクセストークンを取得（googleauth gem）。短命なのでキャッシュ。
@@ -234,7 +240,7 @@ def identitytoolkit_post(method, **body)
   req["Content-Type"]  = "application/json"
   req.body = JSON.dump(body)
   res = Net::HTTP.start(uri.host, uri.port, use_ssl: true) { |h| h.request(req) }
-  raise NotFoundError if res.code == "404"
+  raise Auth::NotFoundError if res.code == "404"
   raise Auth::Error, "identitytoolkit #{method}: #{res.code}" unless res.is_a?(Net::HTTPSuccess)
   res.body.to_s.empty? ? {} : JSON.parse(res.body)
 end
