@@ -1,0 +1,103 @@
+{
+  "_meta": {
+    "produced_by": "aid-plugin-architecture-design (dogfood / manual)",
+    "target_plugin": "xtone-auth-plugin",
+    "purpose": "本プラグインの 4 チャネル出力フォーマット妥当性検証。auth プラグインを後追いで起こした場合の plugin-architecture.json。",
+    "produced_at": "2026-05-28"
+  },
+  "usecase": "auth",
+  "plugin_name": "xtone-auth-plugin",
+  "skills": [
+    {
+      "name": "auth-requirements-extraction",
+      "phase": "requirements",
+      "responsibility": "認証関連要件の抽出（ログイン方式 / MFA / 規制 / 退会 / ページ単位の認証要否 A/B/C / 招待・監査・通知の運用方針）",
+      "responsibility_split": ["shared"],
+      "needs_references": false,
+      "references_stacks": []
+    },
+    {
+      "name": "firebase-auth-design",
+      "phase": "design",
+      "responsibility": "design.yaml + ADR + responsibility_split + page_access_control を生成（DP-007/008/015 を含む）",
+      "responsibility_split": ["shared"],
+      "needs_references": false,
+      "references_stacks": []
+    },
+    {
+      "name": "firebase-auth-setup",
+      "phase": "implementation",
+      "responsibility": "ID トークン検証 / JWT 認可 / 退会時 Admin 削除 / 公開鍵キャッシュ / 2 段階の失効（hard / soft）",
+      "responsibility_split": ["backend"],
+      "needs_references": true,
+      "references_stacks": ["rails"]
+    },
+    {
+      "name": "firebase-auth-frontend",
+      "phase": "implementation",
+      "responsibility": "サインイン / 退会 / トークン保持 / API への Bearer 付与 / 3 パターン認証ガード（protected-only / public-aware / guest-only）/ /login と /signup 分離",
+      "responsibility_split": ["client"],
+      "needs_references": true,
+      "references_stacks": ["nextjs", "hotwire"]
+    },
+    {
+      "name": "firebase-auth-mfa",
+      "phase": "implementation",
+      "responsibility": "MFA enrollment（client）/ クレーム検証・管理者強制・MFA 変更時の soft 失効（backend）/ TOTP・SMS SDK（iaas）",
+      "responsibility_split": ["client", "backend", "iaas"],
+      "needs_references": true,
+      "references_stacks": ["rails", "nextjs", "hotwire"],
+      "cross_cutting": true,
+      "kind": "feature-spanning"
+    },
+    {
+      "name": "firebase-auth-emulator",
+      "phase": "implementation",
+      "responsibility": "Docker で Auth Emulator 起動 / 署名検証スキップ / Admin REST 切替 / connectAuthEmulator / SMS MFA で E2E（TOTP は非対応＝実 Identity Platform へ）",
+      "responsibility_split": ["client", "backend"],
+      "needs_references": true,
+      "references_stacks": ["docker-compose", "rails", "nextjs", "hotwire"],
+      "cross_cutting": true,
+      "kind": "environment-spanning"
+    },
+    {
+      "name": "auth-e2e-verify",
+      "phase": "test",
+      "responsibility": "代表 UC（サインイン → MFA enroll → 保護リソース → 退会 → 再ログイン拒否）の Playwright 実機 E2E。delivery/e2e-verification-report.md に通過証跡",
+      "responsibility_split": ["shared"],
+      "needs_references": false,
+      "references_stacks": []
+    }
+  ],
+  "subagents": [
+    {
+      "name": "authentication-architect",
+      "trigger_command": "/auth-design",
+      "required": true,
+      "rationale": "比較スタック 6 つ（Firebase Auth / Devise+OmniAuth / Cognito / dAccount / NextAuth.js / Laravel Sanctum）= DP-AID-05 で「特化必須」推奨に該当"
+    }
+  ],
+  "commands": [
+    { "name": "/auth-design", "kind": "domain-design" }
+  ],
+  "hooks_extension": [],
+  "dp_candidates": [
+    { "id": "DP-007",                   "reuse": false, "title": "認証スタック選択",                      "phase": "design",        "mvp_recommendation": "Firebase Auth（AuthAdapter で IaaS 差し替え可能設計を維持）" },
+    { "id": "DP-008",                   "reuse": false, "title": "MFA 要件の振り分け",                   "phase": "design",        "mvp_recommendation": null, "note": "既定推奨を置かない（案件のセキュリティ要件で人間判断）" },
+    { "id": "DP-015",                   "reuse": false, "title": "dAccount / docomo 規約遵守タイミング", "phase": "design",        "mvp_recommendation": null, "applies_when": "docomo 系案件・dメニュー系連携のときのみ" },
+    { "id": "DP-28",                    "reuse": false, "title": "退会済みアカウントの再登録ポリシー",     "phase": "design",        "mvp_recommendation": "(A) 拒否（403）" },
+    { "id": "DP-INVITATION-POLICY-001", "reuse": false, "title": "招待制サインアップの運用ポリシー",      "phase": "requirements→design", "mvp_recommendation": "72h・1 回限り使い切り・メール送信・失効通知あり（招待者のみ）" },
+    { "id": "DP-AUDIT-VIEW-001",        "reuse": false, "title": "監査ログ（対象操作・保存期間・閲覧）",  "phase": "requirements→design", "mvp_recommendation": "対象操作 4 種・1 年保存・admin・管理画面 + CSV" },
+    { "id": "DP-NOTIFY-001",            "reuse": false, "title": "通知方針",                              "phase": "requirements→design", "mvp_recommendation": "メール・4 イベント・セキュリティ系除きオプトアウト可・開発環境 Mailcatcher" }
+  ],
+  "sample_case_bindings": [],
+  "sample_case_legacy": {
+    "name": "bookclub-app",
+    "location": "sample-inputs/bookclub-app.requirements-input.md",
+    "rationale": "B-21 以前の独自案件。経緯保存のため新規プラグインでは sample-cases/ カタログ運用に切替（DP-AID-03）"
+  },
+  "design_extension_schema": "design.auth.schema.json",
+  "external_mcps": ["github", "notion"],
+  "undecided": [],
+  "_dogfood_note": "FINDING-01（kind フィールド）・FINDING-02（sample_case_legacy）は本プラグイン仕様に追加済み（2026-05-28）。本ファイルはその両方を反映した正本。skills[5/6] に kind フィールドを併記、sample_case_legacy も保持。"
+}
