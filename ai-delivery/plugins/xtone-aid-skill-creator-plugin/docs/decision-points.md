@@ -6,7 +6,7 @@
 
 正は判断ポイントカタログDB（DP-, data_source_id: `64248f5c-b2f5-4c90-8ccb-7f53692b59b2`）。各 DP の `undecided` 連携と `decision_record` 記録は warn_and_document（T-002）で扱う。
 
-> **DP-AID-* は本プラグイン起稿時点では未起票（draft）**。本プラグインのドッグフード（Step 11 予定）が安定したのち、`/aid-dp-register` で Notion DP DB に正式起票する。仮 ID `DP-AID-01`〜`DP-AID-05` を本ファイルで先行管理する。
+> **DP-AID-01〜05 は Notion DP DB に正式起票済み（2026-05-28・B-AID-03 / Issue #200）**。命名は `DP-AID-NN`（ADR-AID-002 確定）。起票記録は [`../delivery/dp-registration-log.md`](../delivery/dp-registration-log.md) を、各 DP の Notion ページ URL は本ファイル下部の各セクションを参照。本ファイルは Notion DP DB と同期更新する（`/aid-dp-register` で同期）。
 
 ## DP-AID-01 新規 Skill 追加時の境界判断（既存 Skill 拡張 vs 新規独立 Skill）
 
@@ -24,6 +24,8 @@
   - むやみに新規 Skill を立てる → スキル数が爆発し、Claude の Skill 選択がブレる（SKL-12 description の精度が下がる）
 - **適用条件**: 新規プラグインの設計フェーズと、既存プラグインへの Skill 追加時
 - **MVP の既定推奨**: **responsibility_split が 2 層以上（client + backend など）にまたがる場合は新規独立 Skill**。1 層に閉じるなら既存 Skill 拡張。リファレンス: auth プラグインの `firebase-auth-mfa`（feature-spanning: client + backend + iaas）/ `firebase-auth-emulator`（environment-spanning: infrastructure + backend + client）が独立 Skill 化された前例（B-19）。横断の `kind` を併記して後段の SKILL.md テンプレ選択に使う（FINDING-01 / ADR-AID-003 候補）
+- **ステータス**: accepted
+- **Notion ページ URL**: https://www.notion.so/36eceb782fa381c89247dd2e29578a6e
 
 ## DP-AID-02 DP 再利用 vs 新規 DP 起票（80% 重複ルール）
 
@@ -40,7 +42,9 @@
   - 安易に新規起票 → DP-DB が肥大化し、再利用候補が見えにくくなる（参照効率の低下）
   - 安易に既存再利用 → ドメイン固有の判断軸を捨て、案件で本来必要な判断が抜け落ちる（例: 認証の DP-007 を決済に流用すると、決済固有の PCI DSS スコープ判定が漏れる）
 - **適用条件**: 全プラグイン新規起稿時。`/aid-dp-register` 起動時に必ず適用
-- **MVP の既定推奨**: **80% 重複なら既存再利用、迷ったら人間判断**（`/aid-dp-register` の Step B でユーザに 3 択を確認）。新規起票時の命名は `DP-<USECASE>-NNN` 形式を推奨（CONV-19 拡張・要 ADR）
+- **MVP の既定推奨**: **80% 重複なら既存再利用、迷ったら人間判断**（`/aid-dp-register` の Step B でユーザに 3 択を確認）。新規起票時の命名は `DP-<USECASE>-NN` 形式を推奨（CONV-19 拡張・ADR-AID-002 で確定）
+- **ステータス**: accepted
+- **Notion ページ URL**: https://www.notion.so/36eceb782fa381ccb600f445a1b2631b
 
 ## DP-AID-03 sample-case の選定（カタログから選ぶ vs 新案件追加 PR）
 
@@ -59,6 +63,8 @@
 - **適用条件**: 全プラグイン新規起稿時の pilot 入力選定
 - **MVP の既定推奨**: **まずカタログから 2 件選定**（複数の案件で型の汎用性を確認するため）。該当ゼロ（または該当度 ⭐ が 1 件以下）なら新案件追加 PR を立て、`xtone-shared-plugin/sample-cases/` を更新する責務を本プラグインの起稿担当者が持つ。新案件追加 PR は plugin-developer-guide §1 Step 5 の「カタログ更新は本ガイドの責務」に従う
 - **既存プラグインの後追い起稿時のみ**（FINDING-02）: B-21 以前に独自 `sample-inputs/` を持つプラグイン（auth プラグインの `bookclub-app` 等）は `sample_case_legacy` フィールドで経緯を残し、`/aid-sample-case-binding --legacy-only` で symlink を作らず記録のみ行う運用（新規 Rollout プラグインには適用しない）
+- **ステータス**: accepted
+- **Notion ページ URL**: https://www.notion.so/36eceb782fa38180afb2f4cdcdf6adcc
 
 ## DP-AID-04 言語別 references を増やすタイミング（案件で必要時 vs 先回り）
 
@@ -75,6 +81,8 @@
   - 遅延追加 → 案件着手時に references がなく、ゼロからの起稿コストがかかる（ただし型のドリフトリスクよりは小さい）
 - **適用条件**: 全プラグインの implementation Skill。requirements / design / test Skill では基本的に references を持たない
 - **MVP の既定推奨**: **案件で必要になった時点で追加**（遅延追加）。SKILL.md の「言語別レシピ表」に未作成 stack の行を `⬜ 未作成` で並べておくことで意図は可視化する。先回り追加する場合は `decision_record` に理由必須
+- **ステータス**: accepted
+- **Notion ページ URL**: https://www.notion.so/36eceb782fa38102a4e5d051515a4d64
 
 ## DP-AID-05 domain-architect の責務拡大判断（基盤 designer で十分 vs 特化が必要）
 
@@ -91,13 +99,15 @@
   - 不要なのに新設 → `<usecase>-architect.md` が雛形のまま放置される（DP 比較表に中身が入らない）リスク
 - **適用条件**: 全プラグインの scaffold 前判定
 - **MVP の既定推奨**: **2 つ以上の比較対象スタックを持つドメインは特化を作る**。リファレンス: 認証（Firebase Auth / Devise+OmniAuth / Cognito / dAccount / NextAuth.js / Laravel Sanctum）/ 決済（Stripe / GMO / Komoju）/ 通知（SES / Mailgun / Slack / Web push）。比較対象スタックが 1 つしかない（例: 単一 IaaS 固定）なら基盤 designer で足り、`--no-domain-architect` で scaffold する
+- **ステータス**: accepted
+- **Notion ページ URL**: https://www.notion.so/36eceb782fa3815fa65ce568a1d5ac5e
 
 ## 運用
 
 1. 新規プラグイン起稿時に、上記 DP を**メタ設計の判断軸**として当てはめる。
 2. 各 DP について、ユーザの判断結果を `delivery/architect-authoring-log.md` / `delivery/dp-registration-log.md` 等に **decision_record（decided_by / decided_at / rationale）**として記録する。
 3. 未決のまま実装に進める場合は `docs/pending-decisions.md` に該当 DP を残す（warn_and_document）。
-4. 本プラグインのドッグフード（Step 11 予定）で運用が安定したら、`/aid-dp-register` で Notion DP DB に DP-AID-01〜05 を正式起票する（仮 ID → 正規 ID）。
+4. ~~本プラグインのドッグフード（Step 11 予定）で運用が安定したら、`/aid-dp-register` で Notion DP DB に DP-AID-01〜05 を正式起票する（仮 ID → 正規 ID）。~~ **完了**: 2026-05-28（B-AID-03 / Issue #200）。仮 ID と正規 ID は同一（`DP-AID-NN`）で、ADR-AID-002 で命名規約が確定。起票記録は [`../delivery/dp-registration-log.md`](../delivery/dp-registration-log.md) を参照。今後の DP 追加時は本リストに draft 行を追加し、`/aid-dp-register` で同期する。
 
 ## CONV-19 拡張（命名規約の議論）
 
