@@ -79,6 +79,7 @@ MCP 接続失敗時は本プラグインのスキルは「`/aid-skill-creator-de
 | 実装 | [`aid-skill-authoring`](../skills/implementation/aid-skill-authoring/SKILL.md) | 新 Skill を SKL-12/SKL-20 準拠で起稿（言語非依存契約 + references 分離強制） |
 | 実装 | [`aid-references-authoring`](../skills/implementation/aid-references-authoring/SKILL.md) | references/<stack>.md + templates/<stack>/ 起稿（契約は変えない・既知の制約徹底明文化） |
 | 実装 | [`aid-decision-point-registration`](../skills/implementation/aid-decision-point-registration/SKILL.md) | Notion DP DB への安全な起票（3段階・命名衝突チェック・書き込み権限の本スキル限定） |
+| 実装 | [`aid-sample-case-binding`](../skills/implementation/aid-sample-case-binding/SKILL.md) | `xtone-shared-plugin/sample-cases/` カタログ案件を `sample-inputs/` に symlink で取り込み（B-21 / #174）。`--legacy-only` で B-21 以前の独自案件並存にも対応（FINDING-02 / DP-AID-03） |
 | 実装 | [`aid-validation-runner`](../skills/implementation/aid-validation-runner/SKILL.md) | `validate-plugin.sh` ラッパー（8 カテゴリ分類・重大度判定・pending-decisions 同期） |
 
 横断スキル（symlink）:
