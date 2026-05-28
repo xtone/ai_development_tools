@@ -1,0 +1,8 @@
+{
+  "name": "xtone-aid-skill-creator-plugin",
+  "version": "0.1.0",
+  "description": "AIデリバリ用プラグインを、AIデリバリの型に則って中身ごと生成・育成するためのメタプラグイン。generate-plugin.sh / validate-plugin.sh を内包し、Notion DB（TPL/SKL/CONV/DP/SCH/MCS）を参照して Skill/Subagent/Command/references/DP を対話的に起稿する。",
+  "author": {
+    "name": "Xtone"
+  }
+}
