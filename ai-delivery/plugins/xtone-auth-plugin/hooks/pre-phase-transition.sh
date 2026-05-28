@@ -20,7 +20,11 @@ root="${CLAUDE_PLUGIN_ROOT:-.}"
 pending="$root/docs/pending-decisions.md"
 count=0
 if [ -f "$pending" ]; then
-  count="$(grep -Eo 'DP-[0-9]+' "$pending" 2>/dev/null | sort -u | wc -l | tr -d ' ')"
+  # ADR-AID-002 で定義した 3 形式すべてを検出する:
+  #   - DP-NNN（既存番号形式・凍結。例: DP-007 / DP-28）
+  #   - DP-<USECASE>-NN / DP-AID-NN（新規プラグイン固有・メタ層。例: DP-PAYMENT-01 / DP-AID-01）
+  #   - DP-<DOMAIN>-<TOPIC>-NNN（既存プレフィックス付き・凍結。例: DP-INVITATION-POLICY-001）
+  count="$(grep -Eo 'DP-[A-Z]+(-[A-Z]+)*-[0-9]+|DP-[0-9]+' "$pending" 2>/dev/null | sort -u | wc -l | tr -d ' ')"
 fi
 
 if [ "${count:-0}" -gt 0 ]; then
