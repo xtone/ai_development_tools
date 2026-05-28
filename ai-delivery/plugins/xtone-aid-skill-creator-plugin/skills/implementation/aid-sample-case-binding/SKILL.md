@@ -155,8 +155,8 @@ B-21（共通カタログ運用）**以前**に独自 `sample-inputs/` を持つ
 
 ## 参考
 
-- `xtone-shared-plugin/sample-cases/` — 共通カタログ（B-21 / Issue #174）
-- `plugins/xtone-auth-plugin/sample-inputs/bookclub-app.requirements-input.md` — legacy 並存の唯一の正典
-- `scripts/validate-plugin.sh` — sample-inputs symlink チェック（カテゴリ 8）
-- `docs/plugin-developer-guide.md` §1 Step 5 — カタログへの新案件追加 PR の起票責務
-- 本プラグインの `delivery/dogfood/auth/plugin-architecture.json` — `sample_case_legacy` の参考形
+- `xtone-shared-plugin/sample-cases/` — 共通カタログ（B-21 / Issue #174）。
+- `plugins/xtone-auth-plugin/sample-inputs/bookclub-app.requirements-input.md` — legacy 並存の唯一の正典。
+- `scripts/validate-plugin.sh` — sample-inputs symlink チェック（カテゴリ 8）。
+- `docs/plugin-developer-guide.md` §1 Step 5 — カタログへの新案件追加 PR の起票責務。
+- 本プラグインの `delivery/dogfood/auth/plugin-architecture.json` — `sample_case_legacy` の参考形。
