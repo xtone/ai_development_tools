@@ -1,0 +1,225 @@
+{
+  "_meta": {
+    "produced_by": "meta-plugin-architect (project-init-architect / MOD-AID)",
+    "target_plugin": "xtone-project-init-plugin",
+    "purpose": "T-051 案件初期化メタプラグインの 4 チャネル骨格設計（後続 /aid-scaffold・/aid-skill-new の機械可読入力）。推奨と根拠の叩き台。最終決定は人間。",
+    "produced_at": "2026-06-01",
+    "inputs": [
+      "delivery/requirements.json",
+      "delivery/design.json",
+      "delivery/adr/ADR-PINIT-001.md"
+    ],
+    "reference_format": "xtone-aid-skill-creator-plugin/delivery/dogfood/auth/plugin-architecture.json",
+    "notion_access": "親エージェント代理取得済み。本 architect は Notion 非接続・DP DB 非書込。",
+    "meta_layer_note": "【2026-06-01 更新】当初はアプリ層を持たないオーケストレーション層だったが、スコープ拡張で土台セットアップ（モノレポ＝shared / フロント＝client / バック＝backend / ローカル基盤＝iaas）を内製化したため、オーケストレーション系 Skill は shared、setup 系 Skill は client/backend/iaas を持つ。横断性は cross-module（複数モジュールの delivery を串刺す）＋ feature-spanning（モノレポは複数層にまたがる）方向に現れる。土台/機能の境界は ADR-PINIT-002。"
+  },
+  "usecase": "project-init",
+  "plugin_name": "xtone-project-init-plugin",
+  "skills": [
+    {
+      "name": "project-scope-extraction",
+      "phase": "requirements",
+      "responsibility": "案件のドメイン・規模・制約をヒアリングし project-scope.json を生成（UC-PINIT-01 / FR-PINIT-01）。既存 /req-collect 基盤の対話パターンを横断初期化向けに転用。",
+      "responsibility_split": ["shared"],
+      "needs_references": false,
+      "references_stacks": [],
+      "trigger_command": "/project-init"
+    },
+    {
+      "name": "project-module-recommendation",
+      "phase": "design",
+      "responsibility": "モジュールカタログDB（MCS）／ドメインタクソノミーDB を参照し必要モジュール候補を提示のみ。AI 推奨・確定は人間（UC-PINIT-02 / FR-PINIT-02,06 / DP-PINIT-02 warn_and_document）。module-selection を status=recommended|confirmed で可視化。",
+      "responsibility_split": ["shared"],
+      "needs_references": false,
+      "references_stacks": [],
+      "trigger_command": "/project-modules"
+    },
+    {
+      "name": "project-stack-select",
+      "phase": "design",
+      "responsibility": "【DP-PINIT-09 / ADR-PINIT-003】サポート済み技術スタックのレジストリ（初期: nextjs / rails / hotwire / docker-compose / モノレポ方式 turborepo-pnpm・rails-js-hybrid・nx）を提示し、案件タイプに応じた推奨＋各FW/言語の最新安定版（tech-version-check B-17 で取得）とともにユーザーに選択させる（AI推奨＋人間確定）。選択結果（version 含む）を project-scope.json のスタック項目に保持し、version-matrix.md とともに setup 系 Skill が参照する。新スタックは references 追加で拡張（契約不変）。",
+      "responsibility_split": ["shared"],
+      "needs_references": false,
+      "references_stacks": [],
+      "trigger_command": "/project-scaffold",
+      "depends_on_skill": ["tech-version-check"],
+      "note": "module-advisor と同型の『候補提示＋人間確定』。比較対象はモジュールでなくサポート済みスタック。候補提示時に tech-version-check で最新安定版を併記し version-matrix.md に記録（後続 setup 系が再利用・fresh なら再チェック skip）。stack-advisor Subagent 化も選択肢。"
+    },
+    {
+      "name": "project-scaffold",
+      "phase": "implementation",
+      "responsibility": "/project-scaffold のオーケストレーション。(a) delivery/<module>/ 雛形＋横断索引＋横断 pending-decisions の初期化（UC-PINIT-03 / FR-PINIT-03 / DP-PINIT-04）と、(b) 土台セットアップ（下記 setup 系 Skill 群）の呼び出し・統合を担う。案件 delivery 雛形の生成であり generate-plugin.sh のプラグイン生成とは別物。",
+      "responsibility_split": ["shared"],
+      "needs_references": false,
+      "references_stacks": [],
+      "trigger_command": "/project-scaffold",
+      "cross_cutting": true,
+      "kind": "cross-module"
+    },
+    {
+      "name": "project-monorepo-scaffold",
+      "phase": "implementation",
+      "responsibility": "【2026-06-01 スコープ拡張】モノレポ骨格＋共有設定（ルート構成・ワークスペース・共有 lint/format/CI・.gitignore・.editorconfig）を生成（UC-PINIT-06 / FR-PINIT-10）。モノレポ方式は単一固定せず候補提示・人間確定（DP-PINIT-08）。/project-scaffold から呼ばれる。",
+      "responsibility_split": ["shared"],
+      "needs_references": true,
+      "references_stacks": ["turborepo-pnpm", "rails-js-hybrid", "nx"],
+      "trigger_command": "/project-scaffold",
+      "cross_cutting": true,
+      "kind": "feature-spanning",
+      "depends_on_dp": ["DP-PINIT-08", "DP-PINIT-10"]
+    },
+    {
+      "name": "project-frontend-init",
+      "phase": "implementation",
+      "responsibility": "【2026-06-01 スコープ拡張】フロントエンド初期化（Next.js アプリ雛形）を生成（UC-PINIT-06 / FR-PINIT-11）。バージョンは tech-version-check で最新安定版を解決（固定は人間判断）。",
+      "responsibility_split": ["client"],
+      "needs_references": true,
+      "references_stacks": ["nextjs"],
+      "trigger_command": "/project-scaffold"
+    },
+    {
+      "name": "project-backend-init",
+      "phase": "implementation",
+      "responsibility": "【2026-06-01 スコープ拡張】バックエンド初期化（Rails API もしくは Rails+Hotwire）雛形を生成（UC-PINIT-06 / FR-PINIT-12）。バージョン方針同上。",
+      "responsibility_split": ["backend"],
+      "needs_references": true,
+      "references_stacks": ["rails", "hotwire"],
+      "trigger_command": "/project-scaffold"
+    },
+    {
+      "name": "project-local-infra",
+      "phase": "implementation",
+      "responsibility": "【2026-06-01 スコープ拡張】ローカル基盤（docker-compose・.env・DB 等）の土台を生成（UC-PINIT-06 / FR-PINIT-13）。local_dev_stack=emulator_docker 既定（実クラウド接続は本番のみ）。",
+      "responsibility_split": ["iaas"],
+      "needs_references": true,
+      "references_stacks": ["docker-compose"],
+      "trigger_command": "/project-scaffold"
+    },
+    {
+      "name": "project-load-guide",
+      "phase": "implementation",
+      "responsibility": "選定モジュールプラグインのロード手順・共存設定（名前空間共存メモ）を出力（UC-PINIT-04 / FR-PINIT-04 / DP-PINIT-03）。MVP should。",
+      "responsibility_split": ["shared"],
+      "needs_references": false,
+      "references_stacks": [],
+      "trigger_command": "/project-load-guide",
+      "cross_cutting": true,
+      "kind": "cross-module",
+      "mvp_priority": "should"
+    },
+    {
+      "name": "project-status-aggregation",
+      "phase": "test",
+      "responsibility": "横断索引と各モジュール delivery/<module>/ を集約し、案件全体（複数モジュール横断）の進捗・未決を一覧（UC-PINIT-05 / FR-PINIT-05 / DP-PINIT-04）。test→ops 横断。MVP should。",
+      "responsibility_split": ["shared"],
+      "needs_references": false,
+      "references_stacks": [],
+      "trigger_command": "/project-status",
+      "cross_cutting": true,
+      "kind": "cross-module",
+      "mvp_priority": "should"
+    }
+  ],
+  "subagents": [
+    {
+      "name": "module-advisor",
+      "trigger_command": "/project-modules",
+      "required": true,
+      "rationale": "DP-PINIT-02（AI推奨＋人間確定）の中核。MCS／ドメインタクソノミーを参照し必要モジュール群を複数案＋根拠で提示・確定は人間。authentication-architect の『複数案提示＋MVP推奨＋最終決定は人間』型を流用（比較対象は技術スタックでなくモジュール群の組合せ）。DP-AID-05『特化必須』相当。"
+    }
+  ],
+  "commands": [
+    { "name": "/project-init", "kind": "orchestration", "mvp_priority": "must" },
+    { "name": "/project-modules", "kind": "orchestration", "mvp_priority": "must" },
+    { "name": "/project-scaffold", "kind": "orchestration", "mvp_priority": "must" },
+    { "name": "/project-load-guide", "kind": "orchestration", "mvp_priority": "should" },
+    { "name": "/project-status", "kind": "orchestration", "mvp_priority": "should" }
+  ],
+  "hooks_extension": [],
+  "dp_candidates": [
+    { "id": "DP-PINIT-01", "reuse": false, "status": "accepted", "title": "提供形態＝独立メタプラグイン", "phase": "requirements", "note": "再掲のみ・再起票しない" },
+    { "id": "DP-PINIT-02", "reuse": false, "status": "accepted", "title": "モジュール選定＝AI推奨＋人間確定（warn_and_document）", "phase": "design", "note": "再掲のみ・再起票しない" },
+    { "id": "DP-PINIT-03", "reuse": false, "status": "accepted", "title": "横断操作＝標準名前空間前提＋/project-* 薄い層", "phase": "design", "note": "再掲のみ・再起票しない" },
+    { "id": "DP-PINIT-04", "reuse": false, "status": "accepted", "title": "横断 delivery＝案件ルート集約＋横断索引", "phase": "design", "note": "再掲のみ・再起票しない" },
+    { "id": "DP-PINIT-05", "reuse": false, "status": "accepted", "title": "着手タイミング／フェーズ位置づけ", "phase": "build", "decided_by": "人間（豊田 / 2026-06-01）", "note": "先行着手。design.decision_record・ADR-PINIT-001 参照。Notion DP DB 起票済み。" },
+    { "id": "DP-PINIT-06", "reuse": false, "status": "accepted", "title": "project-scope スキーマ配置（shared SSoT 化）", "phase": "design", "decided_by": "人間（豊田 / 2026-06-01）", "note": "shared SSoT 化。project-scope.schema.json 新設・validate-plugin.sh 連携済（実装済）。Notion DP DB 起票済み。" },
+    { "id": "DP-PINIT-07", "reuse": false, "status": "accepted", "title": "横断索引の形式（JSON 正本＋Markdown 派生）", "phase": "design", "decided_by": "人間（豊田 / 2026-06-01）", "note": "両方（JSON 正本→Markdown 自動派生）。Notion DP DB 起票済み。" },
+    {
+      "id": "DP-PINIT-11",
+      "reuse": false,
+      "status": "accepted",
+      "title": "土台/機能の境界と土台セットアップの内製化（スコープ拡張）",
+      "phase": "design",
+      "decided_by": "人間（豊田 / 2026-06-01）",
+      "note": "project-init は土台（モノレポ＋フレーム雛形＋共有設定＋ローカル基盤）まで完結、機能は各モジュール。MVP must。ADR-PINIT-002・design.decision_record 参照。再掲のみ・再起票しない。"
+    },
+    {
+      "id": "DP-PINIT-08",
+      "reuse": false,
+      "status": "accepted",
+      "title": "モノレポ方式／ツール選定（スコープ拡張で実機能化）",
+      "phase": "design",
+      "options": ["A: pnpm workspaces + Turborepo（JS 重心）", "B: Rails + JS ハイブリッド（Rails 重心）", "C: Nx", "D: 案件ごと選択"],
+      "axes": ["案件のフロント/バック構成", "チーム分割", "ビルド/CI 複雑度"],
+      "misjudgment_risk": "後段でモノレポ構成変更を迫られ再配置コスト発生",
+      "mvp_recommendation": "単一固定せず AI が案件タイプから候補提示・人間確定（warn_and_document）。既定提示は JS 重心→A / Rails 重心→B。",
+      "note": "08-DRAFT（案件横断 モジュール間契約/モノレポ構成 起票支援）を、スコープ拡張により本プラグインの実設計 DP（モノレポ方式選定）へ昇格・再定義。project-monorepo-scaffold Skill が参照。"
+    },
+    {
+      "id": "DP-PINIT-10",
+      "reuse": false,
+      "status": "accepted",
+      "title": "土台/機能の境界粒度（共有 base 設定の所有）",
+      "phase": "design",
+      "options": ["A: 全モジュール共通の最小核は project-init 所有・モジュール固有はモジュールが土台にマージ", "B: 共有設定もモジュール側が持ち込む", "C: 案件ごと選択"],
+      "axes": ["重複所有の回避", "モジュール独立性", "保守一貫性"],
+      "misjudgment_risk": "境界が曖昧だと共有設定の二重所有・競合が発生",
+      "mvp_recommendation": "A（最小核は project-init・固有はマージ）。最終線引きは人間。",
+      "note": "境界の高レベル原則は DP-PINIT-11/ADR-PINIT-002 で確定。残る粒度の未決。"
+    },
+    {
+      "id": "DP-PINIT-09",
+      "reuse": false,
+      "status": "accepted",
+      "title": "案件横断の技術スタック方針＝スタック選択制（昇格・旧 09-DRAFT）",
+      "phase": "design",
+      "decision": "サポート済みスタックを提示しユーザー選択（AI推奨＋人間確定）。references で表現し拡張可能。初期 Rails/Next.js、将来 AWS managed/express・hono/Vue/Swift・Kotlin/Flutter 等。",
+      "decided_by": "人間（豊田 / 2026-06-01）",
+      "note": "draft（案件横断起票支援）から本プラグインの実設計決定へ昇格。ADR-PINIT-003・stack_registry 参照。project-stack-select Skill が担う。"
+    }
+  ],
+  "sample_case_bindings": [
+    { "name": "business-saas", "rating": 3, "rationale": "多機能 SaaS で必要モジュール多数。選定支援＋横断索引の価値が最大。" },
+    { "name": "maas-carshare", "rating": 3, "rationale": "認証＋地図＋決済等の複合。複数モジュール組合せ提示・ロード手順生成の代表。" },
+    { "name": "ec-d2c-app", "rating": 3, "rationale": "認証＋決済の複合。EC 立ち上げの典型でモジュール束ね初期化が映える。" },
+    { "name": "education-voucher", "rating": 2, "rationale": "認証＋バウチャー等の複合だが構成がやや限定的。" },
+    { "name": "media-content", "rating": 2, "rationale": "CMS／配信中心。モジュール数は中程度。" },
+    { "name": "event-campaign-lp", "rating": 1, "rationale": "LP 主体で単機能寄り。横断初期化の価値は相対的に小さい。" },
+    { "name": "corporate-site", "rating": 1, "rationale": "静的サイト寄りで複数モジュール束ねの必要性が低い。" }
+  ],
+  "external_mcps": ["notion", "github"],
+  "external_mcps_detail": [
+    { "name": "notion", "required": true, "used_by": ["/project-modules", "module-advisor"], "data_sources": ["MCS a983ee9b-9f4c-4e76-810e-3ed7b1bb1462 (モジュールカタログ)", "cddc07df-d76e-4ff9-a0c4-5b32d8027097 (ドメインタクソノミー)"], "adapter_note": "T-004 適応: 参照源を adapter 越しに読み差し替え可能に保つ。" },
+    { "name": "github", "required": false, "used_by": ["/project-load-guide"], "note": "各モジュールプラグイン参照程度。" }
+  ],
+  "references_note": "【2026-06-01 更新】スコープ拡張で土台セットアップを内製化したため『references 不要』前提を撤回。オーケストレーション系 Skill（scope-extraction / module-recommendation / scaffold / load-guide / status-aggregation / stack-select）は references 不要だが、setup 系 Skill は references を持つ。DP-PINIT-09（ADR-PINIT-003）スタック選択制により references はサポート済みスタックのレジストリでもある。",
+  "stack_registry": {
+    "decision": "DP-PINIT-09 / ADR-PINIT-003: サポート済みスタックを提示しユーザー選択（AI推奨＋人間確定）。新スタックは references 追加のみで拡張（契約不変・CONV）。",
+    "initial_rollout": {
+      "frontend": ["nextjs"],
+      "backend": ["rails", "hotwire"],
+      "local_infra": ["docker-compose"],
+      "monorepo": ["turborepo-pnpm", "rails-js-hybrid", "nx"]
+    },
+    "future_extensions": {
+      "frontend": ["vuejs"],
+      "backend": ["express", "hono", "aws-managed"],
+      "native": ["swift", "kotlin"],
+      "multiplatform": ["flutter"]
+    },
+    "extension_policy": "DP-AID-04: 初期は Rails/Next.js のみ references を用意。将来スタックは需要ドリブンで references/<stack>.md を追加。"
+  },
+  "design_extension_schema": null,
+  "undecided": [],
+  "_warn_and_document": "【2026-06-01 全 DP 判断確定】DP-PINIT-01〜04・BOUNDARY は accepted。DP-PINIT-05（先行着手）/06（shared SSoT化）/07（両方）/08（案件ごと選択）/09（スタック選択制・ADR-PINIT-003）/10（最小核 project-init 所有）はいずれも decided（design.decision_record / ADR-PINIT-002,003 参照）。undecided は空。残アクション: project-scope.schema.json の shared 新設（DP-06 実装）と /aid-dp-register による Notion DP DB 同期。"
+}

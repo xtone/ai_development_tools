@@ -36,6 +36,7 @@ ai-delivery/
 │   │   ├── design.schema.json          # ドメイン非依存の base（B-20 で汎用化）
 │   │   ├── design.auth.schema.json     # 認証ドメイン拡張（B-20 で分離）
 │   │   ├── implementation-plan.schema.json
+│   │   ├── project-scope.schema.json   # 案件初期化スコープ（T-051 / DP-PINIT-06）
 │   │   ├── modules.schema.json
 │   │   ├── risks.schema.json
 │   │   ├── decision-point.schema.json
