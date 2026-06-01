@@ -232,6 +232,8 @@ if [ "$SCHEMA_CHECK" -eq 1 ]; then
           echo "design.schema.json"; return 0 ;;
         implementation-plan*.json|implementation-plan*.yaml|implementation-plan*.yml)
           echo "implementation-plan.schema.json"; return 0 ;;
+        project-scope*.json|project-scope*.yaml|project-scope*.yml)
+          echo "project-scope.schema.json"; return 0 ;;
         modules*.json) echo "modules.schema.json"; return 0 ;;
         module*.json)  echo "module.schema.json"; return 0 ;;
         risks*.json)   echo "risks.schema.json"; return 0 ;;

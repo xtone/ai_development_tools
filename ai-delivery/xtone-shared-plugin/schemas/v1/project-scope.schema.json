@@ -1,0 +1,113 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://xtone.dev/ai-delivery/schemas/v1/project-scope.schema.json",
+  "$comment": "T-051 xtone-project-init-plugin の案件初期化スコープ。DP-PINIT-06（shared SSoT 化, 2026-06-01）により本スキーマを shared/schemas/v1 に新設（CONV-14）。project-scope.json は /project-* 群が段階的に埋める成果物: /project-init が project_name/domain/scale/constraints を、/project-modules が selected_modules（DP-PINIT-02 AI推奨＋人間確定）を、/project-scaffold（project-stack-select）が stack（DP-PINIT-08 モノレポ方式 / DP-PINIT-09 スタック選択制・ADR-PINIT-003）を埋める。段階生成のため必須は最小核（project_name/domain）に限定し、warn_and_document（T-002）で未充足は undecided/各 status に明示する。",
+  "title": "Project Scope",
+  "description": "案件初期化（プロジェクトブートストラップ）のスコープ。xtone-project-init-plugin が生成・更新し、横断索引・setup 系 Skill の入力になる。",
+  "type": "object",
+  "required": ["project_name", "domain"],
+  "properties": {
+    "project_name": { "type": "string", "description": "案件名。" },
+    "overview": { "type": "string", "description": "案件の概要（何を/なぜ・任意）。" },
+    "domain": {
+      "type": "array",
+      "description": "案件が属するドメインタグ（T-008 ドメインタクソノミーから選択、複数可）。",
+      "minItems": 1,
+      "items": { "type": "string" }
+    },
+    "scale": {
+      "type": "object",
+      "description": "案件規模（任意）。チーム規模・想定ユーザ数・期間など。",
+      "properties": {
+        "team_size": { "type": ["integer", "string", "null"] },
+        "expected_users": { "type": ["integer", "string", "null"] },
+        "duration": { "type": ["string", "null"] },
+        "description": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "constraints": {
+      "type": "array",
+      "description": "案件制約（任意）。技術・規制・スケジュール等。",
+      "items": {
+        "type": "object",
+        "required": ["description"],
+        "properties": {
+          "category": { "type": "string", "enum": ["technical", "regulatory", "schedule", "budget", "other"] },
+          "description": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "selected_modules": {
+      "type": "array",
+      "description": "選定モジュール（DP-PINIT-02: AI推奨＋人間確定）。/project-modules が埋める。status で recommended（AI推奨）と confirmed（人間確定）を区別する（warn_and_document の可視化）。",
+      "items": {
+        "type": "object",
+        "required": ["module_id", "status"],
+        "properties": {
+          "module_id": { "type": "string", "description": "MOD-XXX（モジュールカタログ MCS の ID）。" },
+          "status": { "type": "string", "enum": ["recommended", "confirmed", "rejected"] },
+          "rationale": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
+    },
+    "stack": {
+      "type": "object",
+      "description": "選定技術スタック（DP-PINIT-09 スタック選択制 / ADR-PINIT-003）。/project-scaffold の project-stack-select が候補提示→人間確定して埋める。各レイヤーは選択値と status（recommended|confirmed）を持つ。レイヤーは拡張可能（native/multiplatform 等は将来 references 追加で対応）。値はサポート済みスタックの reference 名（例: nextjs / rails / hotwire / docker-compose / turborepo-pnpm / rails-js-hybrid / nx）。",
+      "properties": {
+        "monorepo": { "$ref": "#/$defs/stack_choice" },
+        "frontend": { "$ref": "#/$defs/stack_choice" },
+        "backend": { "$ref": "#/$defs/stack_choice" },
+        "local_infra": { "$ref": "#/$defs/stack_choice" },
+        "native": { "$ref": "#/$defs/stack_choice" },
+        "multiplatform": { "$ref": "#/$defs/stack_choice" }
+      },
+      "additionalProperties": true
+    },
+    "delivery_layout": {
+      "type": "object",
+      "description": "案件ルートの delivery レイアウト参照（DP-PINIT-04 / 07）。横断索引（JSON 正本＋Markdown 派生）の所在など。",
+      "properties": {
+        "cross_cutting_index_json": { "type": "string" },
+        "cross_cutting_index_md": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "client_approval": {
+      "type": "object",
+      "description": "クライアント承認（任意）。approved=false の間は後続フェーズに進めない（warn_and_document で可視化）。",
+      "required": ["approved"],
+      "properties": {
+        "approved": { "type": "boolean" },
+        "approved_by": { "type": ["string", "null"] },
+        "approved_at": { "type": ["string", "null"], "format": "date-time" }
+      },
+      "additionalProperties": true
+    },
+    "undecided": {
+      "type": "array",
+      "description": "未決の判断ポイントID。warn_and_document の検出対象（T-002）。数字採番 DP-NN と ADR-AID-002 のユースケース別採番 DP-<USECASE>-NN（例: DP-PINIT-08）の双方を許容する。",
+      "items": { "type": "string", "pattern": "^DP-([0-9]+|[A-Z][A-Z0-9]*-[0-9]+)$" }
+    }
+  },
+  "$defs": {
+    "stack_choice": {
+      "type": "object",
+      "description": "1レイヤーのスタック選択。choice はサポート済みスタックの reference 名、status は AI推奨/人間確定の区別。version 系は project-stack-select が tech-version-check（B-17）で取得した採用日時点の最新安定版情報。",
+      "required": ["choice"],
+      "properties": {
+        "choice": { "type": "string", "description": "選択スタックの reference 名（例: nextjs / rails / turborepo-pnpm）。" },
+        "status": { "type": "string", "enum": ["recommended", "confirmed"] },
+        "rationale": { "type": "string" },
+        "version": { "type": "string", "description": "tech-version-check で取得した最新安定版（採用日時点。固定はせず最新を既定提示・env-setup 方針）。" },
+        "runtime_required": { "type": "string", "description": "FW が要求する最小ランタイム（例: Rails 8.x → Ruby 3.x 以上）。" },
+        "version_source": { "type": "string", "description": "バージョン採用根拠の URL（version-matrix.md と整合）。" },
+        "version_resolved_at": { "type": ["string", "null"], "format": "date-time", "description": "バージョン取得日時。" }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}
