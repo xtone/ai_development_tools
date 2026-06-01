@@ -3,7 +3,7 @@
     "stack": "Claude Code プラグイン（Markdown skills + /slash commands + shell hooks + JSON Schema deliverables）。案件横断の薄い層として /project-* コマンド群を新規実装し、xtone-plugin-template の共通基盤8コマンドと xtone-aid-skill-creator-plugin のメタ構造（scaffold/architect/validation ラッパ）を対称転用する。加えて 2026-06-01 スコープ拡張により、案件の土台セットアップ（モノレポ骨格＋共有設定 / Next.js フロント雛形 / Rails バック雛形 / docker-compose 等ローカル基盤）を project-init 内で実生成する。生成の具体ロジックは言語別 references（nextjs / rails / hotwire / docker-compose / モノレポツール）に分離する（契約は言語非依存・CONV）。",
     "cloud": "ローカル Claude Code ランタイム。外部 MCP = Notion（モジュールカタログDB MCS / ドメインタクソノミーDB を /project-modules が参照）。アプリ用クラウドなし。",
     "db_type": "アプリ DB なし。真実の源 = Notion DB 群（モジュールカタログ MCS / ドメインタクソノミー）＋ローカル JSON 成果物（project-scope.json / 選定モジュール / 案件ルート delivery/<module>/ 横断索引）。",
-    "rationale": "DP-PINIT-01〜04 の確定方針に基づく架構。(1) DP-PINIT-01: 提供形態=独立メタプラグイン —— 単体ロード可能な読み込み単位が必須で、プラグインを『作る側』メタ（xtone-aid-skill-creator-plugin）と対称の『案件を立ち上げる側』メタとして独立配置する。(2) DP-PINIT-02: モジュール選定=AI推奨＋人間確定（warn_and_document）—— AI は MCS／ドメインタクソノミーを参照して候補を提示するのみで、確定は人間が行う。(3) DP-PINIT-03: 横断操作=Claude Code 標準名前空間（/<plugin>:<command>）を前提とし、その上に /project-* の薄い追加層を載せる。ハード衝突は標準名前空間で回避済みで、独自の衝突回避機構は持たない。(4) DP-PINIT-04: 横断 delivery 構造=案件ルート集約 delivery/<module>/＋横断索引（/project-scaffold が生成し /project-status が集約）。スコープ肥大抑制のため MVP は『モジュール選定支援＋案件雛形初期化』に限定し、/project-load-guide・/project-status は should、対称転用拡張は could に振り分ける（横断レイヤーゆえ機能境界を維持する）。なお、本タスクは横断メタプラグインであり特定 MOD のアプリ tech_options に紐づかない。該当する MCS モジュール tech_options は存在せず、プラグイン実装スタックはプラットフォーム規定（Markdown + shell + JSON Schema + Notion MCP）であり、generate-plugin.sh ＋ xtone-plugin-template を標準採用する —— これが本タスクにおける誠実な『技術スタックの推奨と根拠』である。【2026-06-01 スコープ拡張】project-init は土台セットアップ（モノレポ＋フレームワーク雛形＋共有設定＋ローカル基盤）まで完結させ、ドメイン機能の実装は各モジュールプラグインが土台の上に載せる（境界原則・decision_record DP-PINIT-11 参照）。土台で扱うフレームワーク初期化（Next.js フロント / Rails バック）と docker-compose 等ローカル基盤は responsibility_split で client/backend/iaas に仕分ける。モノレポ方式（pnpm+Turborepo / Rails+JS ハイブリッド / Nx 等）は単一に固定せず AI が候補提示・人間が確定する（DP-PINIT-08 undecided）。フレームワーク/言語バージョンは固定せず tech-version-check で最新安定版を解決する（env-setup 方針）。これにより旧 design の『言語別 references 不要』前提は撤回される。"
+    "rationale": "DP-PINIT-01〜04 の確定方針に基づく架構。(1) DP-PINIT-01: 提供形態=独立メタプラグイン —— 単体ロード可能な読み込み単位が必須で、プラグインを『作る側』メタ（xtone-aid-skill-creator-plugin）と対称の『案件を立ち上げる側』メタとして独立配置する。(2) DP-PINIT-02: モジュール選定=AI推奨＋人間確定（warn_and_document）—— AI は MCS／ドメインタクソノミーを参照して候補を提示するのみで、確定は人間が行う。(3) DP-PINIT-03: 横断操作=Claude Code 標準名前空間（/<plugin>:<command>）を前提とし、その上に /project-* の薄い追加層を載せる。ハード衝突は標準名前空間で回避済みで、独自の衝突回避機構は持たない。(4) DP-PINIT-04: 横断 delivery 構造=案件ルート集約 delivery/<module>/＋横断索引（/project-scaffold が生成し /project-status が集約）。スコープ肥大抑制のため MVP は『モジュール選定支援＋案件雛形初期化』に限定し、/project-load-guide・/project-status は should、対称転用拡張は could に振り分ける（横断レイヤーゆえ機能境界を維持する）。なお、本タスクは横断メタプラグインであり特定 MOD のアプリ tech_options に紐づかない。該当する MCS モジュール tech_options は存在せず、プラグイン実装スタックはプラットフォーム規定（Markdown + shell + JSON Schema + Notion MCP）であり、generate-plugin.sh ＋ xtone-plugin-template を標準採用する —— これが本タスクにおける誠実な『技術スタックの推奨と根拠』である。【2026-06-01 スコープ拡張】project-init は土台セットアップ（モノレポ＋フレームワーク雛形＋共有設定＋ローカル基盤）まで完結させ、ドメイン機能の実装は各モジュールプラグインが土台の上に載せる（境界原則・decision_record DP-PINIT-11 参照）。土台で扱うフレームワーク初期化（Next.js フロント / Rails バック）と docker-compose 等ローカル基盤は responsibility_split で client/backend/iaas に仕分ける。モノレポ方式（pnpm+Turborepo / Rails+JS ハイブリッド / Nx 等）は単一に固定せず AI が候補提示・人間が確定する（DP-PINIT-08 で『案件ごと選択』に確定）。フレームワーク/言語バージョンは固定せず tech-version-check で最新安定版を解決する（env-setup 方針）。これにより旧 design の『言語別 references 不要』前提は撤回される。"
   },
   "db_schema": {
     "er_diagram_url": "N/A（メタプラグイン: ER 図なし。データモデル = 案件ルート delivery/<module>/ レイアウト＋下記成果物スキーマ）",
@@ -12,7 +12,7 @@
       {
         "name": "project-scope",
         "columns": ["domain", "scale", "constraints", "selected_modules"],
-        "note": "/project-init のヒアリング結果。案件のドメイン・規模・制約と選定モジュール参照を保持する論理データ成果物（project-scope.json 想定）。配置先（shared schemas/v1 か プラグインローカルか）は DP-PINIT-06 で未決。"
+        "note": "/project-init のヒアリング結果。案件のドメイン・規模・制約と選定モジュール参照を保持する論理データ成果物（project-scope.json 想定）。配置先は DP-PINIT-06 で『shared schemas/v1 に SSoT 化』に確定（project-scope.schema.json 新設済）。"
       },
       {
         "name": "module-selection",
@@ -22,7 +22,7 @@
       {
         "name": "cross-cutting-index",
         "columns": ["module", "delivery_path", "phase", "pending_count"],
-        "note": "/project-scaffold が生成し /project-status が集約する横断索引。各モジュールの delivery/<module>/ パスとフェーズ・未決件数を一覧化する。形式（Markdown / JSON / 両方）は DP-PINIT-07 で未決。"
+        "note": "/project-scaffold が生成し /project-status が集約する横断索引。各モジュールの delivery/<module>/ パスとフェーズ・未決件数を一覧化する。形式は DP-PINIT-07 で『両方（JSON 正本＋Markdown 派生）』に確定。"
       },
       {
         "name": "load-guide",
@@ -32,7 +32,7 @@
       {
         "name": "project-skeleton",
         "columns": ["layer(monorepo|frontend|backend|local_infra)", "tooling", "generated_path", "version_resolved_by"],
-        "note": "【2026-06-01 スコープ拡張】/project-scaffold が実生成する土台の論理レイアウト。monorepo（方式は DP-PINIT-08 で未決）/ frontend（Next.js）/ backend（Rails）/ local_infra（docker-compose・.env・DB）。version は tech-version-check で最新安定版を解決（固定は人間判断）。"
+        "note": "【2026-06-01 スコープ拡張】/project-scaffold が実生成する土台の論理レイアウト。monorepo（方式は DP-PINIT-08 で『案件ごと選択』に確定）/ frontend（Next.js）/ backend（Rails）/ local_infra（docker-compose・.env・DB）。version は tech-version-check で最新安定版を解決（固定は人間判断）。"
       }
     ]
   },
@@ -68,7 +68,7 @@
       "api_spec": "非該当のため省略（HTTP API を持たない。インタフェースはスラッシュコマンド）。",
       "ui_design": "GUI なしのため省略（UX はスラッシュコマンドの対話）。",
       "local_dev_stack": "【2026-06-01 更新】スコープ拡張で土台セットアップにローカル基盤（docker-compose 等）が入ったため、トップレベル local_dev_stack=emulator_docker を有意に設定（実クラウド接続は本番のみ・B-12 協調）。",
-      "tech_options_note": "プラグイン実装スタック自体はプラットフォーム規定（Markdown + shell + JSON Schema + Notion MCP）。ただし生成対象の案件土台スタック（Next.js / Rails / Hotwire / docker-compose / モノレポツール）は references で扱い、バージョンは tech-version-check で最新安定版を解決する（固定は人間判断）。モノレポ方式は DP-PINIT-08 で未決。"
+      "tech_options_note": "プラグイン実装スタック自体はプラットフォーム規定（Markdown + shell + JSON Schema + Notion MCP）。ただし生成対象の案件土台スタック（Next.js / Rails / Hotwire / docker-compose / モノレポツール）は references で扱い、バージョンは tech-version-check で最新安定版を解決する（固定は人間判断）。モノレポ方式は DP-PINIT-08 で『案件ごと選択』に確定。"
     },
     "responsibility_split_note": "【2026-06-01 更新】スコープ拡張で土台セットアップ（フロント/バック/ローカル基盤）が入ったため、従来『省略』していた responsibility_split をトップレベルに有意に記載した（オーケストレーション系コマンドは shared、生成対象の各層は client/backend/iaas に仕分け）。",
     "commands": [
@@ -90,12 +90,12 @@
     "setup_scope": {
       "owner": "project-init（土台）",
       "areas": [
-        "monorepo: ルート構成・ワークスペース・共有 lint/format/CI・.gitignore・.editorconfig（方式は DP-PINIT-08 未決）",
+        "monorepo: ルート構成・ワークスペース・共有 lint/format/CI・.gitignore・.editorconfig（方式は DP-PINIT-08 で『案件ごと選択』に確定）",
         "frontend: Next.js アプリ雛形",
         "backend: Rails（API もしくは Rails+Hotwire）雛形",
         "local_infra: docker-compose・.env・DB 等のローカル開発基盤"
       ],
-      "boundary": "ドメイン機能（認証・決済等）の実装は各モジュールプラグインが土台の上に載せる。境界の粒度（共有 base 設定の所有）は DP-PINIT-10 未決。",
+      "boundary": "ドメイン機能（認証・決済等）の実装は各モジュールプラグインが土台の上に載せる。境界の粒度（共有 base 設定の所有）は DP-PINIT-10 で『最小核は project-init 所有』に確定。",
       "references_note": "旧 design の『references 不要』は撤回。setup 系 Skill は references/<stack>.md（nextjs / rails / hotwire / docker-compose / モノレポツール）を持つ。バージョンは tech-version-check で最新安定版を解決。"
     },
     "stack_registry": {
@@ -235,11 +235,12 @@
     "contract_schema": "/home/wisteria/ai_development_tools/ai-delivery/xtone-shared-plugin/schemas/v1/design.schema.json (draft-07, B-20 base)",
     "instance_note": "本ファイルは共通契約スキーマ準拠の instance(JSON data) であり、スキーマ定義そのものではない。標準 design.schema.json をメタプラグイン向けに誠実適応している（domain_specific.adaptation_note 参照）。",
     "source": "Notion 親タスク確定情報（親エージェントが取得済み・外部再取得不要）",
+    "undecided_recommendations_note": "本ブロックは各 DP が未決だった時点の推奨の履歴。DP-PINIT-05〜10 は 2026-06-01 にすべて確定済み（decision_record / resolved_decision_points 参照）。",
     "undecided_recommendations": [
       {
         "id": "DP-PINIT-05",
         "title": "着手タイミング／フェーズ位置づけ",
-        "recommendation": "推奨は出すが決定は人間。本プラグインの価値は各モジュールプラグインが一定数完成した後（Rollout 進捗）に発現する依存性がある一方、横断基盤を先に用意すれば各案件の立ち上げ品質が底上げされる。MVP（選定支援＋雛形初期化）は他モジュールの完成度に依存しないため先行着手の阻害要因は小さい、という観点を提示する。最終判断は人間（DP-PINIT-05 継続未決）。"
+        "recommendation": "推奨は出すが決定は人間。本プラグインの価値は各モジュールプラグインが一定数完成した後（Rollout 進捗）に発現する依存性がある一方、横断基盤を先に用意すれば各案件の立ち上げ品質が底上げされる。MVP（選定支援＋雛形初期化）は他モジュールの完成度に依存しないため先行着手の阻害要因は小さい、という観点を提示する。最終判断は人間（→ 2026-06-01 に『先行着手』で確定）。"
       },
       {
         "id": "DP-PINIT-06",
@@ -259,7 +260,7 @@
       {
         "id": "DP-PINIT-10",
         "title": "土台/機能の境界粒度（共有 base 設定の所有）",
-        "recommendation": "境界の高レベル原則（土台=project-init / 機能=モジュール）は ADR-PINIT-002 で確定。残る未決は粒度 —— 例: 各モジュールが必要とする共有 base 設定（lint ルール・型・CI ジョブ・env スキーマ等）を project-init が所有するか、モジュール側が持ち込むか。推奨: 全モジュール共通の最小核は project-init（土台）が所有し、モジュール固有設定はモジュールが土台にマージする方式。重複所有を避けるため最終線引きは人間が確定。"
+        "recommendation": "境界の高レベル原則（土台=project-init / 機能=モジュール）は ADR-PINIT-002 で確定。粒度の論点 —— 例: 各モジュールが必要とする共有 base 設定（lint ルール・型・CI ジョブ・env スキーマ等）を project-init が所有するか、モジュール側が持ち込むか —— について、全モジュール共通の最小核は project-init（土台）が所有し、モジュール固有設定はモジュールが土台にマージする方式を推奨。→ 2026-06-01 に同方式で確定。"
       }
     ],
     "accepted_decision_points": [
@@ -283,6 +284,6 @@
     "completed_actions": [
       "DP-PINIT-06 実装済（2026-06-01）: xtone-shared-plugin/schemas/v1/project-scope.schema.json を新設（SSoT）。本プラグインの schemas/ はディレクトリ symlink のため自動参照可。validate-plugin.sh に project-scope*.json マッピング追加。README スキーマカタログ更新。"
     ],
-    "scope_change_2026-06-01": "ユーザ指示により土台セットアップ（モノレポ＋フレームワーク雛形＋共有設定＋ローカル基盤）を project-init 内製で完結させる方針に拡張。境界原則（土台 vs 機能）を decision_record DP-PINIT-11 / ADR-PINIT-002 で確定。responsibility_split と local_dev_stack(emulator_docker) を有意化。モノレポ方式は DP-PINIT-08、境界粒度は DP-PINIT-10 として未決。『言語別 references 不要』前提は撤回し setup 系 Skill に references を持たせる。"
+    "scope_change_2026-06-01": "ユーザ指示により土台セットアップ（モノレポ＋フレームワーク雛形＋共有設定＋ローカル基盤）を project-init 内製で完結させる方針に拡張。境界原則（土台 vs 機能）を decision_record DP-PINIT-11 / ADR-PINIT-002 で確定。responsibility_split と local_dev_stack(emulator_docker) を有意化。モノレポ方式は DP-PINIT-08（案件ごと選択）、境界粒度は DP-PINIT-10（最小核 project-init 所有）として確定（2026-06-01・Notion DP DB 起票済み）。『言語別 references 不要』前提は撤回し setup 系 Skill に references を持たせる。"
   }
 }

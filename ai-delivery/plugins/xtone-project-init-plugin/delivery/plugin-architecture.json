@@ -141,9 +141,9 @@
     { "id": "DP-PINIT-02", "reuse": false, "status": "accepted", "title": "モジュール選定＝AI推奨＋人間確定（warn_and_document）", "phase": "design", "note": "再掲のみ・再起票しない" },
     { "id": "DP-PINIT-03", "reuse": false, "status": "accepted", "title": "横断操作＝標準名前空間前提＋/project-* 薄い層", "phase": "design", "note": "再掲のみ・再起票しない" },
     { "id": "DP-PINIT-04", "reuse": false, "status": "accepted", "title": "横断 delivery＝案件ルート集約＋横断索引", "phase": "design", "note": "再掲のみ・再起票しない" },
-    { "id": "DP-PINIT-05", "reuse": false, "status": "undecided", "title": "着手タイミング／フェーズ位置づけ", "phase": "build", "note": "既存 undecided・二重起票しない" },
-    { "id": "DP-PINIT-06", "reuse": false, "status": "undecided", "title": "project-scope スキーマ配置（shared SSoT vs ローカル）", "phase": "design", "note": "既存 undecided・二重起票しない" },
-    { "id": "DP-PINIT-07", "reuse": false, "status": "undecided", "title": "横断索引の形式（Markdown / JSON / 両方）", "phase": "design", "note": "既存 undecided・二重起票しない" },
+    { "id": "DP-PINIT-05", "reuse": false, "status": "accepted", "title": "着手タイミング／フェーズ位置づけ", "phase": "build", "decided_by": "人間（豊田 / 2026-06-01）", "note": "先行着手。design.decision_record・ADR-PINIT-001 参照。Notion DP DB 起票済み。" },
+    { "id": "DP-PINIT-06", "reuse": false, "status": "accepted", "title": "project-scope スキーマ配置（shared SSoT 化）", "phase": "design", "decided_by": "人間（豊田 / 2026-06-01）", "note": "shared SSoT 化。project-scope.schema.json 新設・validate-plugin.sh 連携済（実装済）。Notion DP DB 起票済み。" },
+    { "id": "DP-PINIT-07", "reuse": false, "status": "accepted", "title": "横断索引の形式（JSON 正本＋Markdown 派生）", "phase": "design", "decided_by": "人間（豊田 / 2026-06-01）", "note": "両方（JSON 正本→Markdown 自動派生）。Notion DP DB 起票済み。" },
     {
       "id": "DP-PINIT-11",
       "reuse": false,
@@ -156,7 +156,7 @@
     {
       "id": "DP-PINIT-08",
       "reuse": false,
-      "status": "decided",
+      "status": "accepted",
       "title": "モノレポ方式／ツール選定（スコープ拡張で実機能化）",
       "phase": "design",
       "options": ["A: pnpm workspaces + Turborepo（JS 重心）", "B: Rails + JS ハイブリッド（Rails 重心）", "C: Nx", "D: 案件ごと選択"],
@@ -168,7 +168,7 @@
     {
       "id": "DP-PINIT-10",
       "reuse": false,
-      "status": "decided",
+      "status": "accepted",
       "title": "土台/機能の境界粒度（共有 base 設定の所有）",
       "phase": "design",
       "options": ["A: 全モジュール共通の最小核は project-init 所有・モジュール固有はモジュールが土台にマージ", "B: 共有設定もモジュール側が持ち込む", "C: 案件ごと選択"],
@@ -180,7 +180,7 @@
     {
       "id": "DP-PINIT-09",
       "reuse": false,
-      "status": "decided",
+      "status": "accepted",
       "title": "案件横断の技術スタック方針＝スタック選択制（昇格・旧 09-DRAFT）",
       "phase": "design",
       "decision": "サポート済みスタックを提示しユーザー選択（AI推奨＋人間確定）。references で表現し拡張可能。初期 Rails/Next.js、将来 AWS managed/express・hono/Vue/Swift・Kotlin/Flutter 等。",
