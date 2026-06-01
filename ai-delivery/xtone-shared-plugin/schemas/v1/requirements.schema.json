@@ -106,8 +106,8 @@
     },
     "undecided": {
       "type": "array",
-      "description": "未決の判断ポイントID（DP-XXX）。warn_and_document の検出対象（追加保持フィールド, T-002）。",
-      "items": { "type": "string", "pattern": "^DP-[0-9]+$" }
+      "description": "未決の判断ポイントID。warn_and_document の検出対象（追加保持フィールド, T-002）。数字採番 DP-NN（DP-DB 正本）と、ADR-AID-002 のユースケース別採番 DP-<USECASE>-NN（例: DP-AID-01 / DP-PINIT-05）の双方を許容する。",
+      "items": { "type": "string", "pattern": "^DP-([0-9]+|[A-Z][A-Z0-9]*-[0-9]+)$" }
     }
   },
   "additionalProperties": true
