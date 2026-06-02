@@ -64,7 +64,7 @@ docker compose run --rm web bin/rails generate rspec:install # spec/ 生成
 - **`--api` と取り違えない**: Hotwire はフル構成が前提。誤って `--api` で生成するとビュー層が無く Turbo が動かない。**この取り違えが最頻の事故**。生成コマンドを必ず確認。
 - **importmap vs JS バンドラ**: 土台では importmap 既定に倒す（Node 不要）。バンドラ移行は案件判断（pending-decisions）。
 - **CSRF**: フル構成は CSRF 保護が既定 ON。Turbo のフォーム送信は対応済み。土台で `protect_from_forgery` を外さない。
-- **docker 共通の落とし穴**（Rails 標準 Dockerfile は本番用 / `DATABASE_HOST` は service 名 / コンテナ生成物の root 所有 / omakase 重複 / bundle volume / 境界の逸脱）は [`rails.md` §4](./rails.md#4-既知の制約docker--rails-特有の落とし穴徹底明文化) と共通。
+- **docker 共通の落とし穴**（フルイメージ必須 / `bash -c`（`-l` 不可）/ `Gemfile.lock*` ワイルドカード / `libyaml-dev` / root 生成＋chown / Rails 標準 Dockerfile は本番用 / `DATABASE_HOST` は service 名 / omakase 重複 / gem はイメージ内に焼く / 境界の逸脱）は [`rails.md` §4](./rails.md#4-既知の制約docker--rails-特有の落とし穴徹底明文化) と共通。
 
 ## 5. 検証（DoD・B-15）
 

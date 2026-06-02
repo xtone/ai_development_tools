@@ -48,4 +48,4 @@
 ## 補足
 
 - Rails 8 は `rubocop-rails-omakase` を標準同梱するため、lint 用に別 gem を足さない。
-- `bundle` を named volume 化（`compose.yaml`）しているのは、`.:/rails` の bind mount が gem を覆わないようにするため。
+- `bundle` は `/usr/local/bundle`（イメージ内）に入り、`.:/rails` の bind mount には覆われないため named volume は不要。Gemfile 変更時は `docker compose build` で再ビルドする。

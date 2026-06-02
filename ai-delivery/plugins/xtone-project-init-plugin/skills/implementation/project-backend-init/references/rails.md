@@ -88,11 +88,9 @@ services:
     depends_on:
       db: { condition: service_healthy }
     volumes:
-      - .:/rails                 # ソースを反映（開発）
-      - bundle:/usr/local/bundle # gem を volume 化（再ビルドで消えない）
+      - .:/rails                 # ソースを反映（開発）。gem はイメージ内 /usr/local/bundle（覆われない）
 volumes:
   pgdata:
-  bundle:
 ```
 
 `config/database.yml` は接続情報を **ENV 解決**にする（[`../templates/rails/database.yml.template`](../templates/rails/database.yml.template)）。`DATABASE_HOST` は **compose のサービス名 `db`**（`localhost` ではない）。
@@ -113,7 +111,7 @@ docker compose exec web bundle exec rubocop
 
 - **DB 待ち**: `web` の `depends_on: condition: service_healthy` ＋ `db` の `pg_isready` healthcheck で起動順を保証してから `db:prepare`（待たずに打つと接続エラー）。
 - **`db:prepare` を使う**: 土台時点でマイグレーションは無い（ドメインを載せない）。スキーマ作成と接続疎通の確認が目的。
-- **gem を volume 化**: `bundle:/usr/local/bundle` を付けないと `.:/rails` の bind mount が `vendor`/gem を覆い、毎回 bundle が必要になる。
+- **gem はイメージ内に焼く**: `/usr/local/bundle` は `.:/rails` の bind mount に覆われないため named volume は不要。Gemfile 変更時は再ビルド（`docker compose build`）。
 - **バージョンロック**: `Gemfile.lock` / `.ruby-version` をコミットし version-matrix と整合。`Dockerfile.dev` の `ARG RUBY_VERSION` は `.ruby-version` に合わせる。`gem "rails"` は固定しない。
 
 ## 4. 既知の制約（docker × Rails 特有の落とし穴・徹底明文化）
