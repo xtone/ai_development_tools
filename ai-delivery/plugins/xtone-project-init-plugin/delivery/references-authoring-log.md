@@ -37,9 +37,9 @@
 
 - **Rails 8 標準 Dockerfile は本番用**（`designed for production`）→ 開発は `Dockerfile.dev` を分離（実機で確認）
 - **`DATABASE_HOST` は compose のサービス名 `db`**（`localhost` ではない）
-- **`docker run` で `rails new` するとホスト側が root 所有**になる → `-u "$(id -u):$(id -g)"`
+- **`docker run` で `rails new` するとホスト側が root 所有**になる → **root 生成＋末尾 `chown -R $(id -u):$(id -g)`**（`-u` は `gem install` が HOME 権限で失敗するため不可・実機確認）
 - **Rails 8 は `rubocop-rails-omakase` 標準同梱** → 別 rubocop gem を足すと衝突（旧 Gemfile.snippet を撤回）
-- **gem を named volume 化**しないと `.:/rails` の bind mount が gem を覆う
+- **gem はイメージ内 `/usr/local/bundle` に焼く**（`.:/rails` の bind mount に覆われないため named volume は不要・Gemfile 変更時は `docker compose build` で再ビルド）
 - Hotwire: Turbo/Stimulus は既定同梱（**二重インストール禁止**）／既定レイアウトに `javascript_importmap_tags` が既にある（補うのは欠落時のみ）／`--api` 取り違えが最頻事故
 
 ### 判断ポイント（pending-decisions に起票）
