@@ -39,6 +39,7 @@ model: opus
      ```
    - 他にも seed・bin/setup・テンプレ分岐に影響する DP が出てきたら、本手順で同様に分岐する（DP の追加は固定列挙ではなく decision_record 駆動）。
 4. Skill に沿ってコードを生成し、検証（テスト等）を行う。
+   - **tech-version-check 完了時のフック（B-25）**: `tech-version-check`（実装スキルの最先頭）が `delivery/version-matrix.md` を出力したら、その「複数候補が残った技術判断（DP 起票）」節に挙がった DP 候補のうち、まだ `docs/pending-decisions.md` の未決リストに無いものを **append** する。複数バージョン・複数実装方式（例: Ruby 3.3/3.4、Sidekiq/SolidQueue、googleauth+REST/firebase-auth-rails gem）が残った技術判断を **AI が推奨で独断確定しない**（T-002）。単一候補・自明な公式最新・既に `decision_record[]` で確定済みのものは append しない（誤検知防止）。
    - Rails 案件で seeds.rb を生成する場合は `firebase-auth-setup/templates/rails/db/seeds.rb.template`（B-23）を起点にする。テンプレ内の `<% if invitation_based? %>` … `<% else %>` … `<% end %>` ブロックは、ステップ3で確定した DP-AUTHFLOW-001 に応じて**該当する側だけを残して**書き出す。
 5. 生成戦略の説明を `delivery/seeds-strategy.md` に残す（出力契約）。最低限、次を含める:
    - 採用ブランチ（`invitation_based` / `self_signup`）と根拠の DP-ID

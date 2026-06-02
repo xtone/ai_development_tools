@@ -34,12 +34,24 @@
 
 - `<例: connection_pool 3.0.2 が Ruby 3.3 で例外 — リリースノート https://... を参照>`
 
-## 6. 採用根拠の要約
+## 6. 複数候補が残った技術判断（DP 起票 / B-25）
+
+公式情報源から **2 つ以上の妥当な候補**が出て、どれを採るかが案件依存になった技術判断を列挙する。各行を `docs/pending-decisions.md` の「未決リスト」に **1 件 1 行**で起票し、ここには起票済みであることと暫定状態を残す（matrix ↔ pending の相互参照）。候補が一意なら本節は空（`_(複数候補なし)_`）でよい — 単一候補で DP を起票しないこと（誤検知防止）。
+
+| 仮 DP ID | 対象 | 候補 | 選定が案件依存な理由 | pending 起票 |
+|---|---|---|---|---|
+| `<例: DP-RUBY-VER>` | `<例: 言語ランタイム Ruby>` | `<例: 3.3 系 / 3.4 系>` | `<例: 採用 FW の required_ruby_version と運用実績で選ぶ>` | 済（`docs/pending-decisions.md`） |
+| `<例: DP-JOB-BACKEND>` | `<例: 非同期ジョブ基盤>` | `<例: Sidekiq / SolidQueue>` | `<例: Redis 依存可否・運用体制で選ぶ>` | 済（`docs/pending-decisions.md`） |
+
+> 起票した技術は、上の 1〜4 の表で当該行の採用バージョンを断定で書かず「未確定（DP-XXX）」と記す。確定後に implementer / 人間が値を埋める。命名・誤検知防止の基準は `SKILL.md`「複数候補が残った技術判断の DP 起票（B-25）」節。
+
+## 7. 採用根拠の要約
 
 - `<例: 「公式最新を採る方針（environment-setup.md）」に従い、context7 で 2026-05-26 時点の最新を確認・採用。特定バージョン固定の要望なし。>`
 - 特定バージョン固定の要望があった場合は `docs/pending-decisions.md` の DP-XXX として記録（warn_and_document）。
+- 複数候補が残った技術判断は「6.」に列挙し、`docs/pending-decisions.md` に起票済みであること（B-25）。
 
-## 7. Gemfile / package.json / Dockerfile に残すコメント例
+## 8. Gemfile / package.json / Dockerfile に残すコメント例
 
 `tech-version-check`（B-11）スキルの「手順 4」で各依存ファイルに採用根拠を**コメント形式**で残す。実装時のレビューと将来の追従に効く。
 
