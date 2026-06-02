@@ -2,7 +2,7 @@
 
 `project-backend-init` スキルの **Rails API 実装レシピ**。SKILL.md の「実装契約（言語非依存）」「運用契約」を Rails/Ruby で満たす具体手順。**契約は変えない**（土台の器のみ生成し、ドメインのモデル/マイグレーション/エンドポイント/業務ロジックは生成しない — DP-PINIT-11）。
 
-> **方針: バックエンド環境はすべて docker compose でセットアップする**（ホストに Ruby/rbenv を入れない）。`rails new` も含めコンテナ内で完結させる。本構成は実機検証済み（`rails new --api` → docker compose `db:prepare` → `GET /up` = 200 → `rubocop` no offenses / Ruby 3.3.6・Rails 8.1.3）。
+> **方針: バックエンド環境はすべて docker compose でセットアップする**（ホストに Ruby/rbenv を入れない）。`rails new` も含めコンテナ内で完結させる。本構成は実機検証済み（`rails new --api` → docker compose `db:prepare` → `GET /up` = 200 → `rubocop` no offenses / Ruby 4.0.5・Rails 8.1.3・非 root 実行）。
 >
 > **コピペで貼りたい場合は [`../templates/rails/`](../templates/rails/) を使う**（B-09）。`templates/rails/` は対の**ファイル単位の最小雛形**（`Dockerfile.dev` / `compose.yaml` / `.dockerignore` / `.env.sample` / `database.yml.template` / `README.md`）。
 
@@ -51,14 +51,19 @@ echo "${RUBY_VERSION}" > sample-api/.ruby-version
 Rails 8 は標準で**本番用 `Dockerfile`**（`designed for production, not development`）を生成する。開発は別ファイル `Dockerfile.dev` を使う（[`../templates/rails/Dockerfile.dev`](../templates/rails/Dockerfile.dev)）。
 
 ```dockerfile
-ARG RUBY_VERSION=3.3.6   # .ruby-version と一致。数値は生成時に解決（固定しない）
+# 抜粋（全文は templates/rails/Dockerfile.dev）。RUBY_VERSION は固定せず .env から渡す。
+ARG RUBY_VERSION
 FROM docker.io/library/ruby:${RUBY_VERSION}-slim
+# libyaml-dev は Ruby 4 系の psych(YAML) bundled gem のビルドに必須（§4 既知の制約）。
 RUN apt-get update -qq && apt-get install -y --no-install-recommends \
-    build-essential libpq-dev postgresql-client git && rm -rf /var/lib/apt/lists/*
+    build-essential libpq-dev libyaml-dev postgresql-client git && rm -rf /var/lib/apt/lists/*
+RUN groupadd --gid 1000 rails && useradd --uid 1000 --gid rails -m -s /bin/bash rails
 WORKDIR /rails
-COPY Gemfile Gemfile.lock ./
+COPY Gemfile Gemfile.lock* ./   # --skip-bundle 生成時は lock が無いためワイルドカード
 RUN bundle install
 COPY . .
+RUN chown -R rails:rails /rails /usr/local/bundle
+USER rails
 EXPOSE 3000
 CMD ["bin/rails", "server", "-b", "0.0.0.0", "-p", "3000"]
 ```
