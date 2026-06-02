@@ -6,17 +6,19 @@ AIデリバリ用プラグインを「中身ごと」起こすメタプラグイ
 
 ## 1. インストール / ロード
 
-開発中はセッション限定でロードして試せる:
+Claude Code の **Marketplace 経由でインストール**する（推奨）:
 
-```bash
-# ai-delivery/ で
-claude --plugin-dir plugins/xtone-aid-skill-creator-plugin
+```
+/plugin marketplace add xtone/ai_development_tools
+/plugin install xtone-aid-skill-creator-plugin
 ```
 
-検証のみ:
+インストール後、Claude Code を再起動するとコマンド・スキルが有効になる。本プラグインは **Notion MCP 必須**（DB から引いて中身を生成する設計）— `.env` の `NOTION_TOKEN` を設定する（下記「Notion MCP の前提」参照）。
+
+開発時（本リポジトリで直接編集する場合）の検証:
 
 ```bash
-bash ai-delivery/scripts/validate-plugin.sh plugins/xtone-aid-skill-creator-plugin --strict
+ai-delivery/scripts/validate-plugin.sh ai-delivery/plugins/xtone-aid-skill-creator-plugin --strict
 ```
 
 ### Notion MCP の前提（必須）

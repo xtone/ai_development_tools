@@ -17,10 +17,19 @@ Xtone AIデリバリシステムの **案件初期化（プロジェクトブー
 
 ## はじめかた
 
+Claude Code の **Marketplace 経由でインストール**する（推奨）:
+
+```
+/plugin marketplace add xtone/ai_development_tools
+/plugin install xtone-project-init-plugin
+```
+
+インストール後、Claude Code を再起動するとコマンド・スキルが有効になる。MCP（Notion 等）が必要な Skill は `.env`（`NOTION_TOKEN` 等）を設定する（[`ai-delivery/docs/mcp-setup-guide.md`](../../docs/mcp-setup-guide.md)）。
+
+開発時（本リポジトリで直接編集する場合）は品質ゲートで検証:
+
 ```bash
-cp .env.example .env   # トークンを設定
-ai-delivery/scripts/validate-plugin.sh .   # 品質ゲート
-claude                  # Claude Code を起動し、/project-init で開始
+ai-delivery/scripts/validate-plugin.sh ai-delivery/plugins/xtone-project-init-plugin
 ```
 
 フロー: `/project-init`（ヒアリング）→ `/project-modules`（モジュール推奨）→ `/project-scaffold`（スタック選択＋土台セットアップ）→ `/project-load-guide` → `/project-status`。
