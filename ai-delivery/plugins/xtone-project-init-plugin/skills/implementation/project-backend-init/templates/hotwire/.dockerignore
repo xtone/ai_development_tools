@@ -1,0 +1,10 @@
+# .dockerignore — ビルドコンテキストから除外（イメージを軽く・機密を入れない）
+.git
+.env
+.env.*
+!.env.sample
+tmp/
+log/
+node_modules/
+storage/
+.DS_Store

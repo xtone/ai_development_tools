@@ -38,8 +38,8 @@ description: 案件の土台にバックエンドアプリ雛形（初期サポ�
 
 | stack | references | templates | state |
 |---|---|---|---|
-| `rails` | `references/rails.md` | `templates/rails/` | ⬜ 未実装（`/aid-references-new` で起こす） |
-| `hotwire` | `references/hotwire.md` | `templates/hotwire/` | ⬜ 未実装 |
+| `rails` | `references/rails.md` | `templates/rails/` | ✅ 実装済み（API 構成） |
+| `hotwire` | `references/hotwire.md` | `templates/hotwire/` | ✅ 実装済み（Rails+Hotwire） |
 | `express` / `hono` / `aws-managed`（将来） | — | — | 未着手（DP-AID-04） |
 
 ## 実装契約（言語非依存）
