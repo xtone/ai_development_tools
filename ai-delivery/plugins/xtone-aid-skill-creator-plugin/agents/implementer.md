@@ -28,6 +28,7 @@ model: opus
    - seed / 初期化スクリプト / マスタ生成に影響する DP（ドメインごとに異なる。認証プラグインでは DP-AUTHFLOW-001 等）は、テンプレ側の分岐ブロック（`<% if … %>` 〜 `<% end %>`）を該当する側だけ残して書き出す。
    - 該当 DP が `undecided` の場合は **生成を確定させず**、`docs/pending-decisions.md` に「未確定のため生成しなかった」を残す（warn_and_document, T-002）。
 4. Skill に沿ってコードを生成し、検証（テスト等）を行う。
+   - **tech-version-check 完了時のフック（B-25）**: `tech-version-check`（実装スキルの最先頭）が `delivery/version-matrix.md` を出力したら、その「複数候補が残った技術判断（DP 起票）」節に挙がった DP 候補のうち、まだ `docs/pending-decisions.md` の未決リストに無いものを **append** する。複数バージョン・複数実装方式が残った技術判断を **AI が推奨で独断確定しない**（T-002）。単一候補・自明な公式最新・既に `decision_record[]` で確定済みのものは append しない（誤検知防止）。
 5. 生成戦略の説明を `delivery/seeds-strategy.md`（または対応するドメインの戦略ノート）に残す（出力契約）。
 
 ## warn_and_document（T-002 本決定）

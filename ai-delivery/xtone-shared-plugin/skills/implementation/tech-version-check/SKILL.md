@@ -62,7 +62,9 @@ description: 採用予定の言語/FW/主要ライブラリの **最新安定版
    - **既知の非互換性**（採用最新版で問題があれば公式 issue / リリースノートから抽出）
 3. `delivery/version-matrix.md` に表形式で記録（[`templates/version-matrix.template.md`](./templates/version-matrix.template.md) 参照）。
 4. **`Gemfile` / `package.json` / `Dockerfile`** にコメント形式で「採用根拠（B-11 で確認、日付、根拠 URL）」を残す。固定バージョン値は判断ポイントなので、AI が勝手に固定しない（明示的な要望がある場合のみ pin）。
-5. 非互換が発覚した場合は判断ポイント化（pending-decisions に「採用バージョンを下げるか / 互換ライブラリを変えるか」を起票）。
+5. **判断ポイントを `docs/pending-decisions.md` に起票する（人間判断をスルーさせない / T-002 / B-25）**。次の 2 種は AI が推奨で独断確定せず、必ず案件側の `docs/pending-decisions.md` の「未決リスト」表に **1 件 1 行**で起票する（手順は下記「複数候補が残った技術判断の DP 起票（B-25）」節）:
+   - **複数候補が残った技術判断**: 公式情報源から **2 つ以上の妥当な候補**が得られ、どれを採るかが案件依存（性能・運用・互換性のトレードオフ）な場合。例: Ruby 3.3 / 3.4 並存、Sidekiq vs SolidQueue、googleauth+REST vs firebase-auth-rails gem。
+   - **非互換の解消方針**: 採用最新版に既知の非互換性があり、「採用バージョンを下げるか / 互換ライブラリに替えるか」の選択が必要な場合。
 6. 取得情報を `implementation-plan.json.skill_plan` の本エントリ `called=true` に更新。
 
 ## 出力テンプレ
@@ -76,10 +78,53 @@ description: 採用予定の言語/FW/主要ライブラリの **最新安定版
 3. 主要ライブラリ・SDK 表
 4. ツール / コンテナ表
 5. 既知の非互換性 / 警戒事項
-6. 採用根拠の要約
-7. **Gemfile / package.json / Dockerfile に残すコメント例**（手順 4 で各依存ファイルへ追記する形式の見本）
+6. **複数候補が残った技術判断（DP 起票 / B-25）** — 候補が複数残った技術を列挙し pending-decisions と相互参照
+7. 採用根拠の要約
+8. **Gemfile / package.json / Dockerfile に残すコメント例**（手順 4 で各依存ファイルへ追記する形式の見本）
 
 > SKILL.md にインライン例を二重に持たない（テンプレートとの乖離回避）。Single Source of Truth はテンプレートファイル側。
+
+## 複数候補が残った技術判断の DP 起票（B-25）
+
+`version-matrix.md` 生成中、公式情報源から **2 つ以上の妥当な候補**が出てどれを採るかが案件依存になる技術判断が頻出する（Ruby 3.3 / 3.4 並存、Sidekiq vs SolidQueue、googleauth+REST vs firebase-auth-rails gem 等）。ここで agent が推奨を独断で確定すると、T-002 warn_and_document（人間判断をスルーさせない）に反する。**version-matrix.md を書き終えた直後**に、残った技術判断を列挙して `docs/pending-decisions.md` に起票する。
+
+### 起票する / しない（誤検知防止）
+
+- **起票する**: 公式情報源から取得した候補が **2 つ以上**あり、選定基準が性能・運用・互換性・将来性などのトレードオフで、案件の事情に依存する判断。
+- **起票しない（誤検知を出さない）**:
+  - 候補が **1 つしかない**（公式最新が一意に定まる）。`environment-setup.md`「公式の最新安定版を採る」で機械的に決まるものは判断ポイントではない。
+  - パッチバージョンだけの違い（例: 3.3.5 vs 3.3.6）など、選定に人間判断が要らないもの。
+  - 既に `design.yaml.decision_record[]` で **確定済み（`chosen` あり）**の判断（重複起票しない）。
+
+> 単一候補で起票しないことは受け入れ基準（誤検知なし）。「迷う余地があるか」を基準にする — 公式最新が一意なら起票しない、複数の安定版・複数の実装方式が並ぶなら起票する。
+
+### DP 仮 ID の命名
+
+確定前なので Notion 採番（DP-NNN）ではなく、**内容が分かる仮 ID** を付ける（pending-watcher / 人間が後で正式採番する）:
+
+- バージョン選定: `DP-<TECH>-VER`（例: `DP-RUBY-VER`, `DP-RAILS-VER`, `DP-NODE-VER`）
+- 実装方式・ライブラリ選定: `DP-<TOPIC>`（例: `DP-JOB-BACKEND`（Sidekiq vs SolidQueue）, `DP-AUTH-RUBY-SDK`（googleauth+REST vs firebase-auth-rails gem））
+
+### 起票フォーマット
+
+案件側 `docs/pending-decisions.md` の「未決リスト」表に **1 候補 1 行**で append する（複数あればマージせず DP ごとに 1 行ずつ）。表ヘッダは当該ファイルの「未決リスト」節に合わせる（プラグインにより `フェーズ` 列か `関連タスク` 列かが異なる — 既存行に倣う）。記載例:
+
+```markdown
+| <YYYY-MM-DD> | DP-RUBY-VER | 言語ランタイム Ruby のバージョン候補が複数（3.3 系 / 3.4 系）。採用 FW の required_ruby_version と運用実績で案件が選ぶ。tech-version-check が公式最新から複数候補を検出。 | 実装 | tech-version-check | 未決 |
+| <YYYY-MM-DD> | DP-JOB-BACKEND | 非同期ジョブ基盤の候補が複数（Sidekiq / SolidQueue）。Redis 依存可否・運用体制で案件が選ぶ。 | 実装 | tech-version-check | 未決 |
+```
+
+起票したら `version-matrix.md` の該当行（または「6. 採用根拠の要約」）に **`DP-XXX 起票済み（pending-decisions.md 参照）`** を残し、matrix と pending の相互参照を保つ。確定前は version-matrix 上で当該技術を「未確定」と明記し、暫定採用値を断定で書かない。
+
+### 検証シナリオ（受け入れ基準の確認手順）
+
+スキル変更時はこのシナリオで挙動を確認する（複数候補が出る代表ケース = Rails 7.x / 8.x 並存期）:
+
+1. `design.yaml.architecture.stack` に Rails を含む案件で本スキルを実行する。
+2. 公式情報源（rubygems.org / リリースノート）に **7.x 系と 8.x 系の両安定版**が並ぶ状況を取得する。
+3. **期待**: `docs/pending-decisions.md` の未決リストに `DP-RAILS-VER`（7.x / 8.x のいずれを採るか）が 1 行起票される。
+4. **誤検知チェック**: 候補が一意（例: Node.js Active LTS が 1 系列のみ）な技術については **起票されない**ことを確認する。
+5. 既に `decision_record[]` に `DP-RAILS-VER` が `chosen` 済みで渡された場合は **重複起票しない**ことを確認する。
 
 ## 判断ポイント（人間判断をスルーさせない）
 
