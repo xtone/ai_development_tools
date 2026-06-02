@@ -1,0 +1,18 @@
+<%# app/views/layouts/application.html.erb — 最小レイアウト（Hotwire 読み込み核のみ） %>
+<%# 土台の範囲はここまで。ドメイン画面・partial・view component は各モジュールが載せる（DP-PINIT-11）。%>
+<%# Rails 既定で同等のレイアウトが生成される。欠けている場合のみ本雛形で補う（二重に Hotwire を入れない）。%>
+<!DOCTYPE html>
+<html>
+  <head>
+    <title><%= content_for(:title) || "App" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+    <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%# importmap 既定。turbo-rails / stimulus-rails はここで読み込まれる %>
+    <%= javascript_importmap_tags %>
+  </head>
+  <body>
+    <%= yield %>
+  </body>
+</html>

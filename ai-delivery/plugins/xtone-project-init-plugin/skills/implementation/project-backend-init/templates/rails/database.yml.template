@@ -1,0 +1,26 @@
+# config/database.yml — DB 接続核（project-backend-init / rails）
+# 接続情報は ENV 経由（ハードコードしない・MCP-08）。docker compose の db サービスと疎通する。
+# DB 名 / ユーザ / パスワード / ホスト / ポートは .env で渡す（実値はコミットしない）。
+# DATABASE_HOST の既定は compose のサービス名 "db"（localhost ではない）。
+default: &default
+  adapter: postgresql
+  encoding: unicode
+  host: <%= ENV.fetch("DATABASE_HOST", "db") %>
+  port: <%= ENV.fetch("DATABASE_PORT", "5432") %>
+  username: <%= ENV.fetch("DATABASE_USER", "postgres") %>
+  password: <%= ENV.fetch("DATABASE_PASSWORD", "") %>
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS", 5) %>
+
+development:
+  <<: *default
+  database: <%= ENV.fetch("DATABASE_NAME", "app_development") %>
+
+test:
+  <<: *default
+  database: <%= ENV.fetch("DATABASE_NAME_TEST", "app_test") %>
+
+production:
+  <<: *default
+  database: <%= ENV.fetch("DATABASE_NAME", "app_production") %>
+  # 本番は DATABASE_URL を必ず設定すること（空文字フォールバックは開発の保険・本番デプロイ手順で必須化）。
+  url: <%= ENV.fetch("DATABASE_URL", "") %>
