@@ -17,8 +17,17 @@ Xtone AIデリバリシステムの **aid-skill-creator** プラグイン。マ�
 
 ## はじめかた
 
+Claude Code の **Marketplace 経由でインストール**する（推奨）:
+
+```
+/plugin marketplace add xtone/ai_development_tools
+/plugin install xtone-aid-skill-creator-plugin
+```
+
+インストール後、Claude Code を再起動するとコマンド・スキルが有効になる。本プラグインは **Notion MCP 必須**（16 DB から引いて中身を生成する設計）— `.env` の `NOTION_TOKEN` を設定する（[`docs/usage-guide.md`](./docs/usage-guide.md) §1）。
+
+開発時（本リポジトリで直接編集する場合）は品質ゲートで検証:
+
 ```bash
-cp .env.example .env   # トークンを設定
-ai-delivery/scripts/validate-plugin.sh .   # 品質ゲート
-claude                  # Claude Code を起動し、/req-collect で開始
+ai-delivery/scripts/validate-plugin.sh ai-delivery/plugins/xtone-aid-skill-creator-plugin
 ```

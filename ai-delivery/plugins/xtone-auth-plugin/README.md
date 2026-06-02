@@ -7,12 +7,19 @@ Xtone AIデリバリシステムの **認証モジュール（MOD-001）** プ�
 
 ## クイックスタート
 
-```bash
-# ai-delivery/ で（セッション限定ロード）
-claude --plugin-dir plugins/xtone-auth-plugin
+Claude Code の **Marketplace 経由でインストール**する（推奨）:
 
-# 検証
-claude plugin validate --strict plugins/xtone-auth-plugin
+```
+/plugin marketplace add xtone/ai_development_tools
+/plugin install xtone-auth-plugin
+```
+
+インストール後、Claude Code を再起動するとコマンド・スキルが有効になる。Firebase Auth を使う案件では `.env` に `FIREBASE_PROJECT_ID` 等を設定する（[`docs/usage-guide.md`](./docs/usage-guide.md)）。
+
+開発時（本リポジトリで直接編集する場合）は品質ゲートで検証:
+
+```bash
+ai-delivery/scripts/validate-plugin.sh ai-delivery/plugins/xtone-auth-plugin
 ```
 
 フロー: `/req-collect → /auth-design → /implement`。詳細は [`docs/usage-guide.md`](./docs/usage-guide.md)。

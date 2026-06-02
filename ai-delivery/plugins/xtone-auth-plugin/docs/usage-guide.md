@@ -6,17 +6,19 @@
 
 ## 1. インストール / ロード
 
-開発中はセッション限定でロードして試せる:
+Claude Code の **Marketplace 経由でインストール**する（推奨）:
 
-```bash
-# ai-delivery/ で
-claude --plugin-dir plugins/xtone-auth-plugin
+```
+/plugin marketplace add xtone/ai_development_tools
+/plugin install xtone-auth-plugin
 ```
 
-検証のみ:
+インストール後、Claude Code を再起動するとコマンド・スキルが有効になる。Firebase Auth を使う案件では `.env` に `FIREBASE_PROJECT_ID` / `GOOGLE_APPLICATION_CREDENTIALS` 等を設定する（[`ai-delivery/docs/mcp-setup-guide.md`](../../../docs/mcp-setup-guide.md)）。
+
+開発時（本リポジトリで直接編集する場合）の検証:
 
 ```bash
-claude plugin validate --strict plugins/xtone-auth-plugin
+ai-delivery/scripts/validate-plugin.sh ai-delivery/plugins/xtone-auth-plugin
 ```
 
 ## 2. 基本フロー
