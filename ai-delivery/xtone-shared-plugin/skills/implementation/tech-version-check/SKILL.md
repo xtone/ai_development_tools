@@ -114,7 +114,7 @@ description: 採用予定の言語/FW/主要ライブラリの **最新安定版
 | <YYYY-MM-DD> | DP-JOB-BACKEND | 非同期ジョブ基盤の候補が複数（Sidekiq / SolidQueue）。Redis 依存可否・運用体制で案件が選ぶ。 | 実装 | tech-version-check | 未決 |
 ```
 
-起票したら `version-matrix.md` の該当行（または「6. 採用根拠の要約」）に **`DP-XXX 起票済み（pending-decisions.md 参照）`** を残し、matrix と pending の相互参照を保つ。確定前は version-matrix 上で当該技術を「未確定」と明記し、暫定採用値を断定で書かない。
+起票したら `version-matrix.md` の該当行（または「7. 採用根拠の要約」）に **`DP-XXX 起票済み（pending-decisions.md 参照）`** を残し、matrix と pending の相互参照を保つ。確定前は version-matrix 上で当該技術を「未確定」と明記し、暫定採用値を断定で書かない。
 
 ### 検証シナリオ（受け入れ基準の確認手順）
 
