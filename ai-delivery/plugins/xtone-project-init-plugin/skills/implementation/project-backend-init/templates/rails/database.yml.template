@@ -22,4 +22,5 @@ test:
 production:
   <<: *default
   database: <%= ENV.fetch("DATABASE_NAME", "app_production") %>
+  # 本番は DATABASE_URL を必ず設定すること（空文字フォールバックは開発の保険・本番デプロイ手順で必須化）。
   url: <%= ENV.fetch("DATABASE_URL", "") %>
