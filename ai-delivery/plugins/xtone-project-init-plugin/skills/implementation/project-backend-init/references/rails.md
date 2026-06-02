@@ -86,7 +86,7 @@ services:
       retries: 30
     volumes: [ "pgdata:/var/lib/postgresql/data" ]
   web:                     # ← project-backend-init 所有セクション
-    build: { context: ., dockerfile: Dockerfile.dev }
+    build: { context: ., dockerfile: Dockerfile.dev, args: { RUBY_VERSION: "${RUBY_VERSION}" } }
     command: bash -c "bin/rails db:prepare && bin/rails server -b 0.0.0.0 -p 3000"
     env_file: .env
     ports: [ "3000:3000" ]
