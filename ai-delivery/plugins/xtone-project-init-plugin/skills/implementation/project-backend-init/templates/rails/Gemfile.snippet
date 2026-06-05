@@ -1,7 +1,0 @@
-# Gemfile.snippet — 既存 Gemfile（rails new --api --skip-test 生成）の :development, :test グループへ追記。
-# 既定テストツール = RSpec（DP-TEST-FW・2026-06-02 確定）。選択制は維持（minitest 等に変える案件は本 snippet を使わない）。
-# rubocop は Rails 標準同梱の rubocop-rails-omakase を使う（重複追加しない）。
-group :development, :test do
-  gem "rspec-rails"
-  gem "factory_bot_rails"
-end

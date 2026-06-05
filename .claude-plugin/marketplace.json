@@ -67,33 +67,6 @@
             "author": {
                 "name": "TOYOTA, Yoichi"
             }
-        },
-        {
-            "name": "xtone-auth-plugin",
-            "source": "./ai-delivery/plugins/xtone-auth-plugin",
-            "description": "ユーザー認証とセッション管理を型化する Xtone AIデリバリプラグイン（MVP: Firebase Auth、IaaS 差し替え可能設計）。MOD-001 認証モジュール。",
-            "version": "0.1.0",
-            "author": {
-                "name": "Xtone"
-            }
-        },
-        {
-            "name": "xtone-aid-skill-creator-plugin",
-            "source": "./ai-delivery/plugins/xtone-aid-skill-creator-plugin",
-            "description": "AIデリバリ用プラグインを、AIデリバリの型に則って中身ごと生成・育成するためのメタプラグイン。Notion DB を参照して Skill/Subagent/Command/references/DP を対話的に起稿する。",
-            "version": "0.1.0",
-            "author": {
-                "name": "Xtone"
-            }
-        },
-        {
-            "name": "xtone-project-init-plugin",
-            "source": "./ai-delivery/plugins/xtone-project-init-plugin",
-            "description": "実案件の初期化（プロジェクトブートストラップ）を担う独立メタプラグイン（T-051）。ドメイン/要件ヒアリング→必要モジュール推奨（AI推奨＋人間確定）→案件ルート delivery 雛形初期化→モジュールプラグイン群のロード手順生成を /project-* 横断コマンドで提供する。xtone-aid-skill-creator-plugin（作る側メタ）と対称の立ち上げる側メタ。",
-            "version": "0.1.0",
-            "author": {
-                "name": "Xtone"
-            }
         }
     ]
 }

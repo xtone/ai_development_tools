@@ -1,7 +1,0 @@
-# Gemfile.snippet — 既存 Gemfile（rails new --css=tailwind --skip-test 生成）の :development, :test グループへ追記。
-# 既定テストツール = RSpec（DP-TEST-FW・2026-06-02 確定）。選択制は維持。
-# tailwindcss-rails は rails new --css=tailwind で Gemfile に入る（Node 不要）。rubocop は omakase 標準を使う。
-group :development, :test do
-  gem "rspec-rails"
-  gem "factory_bot_rails"
-end
