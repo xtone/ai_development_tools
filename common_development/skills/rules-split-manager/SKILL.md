@@ -169,6 +169,12 @@ dmenu-newsはAndroidアプリです。
 - 91-review-learnings.md — Review Learnings
 ```
 
+frontmatter に `paths:` を持つファイルがある場合は、次の節を足す（glob を添える）:
+```markdown
+## 条件付き（該当するファイルを触ったときだけ読み込まれる）
+- 10-api-guidelines.md — API Guidelines（src/api/**）
+```
+
 ---
 
 ### /rules-merge — 分割ファイルからCLAUDE.mdを再生成
