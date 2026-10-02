@@ -1,0 +1,23 @@
+{
+  "skill_name": "notion-connections",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "新しく入った案件で、Notion の「Acme Corp」ってワークスペースも使うことになった。今つないでる Notion とは別に、そっちにもつなげるようにしたい",
+      "expected_output": "既存接続を一覧 → notion-acme 等の名前を提案 → check-name → スコープ確認(user推奨) → claude mcp add のコマンドを提示 → 新セッションでの /mcp 認証とワークスペース切替の注意 → notion-fetch self で確認・record の案内",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "いま Notion ってどのワークスペースにつながってるんだっけ？なんか複数ある気がする",
+      "expected_output": "list で接続と記録済みワークスペースを表示し、使えるツールがあれば notion-fetch self で各接続の実際の接続先を確認して報告。記録と食い違えば record を提案",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "my-app に入ってる notion って名前の Notion MCP、どのワークスペースか分かりにくいから notion-acme に名前変えたい",
+      "expected_output": "付け替え手順: 新名で追加→認証・確認→旧名削除の順。find-refs で mcp__notion__ の許可ルールを洗い出し書き換えを提案。disabledMcpServers の扱いも確認",
+      "files": []
+    }
+  ]
+}

@@ -20,6 +20,7 @@
 | **lessons-md-manager** | CLAUDE.mdの「Lessons Learned」セクションを管理。セッション中の学びを自動抽出・蓄積 |
 | **review-feedback-learner** | PRレビューで受けた指摘をCLAUDE.mdのルールとして蓄積。レビュアーの暗黙知をチーム資産に |
 | **evaluate-session** | セッションの効率を7観点100点満点でスコアリング。Web UIでセッション選択→分析→改善提案（郡嶋 開発） |
+| **notion-connections** | Notion MCP の接続を名前付きで管理（追加・一覧・削除・付け替え）。複数の Notion ワークスペースを切り替えずに同時に使う |
 
 ## スキル詳細
 
@@ -106,6 +107,27 @@ cd <plugin-dir>/skills/evaluate-session/app && npm install && npm start
 
 詳細: [skills/evaluate-session/SKILL.md](./skills/evaluate-session/SKILL.md)
 
+### notion-connections
+
+Notion の MCP（`https://mcp.notion.com/mcp`）は1つの登録で1つのワークスペースにしか繋がらないが、登録名を変えれば同じ URL を何個でも登録でき、認証も別々に持てる。これを使い、ワークスペースごとに `notion-<名前>` の登録を作って同時に使えるようにする。
+
+**使い方:** skill 名を言わなくても、Notion の接続先に関する依頼で起動する。
+```
+別の Notion ワークスペースにも繋ぎたい
+いま Notion ってどのワークスペースに繋がってる？
+notion って名前の Notion MCP を notion-acme に変えたい
+```
+
+**特徴:**
+- 登録名の提案・重複チェック → `claude mcp add` → OAuth でのワークスペース切り替えの注意 → `notion-fetch(id: "self")` での接続先確認、までを案内
+- 削除・付け替え時は、旧名を参照している許可ルール（`mcp__<名前>` / `mcp__<名前>__…`）や `disabledMcpServers` を全プロジェクトから洗い出す。同名の登録を消すと他プロジェクトの認証も消えることも確認する
+- 補助スクリプトは設定を読むだけで書き換えない。認証情報は表示しない
+- 確認した接続先は `~/.claude/notion-connections.json` に記録する（利用者の手元のみ）
+
+**必要環境:** Python 3.7 以上（標準ライブラリのみ）
+
+詳細: [skills/notion-connections/SKILL.md](./skills/notion-connections/SKILL.md)
+
 ## ディレクトリ構造
 
 ```
@@ -125,13 +147,19 @@ common_development/
 │   ├── review-feedback-learner/
 │   │   ├── SKILL.md
 │   │   └── README.md
-│   └── evaluate-session/
+│   ├── evaluate-session/
+│   │   ├── SKILL.md
+│   │   └── app/              # Node.js Webアプリ
+│   │       ├── package.json
+│   │       ├── bin/cli.js
+│   │       ├── src/
+│   │       └── public/
+│   └── notion-connections/
 │       ├── SKILL.md
-│       └── app/              # Node.js Webアプリ
-│           ├── package.json
-│           ├── bin/cli.js
-│           ├── src/
-│           └── public/
+│       ├── scripts/
+│       │   ├── notion_mcp.py       # 一覧・名前チェック・参照検索・接続先の記録
+│       │   └── test_notion_mcp.py
+│       └── evals/evals.json      # skill-creator の評価ケース
 └── README.md
 ```
 

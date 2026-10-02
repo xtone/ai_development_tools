@@ -46,6 +46,16 @@
                 "name": "ISHIHARA, Masaya"
             },
             "tags": ["claude-code", "ci-cd", "github-actions", "knowledge-management", "learning"]
+        },
+        {
+            "name": "notion-connections",
+            "source": "./skills/notion-connections",
+            "description": "Notion MCP の接続を名前付きで管理（追加・一覧・削除・付け替え）。複数の Notion ワークスペースを切り替えずに同時に使えるようにする",
+            "version": "1.0.0",
+            "author": {
+                "name": "HIRANO, Takahiro"
+            },
+            "tags": ["claude-code", "notion", "mcp", "workspace", "productivity"]
         }
     ]
 }
