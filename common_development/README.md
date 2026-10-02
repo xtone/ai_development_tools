@@ -124,7 +124,7 @@ notion って名前の Notion MCP を notion-acme に変えたい
 - 補助スクリプトは設定を読むだけで書き換えない。認証情報は表示しない
 - 確認した接続先は `~/.claude/notion-connections.json` に記録する（利用者の手元のみ）
 
-**必要環境:** Python 3（標準ライブラリのみ）
+**必要環境:** Python 3.7 以上（標準ライブラリのみ）
 
 詳細: [skills/notion-connections/SKILL.md](./skills/notion-connections/SKILL.md)
 

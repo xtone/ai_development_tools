@@ -5,6 +5,8 @@ Claude Code の設定（~/.claude.json とプロジェクトの .mcp.json）を�
 登録・削除は `claude mcp add/remove` で行う（設定の書式を Claude Code 側に任せるため）。
 認証情報（headers など）は表示しない。名前・スコープ・URL だけを扱う。
 
+必要環境: Python 3.7 以上（add_subparsers(required=True) と、dict の挿入順の保持を前提にしている）
+
 使い方:
   notion_mcp.py list        [--project DIR]
   notion_mcp.py check-name  NAME [--project DIR]
