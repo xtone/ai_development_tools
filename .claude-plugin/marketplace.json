@@ -67,6 +67,15 @@
             "author": {
                 "name": "TOYOTA, Yoichi"
             }
+        },
+        {
+            "name": "common-development",
+            "source": "./common_development",
+            "description": "プラットフォーム非依存の汎用開発スキル集（CLAUDE.md管理、動画分析、セッション効率評価、Notion MCP接続管理など）",
+            "version": "0.1.0",
+            "author": {
+                "name": "ISHIHARA, Masaya"
+            }
         }
     ]
 }
