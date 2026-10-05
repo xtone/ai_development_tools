@@ -2,7 +2,7 @@
 
 Notion MCP の接続を名前付きで管理し、複数の Notion ワークスペースを切り替えずに同時に使えるようにする Claude Code スキルです。
 
-**Version**: v1.0
+**Version**: v1.0.1
 
 ---
 
@@ -136,6 +136,10 @@ notion-example	local	-	未確認
 ---
 
 ## バージョン履歴
+
+### v1.0.1 (2026-10-05) - 修正
+- SKILL.md の frontmatter を YAML として読めるように修正（description を引用符で囲む）
+- README.md を追加
 
 ### v1.0 (2026-10-02) - 初回リリース
 - 追加・一覧・削除・名前の付け替えの手順
