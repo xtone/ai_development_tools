@@ -126,7 +126,7 @@ notion って名前の Notion MCP を notion-acme に変えたい
 
 **必要環境:** Python 3.7 以上（標準ライブラリのみ）
 
-詳細: [skills/notion-connections/SKILL.md](./skills/notion-connections/SKILL.md)
+詳細: [skills/notion-connections/README.md](./skills/notion-connections/README.md)
 
 ## ディレクトリ構造
 
@@ -156,6 +156,7 @@ common_development/
 │   │       └── public/
 │   └── notion-connections/
 │       ├── SKILL.md
+│       ├── README.md
 │       ├── scripts/
 │       │   ├── notion_mcp.py       # 一覧・名前チェック・参照検索・接続先の記録
 │       │   └── test_notion_mcp.py
