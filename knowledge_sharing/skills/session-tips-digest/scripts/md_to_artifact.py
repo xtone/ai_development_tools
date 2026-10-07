@@ -87,7 +87,7 @@ def inline(text: str) -> str:
     text = text.replace("\x00", "")
 
     def stash(m: re.Match) -> str:
-        spans.append("<code>" + html.escape(m.group(1).strip(), quote=False) + "</code>")
+        spans.append("<code>" + html.escape(m.group(1).strip(), quote=True) + "</code>")
         return f"\x00{len(spans) - 1}\x00"
 
     text = re.sub(r"``(.+?)``", stash, text)
@@ -95,7 +95,7 @@ def inline(text: str) -> str:
     text = html.escape(text, quote=False)
     text = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", text)
     text = re.sub(
-        r"\[([^\]]+)\]\((https?://[^)\s]+)\)",
+        r"\[([^\]]+)\]\((https?://[^)\s\x00]+)\)",
         lambda m: '<a href="{}" target="_blank" rel="noopener">{}</a>'.format(
             m.group(2).replace('"', "&quot;"), m.group(1)
         ),

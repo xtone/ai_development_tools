@@ -94,7 +94,10 @@ def parse_ts(value) -> dt.datetime | None:
     if isinstance(value, bool):
         return None
     if isinstance(value, (int, float)):
-        return dt.datetime.fromtimestamp(value / 1000, dt.timezone.utc)
+        try:
+            return dt.datetime.fromtimestamp(value / 1000, dt.timezone.utc)
+        except (ValueError, OverflowError, OSError):
+            return None
     if isinstance(value, str):
         try:
             d = dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
@@ -169,7 +172,7 @@ def dir_project(dirpath: Path, cache: dict[Path, str], known: dict[str, str]) ->
 def collect_prompts(claude_dir, cutoff, filters, texts, names, known) -> list[dict]:
     out = []
     for d in read_jsonl(claude_dir / "history.jsonl"):
-        if d.get("project"):
+        if isinstance(d.get("project"), str) and d["project"]:
             known.setdefault(encode_dir(d["project"]), project_name(d["project"]))
         ts = parse_ts(d.get("timestamp"))
         if ts is None or ts < cutoff:
@@ -208,7 +211,8 @@ def collect_usage(claude_dir, cutoff, filters, patterns, texts, names, known, ca
             proj = dir_project(f.parent, cache, known)
             if not wanted(proj, filters):
                 continue
-            content = (d.get("message") or {}).get("content")
+            message = d.get("message")
+            content = message.get("content") if isinstance(message, dict) else None
             if not isinstance(content, list):
                 continue
             names.add(proj)

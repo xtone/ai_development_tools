@@ -68,5 +68,5 @@ Claude Code の利用記録から、チームで共有できる知見を抽出�
 
 ```bash
 cd knowledge_sharing/skills/session-tips-digest/scripts
-uv run --no-project --with pytest python -m pytest -q
+uv run --no-project --with pytest python -m pytest -q -p no:cacheprovider
 ```

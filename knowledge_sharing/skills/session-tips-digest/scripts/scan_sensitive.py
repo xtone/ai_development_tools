@@ -18,7 +18,21 @@ import sys
 from pathlib import Path
 from typing import Iterable
 
-_T = r"A-Za-z0-9_+/=\-"
+_T = r"A-Za-z0-9_+=\-"  # no "/": file paths must not look like tokens
+
+_VALUE = r"(?![<$])(?!\d+\b)(?:'[^']*'|\"[^\"]*\"|[^\s,}]+)"
+SECRET_ASSIGNMENT = re.compile(
+    r"\b([A-Za-z0-9_]*(?:PASSWORD|PASSWD|SECRET|TOKEN|API_KEY|APIKEY|ACCESS_KEY)[A-Za-z0-9_]*)"
+    rf"(\"?\s*[=:]\s*)({_VALUE})",
+    re.IGNORECASE,
+)
+CLI_CREDENTIAL = re.compile(
+    r"(?<=\s)-p(?=[^\s\-])\S{3,}"
+    r"|--password[=\s]+(?![<$])\S+"
+    r"|(?<=\s)-u\s+[^\s:]+:(?![<$])\S+"
+    r"|Authorization:\s*Basic\s+[A-Za-z0-9+/=]{8,}",
+    re.IGNORECASE,
+)
 
 PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     (
@@ -34,7 +48,8 @@ PATTERNS: list[tuple[str, re.Pattern[str]]] = [
             r"|https?://[^\s/:@]+:[^\s/@]+@[^\s/]+"
         ),
     ),
-    ("bearer", re.compile(r"Bearer\s+[A-Za-z0-9._~+/=\-]{16,}")),
+    ("credential", re.compile(f"{SECRET_ASSIGNMENT.pattern}|{CLI_CREDENTIAL.pattern}", re.IGNORECASE)),
+    ("bearer", re.compile(r"Bearer\s+[A-Za-z0-9._~+/=\-]{16,}", re.IGNORECASE)),
     (
         "token",
         re.compile(
@@ -47,7 +62,7 @@ PATTERNS: list[tuple[str, re.Pattern[str]]] = [
         "email",
         re.compile(r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(?:\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}"),
     ),
-    ("numeric_id", re.compile(r"(?<![0-9.,:/\-])[0-9]{10,13}(?![0-9.,])")),
+    ("numeric_id", re.compile(r"(?<![0-9.,\-])[0-9]{10,13}(?![0-9.,])")),
     (
         "notion_url",
         re.compile(r"https?://[^\s)\"'<>]*notion\.(?:so|com)[^\s)\"'<>]*", re.IGNORECASE),
@@ -56,18 +71,14 @@ PATTERNS: list[tuple[str, re.Pattern[str]]] = [
 ]
 
 REDACT_KINDS = ("known_secret", "bearer", "token", "hex_token", "email")
-SECRET_KINDS = ("known_secret", "bearer", "token", "hex_token")
-SECRET_ASSIGNMENT = re.compile(
-    r"\b([A-Za-z0-9_]*(?:PASSWORD|PASSWD|SECRET|TOKEN|API_KEY|APIKEY)[A-Za-z0-9_]*)="
-    r"(?:'[^']*'|\"[^\"]*\"|\S+)",
-    re.IGNORECASE,
-)
+SECRET_KINDS = ("credential", "known_secret", "bearer", "token", "hex_token")
 VOCAB_KEYS = ("projects", "repos", "hosts", "users")
 
 
 def redact(text: str) -> str:
     """Replace secrets, secret assignments and email addresses with <redacted>."""
-    text = SECRET_ASSIGNMENT.sub(r"\1=<redacted>", text)
+    text = SECRET_ASSIGNMENT.sub(r"\1\2<redacted>", text)
+    text = CLI_CREDENTIAL.sub("<redacted>", text)
     for kind, pattern in PATTERNS:
         if kind in REDACT_KINDS:
             text = pattern.sub("<redacted>", text)

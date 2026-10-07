@@ -152,3 +152,9 @@ def test_injection_attempts_in_every_block_stay_inert():
     assert 'href="javascript:' not in body
     html = conv.render("## s\n", title=payload)
     assert "<img" not in html
+
+
+def test_code_span_inside_link_url_cannot_inject_attributes():
+    html = conv.inline('[t](https://a/`" onmouseover="alert(1)`)')
+    assert not re.search(r"<a [^>]*onmouseover", html)
+    assert '<code>" onmouseover' not in html

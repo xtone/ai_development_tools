@@ -244,3 +244,17 @@ def test_subdirectory_cwd_and_docs_urls_do_not_become_vocabulary(tmp_path):
     assert "docs" not in data["vocabulary"]["projects"]
     assert "pull-requests" not in data["vocabulary"]["repos"]
     assert {s["project"] for s in data["bash_samples"]} == {"acme-shop"}
+
+
+def test_unexpected_but_valid_json_shapes_do_not_abort_extraction(tmp_path):
+    claude = make_claude(tmp_path)
+    with (claude / "projects" / "-w-acme-shop" / "s1.jsonl").open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps({"type": "tool_use", "timestamp": "2026-10-05T04:00:00Z", "message": "tool_use as text"}) + "\n")
+        fh.write(json.dumps({"timestamp": 1e30, "message": {"content": [{"type": "tool_use", "name": "Read"}]}}) + "\n")
+    with (claude / "history.jsonl").open("a", encoding="utf-8") as fh:
+        fh.write('{"display": "nan", "timestamp": NaN, "project": "/w/acme-shop"}\n')
+        fh.write(json.dumps({"display": "huge", "timestamp": 1e30, "project": "/w/acme-shop"}) + "\n")
+    out = tmp_path / "s.json"
+    r = run(claude, out)
+    assert r.returncode == 0, r.stderr
+    assert json.loads(out.read_text(encoding="utf-8"))["counts"]["prompts"] == 2

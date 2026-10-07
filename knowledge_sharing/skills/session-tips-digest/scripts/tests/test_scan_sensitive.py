@@ -177,3 +177,39 @@ def test_detects_and_redacts_well_known_secret_formats():
     for s in samples:
         assert "known_secret" in kinds(f"x {s} y"), s
         assert s not in scan.redact(f"x {s} y"), s
+
+
+def test_file_paths_are_not_tokens():
+    text = "app/Http/Controllers/Api/V2/UserController.php と src/components/Header/Header2026Banner.tsx"
+    assert scan.scan_text(text) == []
+    assert scan.redact(text) == text
+
+
+def test_ids_inside_arn_and_resource_paths_are_detected():
+    assert "numeric_id" in kinds("arn:aws:iam::123456789012:role/x")
+    assert "numeric_id" in kinds("organizations/123456789012")
+
+
+def test_redact_and_detect_common_credential_forms():
+    samples = [
+        "password: hunter2",
+        '{"password": "hunter2"}',
+        "mysql -phunter2 db",
+        "psql --password hunter2",
+        "curl -u admin:Passw0rd! https://x",
+        "Authorization: Basic YWRtaW46aHVudGVyMg==",
+        "bearer abcdefghijklmnopQRST1234",
+        "aws_secret_access_key = wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+    ]
+    for s in samples:
+        out = scan.redact(s)
+        assert "hunter2" not in out and "Passw0rd" not in out and "YWRtaW46" not in out, s
+        assert "abcdefghijklmnop" not in out and "wJalrXUtnFEMI" not in out, s
+        assert scan.scan_text(s), s
+
+
+def test_placeholders_are_not_credentials():
+    text = "\n".join(
+        ["--password <PW>", "API_TOKEN=${{ secrets.API_TOKEN }}", "GITHUB_TOKEN: $GITHUB_TOKEN", "mkdir -p dir", "pytest -p no:cacheprovider"]
+    )
+    assert scan.scan_text(text) == []
