@@ -213,3 +213,19 @@ def test_placeholders_are_not_credentials():
         ["--password <PW>", "API_TOKEN=${{ secrets.API_TOKEN }}", "GITHUB_TOKEN: $GITHUB_TOKEN", "mkdir -p dir", "pytest -p no:cacheprovider"]
     )
     assert scan.scan_text(text) == []
+
+
+def test_slash_containing_secrets_are_still_detected():
+    for s in [
+        "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+        "Zm9vYmFy/Qk9P4kL+Xc2vT9mNq/8RtYw3HsLp0uVaZ1bE",
+    ]:
+        assert "token" in kinds(f"x {s} y"), s
+        assert s not in scan.redact(f"x {s} y"), s
+
+
+def test_dollar_and_numeric_passwords_are_not_treated_as_placeholders():
+    for s in ["password=$ecretP@ss", "password=12345678", "--password $ecretP@ss", "curl -u admin:$ecret1 x"]:
+        assert "credential" in kinds(s), s
+        out = scan.redact(s)
+        assert "ecret" not in out and "12345678" not in out, s

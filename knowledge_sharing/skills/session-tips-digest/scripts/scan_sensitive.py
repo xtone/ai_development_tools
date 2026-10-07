@@ -18,9 +18,11 @@ import sys
 from pathlib import Path
 from typing import Iterable
 
-_T = r"A-Za-z0-9_+=\-"  # no "/": file paths must not look like tokens
+_T = r"A-Za-z0-9_+/=\-"
 
-_VALUE = r"(?![<$])(?!\d+\b)(?:'[^']*'|\"[^\"]*\"|[^\s,}]+)"
+# Values that are obviously placeholders, not secrets: <NAME>, ${...}, $UPPER_VAR, short numbers.
+_PLACEHOLDER = r"(?!<[^<>\s]*>)(?!\$\{)(?!(?-i:\$[A-Z_][A-Z0-9_]*\b))(?!\d{1,6}\b)"
+_VALUE = rf"{_PLACEHOLDER}(?:'[^']*'|\"[^\"]*\"|[^\s,}}]+)"
 SECRET_ASSIGNMENT = re.compile(
     r"\b([A-Za-z0-9_]*(?:PASSWORD|PASSWD|SECRET|TOKEN|API_KEY|APIKEY|ACCESS_KEY)[A-Za-z0-9_]*)"
     rf"(\"?\s*[=:]\s*)({_VALUE})",
@@ -28,8 +30,8 @@ SECRET_ASSIGNMENT = re.compile(
 )
 CLI_CREDENTIAL = re.compile(
     r"(?<=\s)-p(?=[^\s\-])\S{3,}"
-    r"|--password[=\s]+(?![<$])\S+"
-    r"|(?<=\s)-u\s+[^\s:]+:(?![<$])\S+"
+    rf"|--password[=\s]+{_PLACEHOLDER}\S+"
+    rf"|(?<=\s)-u\s+[^\s:]+:{_PLACEHOLDER}\S+"
     r"|Authorization:\s*Basic\s+[A-Za-z0-9+/=]{8,}",
     re.IGNORECASE,
 )
@@ -75,13 +77,27 @@ SECRET_KINDS = ("credential", "known_secret", "bearer", "token", "hex_token")
 VOCAB_KEYS = ("projects", "repos", "hosts", "users")
 
 
+_WORD_SEGMENT = re.compile(r"[A-Za-z][a-z]{2,}")
+
+
+def _is_path_like(match: str) -> bool:
+    """A token candidate with '/' is a file path when a segment is an ordinary word (src, app, Header)."""
+    return "/" in match and any(_WORD_SEGMENT.fullmatch(seg) for seg in match.split("/"))
+
+
+def _sub(kind: str, pattern: re.Pattern[str], text: str) -> str:
+    if kind == "token":
+        return pattern.sub(lambda m: m.group(0) if _is_path_like(m.group(0)) else "<redacted>", text)
+    return pattern.sub("<redacted>", text)
+
+
 def redact(text: str) -> str:
     """Replace secrets, secret assignments and email addresses with <redacted>."""
     text = SECRET_ASSIGNMENT.sub(r"\1\2<redacted>", text)
     text = CLI_CREDENTIAL.sub("<redacted>", text)
     for kind, pattern in PATTERNS:
         if kind in REDACT_KINDS:
-            text = pattern.sub("<redacted>", text)
+            text = _sub(kind, pattern, text)
     return text
 
 
@@ -116,6 +132,8 @@ def scan_text(
         for kind, pattern in compiled:
             for m in pattern.finditer(line):
                 match = m.group(0)
+                if kind == "token" and _is_path_like(match):
+                    continue
                 key = (kind, match.lower())
                 if match.lower() in allowed or key in seen:
                     continue
