@@ -24,7 +24,7 @@ _T = r"A-Za-z0-9_+/=\-"
 _PLACEHOLDER = r"(?!<[^<>\s]*>)(?!\$\{)(?!(?-i:\$[A-Z_][A-Z0-9_]*\b))(?!\d{1,6}\b)"
 _VALUE = rf"{_PLACEHOLDER}(?:'[^']*'|\"[^\"]*\"|[^\s,}}]+)"
 SECRET_ASSIGNMENT = re.compile(
-    r"\b([A-Za-z0-9_]*(?:PASSWORD|PASSWD|SECRET|TOKEN|API_KEY|APIKEY|ACCESS_KEY)[A-Za-z0-9_]*)"
+    r"\b([A-Za-z0-9_]{0,64}(?:PASSWORD|PASSWD|SECRET|TOKEN|API_KEY|APIKEY|ACCESS_KEY)[A-Za-z0-9_]{0,64})"
     rf"(\"?\s*[=:]\s*)({_VALUE})",
     re.IGNORECASE,
 )
@@ -62,7 +62,10 @@ PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     ("hex_token", re.compile(r"(?<![0-9A-Za-z])[0-9a-f]{32,}(?![0-9A-Za-z])")),
     (
         "email",
-        re.compile(r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(?:\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}"),
+        re.compile(
+            r"(?<![A-Za-z0-9._%+\-])[A-Za-z0-9._%+\-]{1,64}@[A-Za-z0-9\-]{1,63}"
+            r"(?:\.[A-Za-z0-9\-]{1,63}){0,8}\.[A-Za-z]{2,24}"
+        ),
     ),
     ("numeric_id", re.compile(r"(?<![0-9.,\-])[0-9]{10,13}(?![0-9.,])")),
     (
@@ -78,8 +81,21 @@ VOCAB_KEYS = ("projects", "repos", "hosts", "users")
 
 
 _WORD_SEGMENT = re.compile(r"[A-Za-z][a-z]{2,}")
-# Identifier made of words: UserController, Header2026Banner, HTTPServer, my-component.
-_IDENTIFIER = re.compile(r"(?:[A-Z]?[a-z]{2,}|[A-Z]{2,}(?![a-z])|[0-9]+|[_\-])+")
+# Runs of an identifier, matched left to right without nested quantifiers (no ReDoS).
+_RUN = re.compile(r"[A-Z]+(?![a-z])|[A-Z]?[a-z]+|[0-9]+|[_\-]+|.")
+
+
+def _is_identifier(segment: str) -> bool:
+    """True for identifiers made of words: UserController, Header2026Banner, HTTPServer, my-component."""
+    for run in _RUN.findall(segment):
+        if run[0].isdigit() or run[0] in "_-":
+            continue
+        if run.isupper():
+            if len(run) < 2:
+                return False
+        elif not (run[-1].islower() and len(run.lstrip("ABCDEFGHIJKLMNOPQRSTUVWXYZ")) >= 2):
+            return False
+    return True
 
 
 def _is_path_like(match: str) -> bool:
@@ -91,7 +107,7 @@ def _is_path_like(match: str) -> bool:
     segments = [seg for seg in match.split("/") if seg]
     if not any(_WORD_SEGMENT.fullmatch(seg) for seg in segments):
         return False
-    return all(len(seg) < 8 or _IDENTIFIER.fullmatch(seg) for seg in segments)
+    return all(len(seg) < 8 or _is_identifier(seg) for seg in segments)
 
 
 def _sub(kind: str, pattern: re.Pattern[str], text: str) -> str:

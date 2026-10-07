@@ -258,3 +258,14 @@ def test_unexpected_but_valid_json_shapes_do_not_abort_extraction(tmp_path):
     r = run(claude, out)
     assert r.returncode == 0, r.stderr
     assert json.loads(out.read_text(encoding="utf-8"))["counts"]["prompts"] == 2
+
+
+def test_host_pattern_is_linear_on_adversarial_input():
+    code = (
+        f"import sys; sys.path.insert(0, {str(SCRIPTS)!r}); import extract_sessions as e; "
+        "e.HOST_RE.findall('a.' * 100000); assert e.HOST_RE.findall('see https://api.acme-internal.io/x') == ['api.acme-internal.io']"
+    )
+    try:
+        subprocess.run([sys.executable, "-I", "-c", code], timeout=2.0, check=True)
+    except subprocess.TimeoutExpired:
+        raise AssertionError("HOST_RE took longer than 2 seconds")

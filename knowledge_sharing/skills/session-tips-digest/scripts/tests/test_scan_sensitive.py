@@ -235,3 +235,20 @@ def test_a_word_segment_does_not_hide_a_random_secret():
     for s in ["Zm9vYmFy/abc/Qk9P4kL+Xc2vT9mNqRtYw3HsLp0uVaZ", "src/xK9vQ2mLp7RtYw3HsLp0uVaZb4N8cE1"]:
         assert "token" in kinds(f"x {s} y"), s
         assert s not in scan.redact(f"x {s} y"), s
+
+
+
+def _finishes_within(expr, seconds=2.0):
+    code = f"import sys; sys.path.insert(0, {str(SCRIPTS)!r}); import scan_sensitive as scan; {expr}"
+    try:
+        subprocess.run([sys.executable, "-I", "-c", code], timeout=seconds, check=True)
+    except subprocess.TimeoutExpired:
+        return False
+    return True
+
+
+def test_adversarial_inputs_finish_quickly():
+    assert _finishes_within("scan._is_path_like('src/' + 'abc' * 40 + '+')")
+    assert _finishes_within("scan._is_path_like('src/' + 'AB' * 40 + '+')")
+    assert _finishes_within("scan.scan_text('x' * 200000 + ' PASSWORD')")
+    assert _finishes_within("scan.redact('x' * 200000 + ' PASSWORD')")

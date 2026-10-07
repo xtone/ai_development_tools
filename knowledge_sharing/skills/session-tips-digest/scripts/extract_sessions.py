@@ -59,7 +59,7 @@ PUBLIC_OWNERS = {"anthropics", "openai", "github", "microsoft", "google", "verce
 SECOND_LEVEL = {"co", "ne", "or", "ac", "go", "gr", "ed", "lg"}
 
 HOST_RE = re.compile(
-    r"(?<![A-Za-z0-9_\-])((?:[a-z0-9](?:[a-z0-9\-]*[a-z0-9])?\.)+"
+    r"(?<![A-Za-z0-9_.\-])((?:[a-z0-9](?:[a-z0-9\-]{0,61}[a-z0-9])?\.){1,8}"
     r"(?:com|net|org|io|dev|app|jp|ai|cloud|run))(?![A-Za-z0-9\-])",
     re.IGNORECASE,
 )
