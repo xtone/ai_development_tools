@@ -84,6 +84,7 @@ BLOCK_START = re.compile(r"^(#{1,3} |```|\||- |\d+\. |> )")
 def inline(text: str) -> str:
     """Render inline Markdown. Code spans are taken out first so their content stays literal."""
     spans: list[str] = []
+    text = text.replace("\x00", "")
 
     def stash(m: re.Match) -> str:
         spans.append("<code>" + html.escape(m.group(1).strip(), quote=False) + "</code>")

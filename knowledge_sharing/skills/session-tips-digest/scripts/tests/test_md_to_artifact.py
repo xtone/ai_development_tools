@@ -122,3 +122,33 @@ def test_link_urls_cannot_break_out_of_the_attribute():
     html = conv.render('## s\n\n[x](https://a.example/"onmouseover="alert(1))\n')
     assert '"onmouseover="' not in html
     assert 'href="https://a.example/&quot;onmouseover=&quot;alert(1"' in html
+
+
+def test_injection_attempts_in_every_block_stay_inert():
+    payload = '<img src=x onerror=alert(1)>'
+    md = "\n".join(
+        [
+            f"# T {payload}",
+            f"lead {payload}",
+            f"## H2 {payload}",
+            f"### H3 `{payload}` {payload}",
+            f"| {payload} | `{payload}` |",
+            "|---|---|",
+            f"| a {payload} | b |",
+            f"- item {payload}",
+            f"1. num {payload}",
+            f"> quote {payload}",
+            f"[{payload}](https://a.example/{payload})",
+            f"[x](javascript:alert(1)) **{payload}**",
+            "```",
+            payload,
+            "```",
+            "x\x000\x00y",
+        ]
+    )
+    html = conv.render(md, eyebrow=payload, meta=[payload])
+    body = html[html.index("</style>") :]
+    assert "<img" not in body
+    assert 'href="javascript:' not in body
+    html = conv.render("## s\n", title=payload)
+    assert "<img" not in html
