@@ -204,3 +204,24 @@ def test_vocabulary_does_not_store_raw_emails(tmp_path):
     assert "emails" not in data["vocabulary"]
     assert "example-corp.co.jp" in data["vocabulary"]["hosts"]
     assert "alice@example-corp.co.jp" not in raw
+
+
+def _memory(dirpath, name):
+    (dirpath / "memory").mkdir(parents=True)
+    (dirpath / "memory" / f"{name}.md").write_text(
+        f"---\nname: {name}\ndescription: d\n---\n\n**How to apply:** x\n", encoding="utf-8"
+    )
+
+
+def test_memory_dirs_without_sessions_get_readable_project_names(tmp_path):
+    claude = make_claude(tmp_path)
+    with (claude / "history.jsonl").open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps({"display": "p", "timestamp": ms("2026-10-05"), "project": "/Users/alice/work/beta.app"}) + "\n")
+    _memory(claude / "projects" / "-Users-alice-work-beta-app", "m1")
+    _memory(claude / "projects" / "-Users-alice-PycharmProjects-zeta-lang", "m2")
+    out = tmp_path / "s.json"
+    assert run(claude, out).returncode == 0
+    projects = {m["name"]: m["project"] for m in json.loads(out.read_text(encoding="utf-8"))["memories"]}
+    assert projects["m1"] == "beta.app"
+    assert projects["m2"] == "PycharmProjects-zeta-lang"
+    assert "-Users-alice" not in out.read_text(encoding="utf-8")

@@ -134,9 +134,21 @@ def read_jsonl(path: Path, must_contain: str | None = None) -> Iterator[dict]:
                 yield data
 
 
-def dir_project(dirpath: Path, cache: dict[Path, str]) -> str:
+def encode_dir(path: str) -> str:
+    """Claude Code names project directories by replacing non-alphanumerics with '-'."""
+    return re.sub(r"[^A-Za-z0-9]", "-", str(path))
+
+
+def fallback_name(dirname: str, known: dict[str, str]) -> str:
+    """Readable project name for an encoded directory name without a recorded cwd."""
+    if dirname in known:
+        return known[dirname]
+    return re.sub(r"^-(?:Users|home)-[^-]+-", "", dirname) or dirname
+
+
+def dir_project(dirpath: Path, cache: dict[Path, str], known: dict[str, str]) -> str:
     if dirpath not in cache:
-        name = dirpath.name
+        name = fallback_name(dirpath.name, known)
         for f in sorted(dirpath.glob("*.jsonl")):
             found = next((d["cwd"] for d in read_jsonl(f, '"cwd"') if d.get("cwd")), None)
             if found:
@@ -146,9 +158,11 @@ def dir_project(dirpath: Path, cache: dict[Path, str]) -> str:
     return cache[dirpath]
 
 
-def collect_prompts(claude_dir, cutoff, filters, texts, names) -> list[dict]:
+def collect_prompts(claude_dir, cutoff, filters, texts, names, known) -> list[dict]:
     out = []
     for d in read_jsonl(claude_dir / "history.jsonl"):
+        if d.get("project"):
+            known.setdefault(encode_dir(d["project"]), project_name(d["project"]))
         ts = parse_ts(d.get("timestamp"))
         if ts is None or ts < cutoff:
             continue
@@ -168,7 +182,7 @@ def _top(counter: Counter) -> list[list]:
     return [[k, v] for k, v in counter.most_common()]
 
 
-def collect_usage(claude_dir, cutoff, filters, patterns, texts, names):
+def collect_usage(claude_dir, cutoff, filters, patterns, texts, names, known):
     tools, skills, agents, mcp, gh = Counter(), Counter(), Counter(), Counter(), Counter()
     samples: list[dict] = []
     seen: set[tuple[str, str]] = set()
@@ -183,7 +197,7 @@ def collect_usage(claude_dir, cutoff, filters, patterns, texts, names):
             ts = parse_ts(d.get("timestamp"))
             if ts is not None and ts < cutoff:
                 continue
-            proj = project_name(d["cwd"]) if d.get("cwd") else f.parent.name
+            proj = project_name(d["cwd"]) if d.get("cwd") else fallback_name(f.parent.name, known)
             if not wanted(proj, filters):
                 continue
             content = (d.get("message") or {}).get("content")
@@ -244,12 +258,12 @@ def parse_memory(path: Path) -> tuple[str, str, str, str]:
     return meta.get("name", path.stem), meta.get("description", ""), how, body
 
 
-def collect_memories(claude_dir, filters, cache, texts) -> list[dict]:
+def collect_memories(claude_dir, filters, cache, texts, known) -> list[dict]:
     out = []
     for f in sorted((claude_dir / "projects").glob("*/memory/*.md")):
         if f.name == "MEMORY.md":
             continue
-        proj = dir_project(f.parent.parent, cache)
+        proj = dir_project(f.parent.parent, cache, known)
         if not wanted(proj, filters):
             continue
         try:
@@ -365,9 +379,10 @@ def main(argv: list[str] | None = None) -> int:
     texts: list[str] = []
     names: set[str] = set()
     cache: dict[Path, str] = {}
-    prompts = collect_prompts(claude_dir, cutoff, filters, texts, names)
-    usage, samples = collect_usage(claude_dir, cutoff, filters, patterns, texts, names)
-    memories = collect_memories(claude_dir, filters, cache, texts)
+    known: dict[str, str] = {}
+    prompts = collect_prompts(claude_dir, cutoff, filters, texts, names, known)
+    usage, samples = collect_usage(claude_dir, cutoff, filters, patterns, texts, names, known)
+    memories = collect_memories(claude_dir, filters, cache, texts, known)
     report = {
         "generated_at": now.isoformat(timespec="seconds"),
         "since": cutoff.isoformat(timespec="seconds"),
