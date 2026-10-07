@@ -225,3 +225,22 @@ def test_memory_dirs_without_sessions_get_readable_project_names(tmp_path):
     assert projects["m1"] == "beta.app"
     assert projects["m2"] == "PycharmProjects-zeta-lang"
     assert "-Users-alice" not in out.read_text(encoding="utf-8")
+
+
+def test_subdirectory_cwd_and_docs_urls_do_not_become_vocabulary(tmp_path):
+    claude = make_claude(tmp_path)
+    with (claude / "projects" / "-w-acme-shop" / "s1.jsonl").open("a", encoding="utf-8") as fh:
+        fh.write(
+            line(
+                "2026-10-05T03:00:00Z",
+                "/w/acme-shop/docs",
+                tool("Bash", command="open https://docs.github.com/en/pull-requests/how-tos && gh stack link 1 2"),
+            )
+            + "\n"
+        )
+    out = tmp_path / "s.json"
+    assert run(claude, out).returncode == 0
+    data = json.loads(out.read_text(encoding="utf-8"))
+    assert "docs" not in data["vocabulary"]["projects"]
+    assert "pull-requests" not in data["vocabulary"]["repos"]
+    assert {s["project"] for s in data["bash_samples"]} == {"acme-shop"}

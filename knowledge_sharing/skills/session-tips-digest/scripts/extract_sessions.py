@@ -64,7 +64,7 @@ HOST_RE = re.compile(
     re.IGNORECASE,
 )
 REPO_RE = re.compile(
-    r"github\.com[:/]([A-Za-z0-9_.\-]+)/([A-Za-z0-9_.\-]+?)(?:\.git)?(?=$|[\s/'\"#)?,])"
+    r"(?<![A-Za-z0-9.\-])github\.com[:/]([A-Za-z0-9_.\-]+)/([A-Za-z0-9_.\-]+?)(?:\.git)?(?=$|[\s/'\"#)?,])"
 )
 REPO_FLAG_RE = re.compile(r"(?:\s-R|--repo)[\s=]+([A-Za-z0-9_.\-]+)/([A-Za-z0-9_.\-]+)")
 GH_RE = re.compile(r"^\s*(gh\s+[a-z][a-z\-]*\s+[a-z][a-z\-]*)")
@@ -147,8 +147,16 @@ def fallback_name(dirname: str, known: dict[str, str]) -> str:
 
 
 def dir_project(dirpath: Path, cache: dict[Path, str], known: dict[str, str]) -> str:
+    """Project of a ~/.claude/projects/<dir>: the directory the sessions were started in.
+
+    Per-line cwd is not used because Claude may cd into subdirectories mid-session.
+    """
     if dirpath not in cache:
-        name = fallback_name(dirpath.name, known)
+        base = dirpath.name.split("--claude-worktrees-")[0]
+        if base in known:
+            cache[dirpath] = known[base]
+            return cache[dirpath]
+        name = fallback_name(base, known)
         for f in sorted(dirpath.glob("*.jsonl")):
             found = next((d["cwd"] for d in read_jsonl(f, '"cwd"') if d.get("cwd")), None)
             if found:
@@ -182,7 +190,7 @@ def _top(counter: Counter) -> list[list]:
     return [[k, v] for k, v in counter.most_common()]
 
 
-def collect_usage(claude_dir, cutoff, filters, patterns, texts, names, known):
+def collect_usage(claude_dir, cutoff, filters, patterns, texts, names, known, cache):
     tools, skills, agents, mcp, gh = Counter(), Counter(), Counter(), Counter(), Counter()
     samples: list[dict] = []
     seen: set[tuple[str, str]] = set()
@@ -197,7 +205,7 @@ def collect_usage(claude_dir, cutoff, filters, patterns, texts, names, known):
             ts = parse_ts(d.get("timestamp"))
             if ts is not None and ts < cutoff:
                 continue
-            proj = project_name(d["cwd"]) if d.get("cwd") else fallback_name(f.parent.name, known)
+            proj = dir_project(f.parent, cache, known)
             if not wanted(proj, filters):
                 continue
             content = (d.get("message") or {}).get("content")
@@ -381,7 +389,7 @@ def main(argv: list[str] | None = None) -> int:
     cache: dict[Path, str] = {}
     known: dict[str, str] = {}
     prompts = collect_prompts(claude_dir, cutoff, filters, texts, names, known)
-    usage, samples = collect_usage(claude_dir, cutoff, filters, patterns, texts, names, known)
+    usage, samples = collect_usage(claude_dir, cutoff, filters, patterns, texts, names, known, cache)
     memories = collect_memories(claude_dir, filters, cache, texts, known)
     report = {
         "generated_at": now.isoformat(timespec="seconds"),
