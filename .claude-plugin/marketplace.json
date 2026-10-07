@@ -76,6 +76,15 @@
             "author": {
                 "name": "ISHIHARA, Masaya"
             }
+        },
+        {
+            "name": "knowledge-sharing",
+            "source": "./knowledge_sharing",
+            "description": "Claude Code の利用記録から、チームで共有できる知見を抽出・検証・公開するスキル群（セッション記録からの Tips 抽出など）",
+            "version": "0.1.0",
+            "author": {
+                "name": "TOYOTA, Yoichi"
+            }
         }
     ]
 }
