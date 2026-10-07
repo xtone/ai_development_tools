@@ -191,3 +191,16 @@ def test_since_accepts_date_and_rejects_garbage(tmp_path):
     r = run(claude, tmp_path / "x.json", "--since", "last-month")
     assert r.returncode == 2
     assert "--since" in r.stderr
+
+
+def test_vocabulary_does_not_store_raw_emails(tmp_path):
+    claude = make_claude(tmp_path)
+    with (claude / "history.jsonl").open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps({"display": "連絡先 alice@example-corp.co.jp", "timestamp": ms("2026-10-05"), "project": "/w/acme-shop"}) + "\n")
+    out = tmp_path / "s.json"
+    assert run(claude, out).returncode == 0
+    raw = out.read_text(encoding="utf-8")
+    data = json.loads(raw)
+    assert "emails" not in data["vocabulary"]
+    assert "example-corp.co.jp" in data["vocabulary"]["hosts"]
+    assert "alice@example-corp.co.jp" not in raw

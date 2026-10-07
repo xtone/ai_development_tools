@@ -21,6 +21,19 @@ from typing import Iterable
 _T = r"A-Za-z0-9_+/=\-"
 
 PATTERNS: list[tuple[str, re.Pattern[str]]] = [
+    (
+        "known_secret",
+        re.compile(
+            r"\b(?:AKIA|ASIA)[0-9A-Z]{16}\b"
+            r"|\bgh[pousr]_[A-Za-z0-9]{20,}"
+            r"|\bgithub_pat_[A-Za-z0-9_]{20,}"
+            r"|\bxox[abprs]-[A-Za-z0-9\-]{10,}"
+            r"|\bsk-[A-Za-z0-9_\-]{16,}"
+            r"|\bAIza[0-9A-Za-z_\-]{30,}"
+            r"|-----BEGIN [A-Z ]*PRIVATE KEY-----"
+            r"|https?://[^\s/:@]+:[^\s/@]+@[^\s/]+"
+        ),
+    ),
     ("bearer", re.compile(r"Bearer\s+[A-Za-z0-9._~+/=\-]{16,}")),
     (
         "token",
@@ -42,12 +55,19 @@ PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     ("home_path", re.compile(r"/(?:Users|home)/[^/\s\"'<>)`]+")),
 ]
 
-REDACT_KINDS = ("bearer", "token", "hex_token")
+REDACT_KINDS = ("known_secret", "bearer", "token", "hex_token", "email")
+SECRET_KINDS = ("known_secret", "bearer", "token", "hex_token")
+SECRET_ASSIGNMENT = re.compile(
+    r"\b([A-Za-z0-9_]*(?:PASSWORD|PASSWD|SECRET|TOKEN|API_KEY|APIKEY)[A-Za-z0-9_]*)="
+    r"(?:'[^']*'|\"[^\"]*\"|\S+)",
+    re.IGNORECASE,
+)
 VOCAB_KEYS = ("projects", "repos", "hosts", "users")
 
 
 def redact(text: str) -> str:
-    """Replace secret-looking strings with <redacted>."""
+    """Replace secrets, secret assignments and email addresses with <redacted>."""
+    text = SECRET_ASSIGNMENT.sub(r"\1=<redacted>", text)
     for kind, pattern in PATTERNS:
         if kind in REDACT_KINDS:
             text = pattern.sub("<redacted>", text)
@@ -93,6 +113,14 @@ def scan_text(
     return findings
 
 
+def _masked(finding: dict) -> dict:
+    """Never echo a secret back: show its first 4 characters and its length."""
+    if finding["kind"] not in SECRET_KINDS:
+        return finding
+    match = finding["match"]
+    return {**finding, "match": f"{match[:4]}…({len(match)} chars)"}
+
+
 def _read_allow_file(path: Path) -> list[str]:
     words = []
     for line in Path(path).read_text(encoding="utf-8").splitlines():
@@ -120,7 +148,7 @@ def main(argv: list[str] | None = None) -> int:
         for name in args.files:
             text = Path(name).read_text(encoding="utf-8", errors="replace")
             for f in scan_text(text, vocab=vocab, allow=allow):
-                results.append({"file": name, **f})
+                results.append({"file": name, **_masked(f)})
     except (OSError, ValueError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2

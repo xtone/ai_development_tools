@@ -143,3 +143,37 @@ def test_cli_json_output(tmp_path):
     assert r.returncode == 1
     data = json.loads(r.stdout)
     assert data == [{"file": str(f), "line": 1, "kind": "email", "match": "a@example-corp.co.jp"}]
+
+
+def test_cli_masks_secret_values_in_output(tmp_path):
+    f = tmp_path / "a.md"
+    f.write_text("key HnRXa1s7-80Y6Hrv8HhTcG_sqvqRy0nGUlqhG9pqeL8\n", encoding="utf-8")
+    r = _run(f)
+    assert r.returncode == 1
+    assert "HnRXa1s7-80Y6Hrv8HhTcG_sqvqRy0nGUlqhG9pqeL8" not in r.stdout
+    assert "HnRX…(43 chars)" in r.stdout
+    r = _run(f, "--json")
+    assert "sqvqRy0nGUlqhG9pqeL8" not in r.stdout
+
+
+def test_redact_hides_secret_assignments():
+    out = scan.redact("PGPASSWORD=hunter2 MY_API_KEY='abc' DEBUG=1 psql")
+    assert "hunter2" not in out
+    assert "abc" not in out
+    assert out == "PGPASSWORD=<redacted> MY_API_KEY=<redacted> DEBUG=1 psql"
+
+
+def test_detects_and_redacts_well_known_secret_formats():
+    samples = [
+        "AKIAIOSFODNN7EXAMPLE",
+        "ghp_" + "a1B2" * 9,
+        "github_pat_11ABCDEFG0123456789_abcdefghij",
+        "xoxb-1234567890-abcdefghij",
+        "sk-ant-api03-abcdefghij0123456789",
+        "AIza" + "SyA1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q",
+        "-----BEGIN OPENSSH PRIVATE KEY-----",
+        "https://deploy:s3cretpass@git.example-corp.co.jp/repo.git",
+    ]
+    for s in samples:
+        assert "known_secret" in kinds(f"x {s} y"), s
+        assert s not in scan.redact(f"x {s} y"), s

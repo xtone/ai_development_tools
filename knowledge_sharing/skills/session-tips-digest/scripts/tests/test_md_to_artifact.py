@@ -116,3 +116,9 @@ def test_cli_writes_file(tmp_path):
         text=True,
     )
     assert r.returncode == 2
+
+
+def test_link_urls_cannot_break_out_of_the_attribute():
+    html = conv.render('## s\n\n[x](https://a.example/"onmouseover="alert(1))\n')
+    assert '"onmouseover="' not in html
+    assert 'href="https://a.example/&quot;onmouseover=&quot;alert(1"' in html

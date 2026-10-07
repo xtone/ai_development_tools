@@ -58,7 +58,6 @@ SHARED_PLATFORM_SUFFIXES = (
 PUBLIC_OWNERS = {"anthropics", "openai", "github", "microsoft", "google", "vercel", "astral-sh"}
 SECOND_LEVEL = {"co", "ne", "or", "ac", "go", "gr", "ed", "lg"}
 
-EMAIL_RE = re.compile(r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(?:\.[A-Za-z0-9\-]+)*\.[A-Za-z]{2,}")
 HOST_RE = re.compile(
     r"(?<![A-Za-z0-9_\-])((?:[a-z0-9](?:[a-z0-9\-]*[a-z0-9])?\.)+"
     r"(?:com|net|org|io|dev|app|jp|ai|cloud|run))(?![A-Za-z0-9\-])",
@@ -307,11 +306,8 @@ def registrable(host: str) -> str:
 
 def build_vocabulary(texts: list[str], project_names: set[str], claude_dir: Path) -> dict:
     hosts: set[str] = set()
-    emails: set[str] = set()
     repos: set[str] = set()
     for text in texts:
-        for m in EMAIL_RE.finditer(text):
-            emails.add(m.group(0).lower())
         for m in HOST_RE.finditer(text):
             host = m.group(1).lower().strip(".")
             if _matches_suffix(host, PUBLIC_HOST_SUFFIXES):
@@ -339,7 +335,6 @@ def build_vocabulary(texts: list[str], project_names: set[str], claude_dir: Path
         "projects": keep(project_names),
         "repos": keep(repos),
         "hosts": keep(hosts),
-        "emails": sorted(emails),
         "users": keep(users),
     }
 

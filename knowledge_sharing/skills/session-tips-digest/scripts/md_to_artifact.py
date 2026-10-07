@@ -95,7 +95,9 @@ def inline(text: str) -> str:
     text = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", text)
     text = re.sub(
         r"\[([^\]]+)\]\((https?://[^)\s]+)\)",
-        r'<a href="\2" target="_blank" rel="noopener">\1</a>',
+        lambda m: '<a href="{}" target="_blank" rel="noopener">{}</a>'.format(
+            m.group(2).replace('"', "&quot;"), m.group(1)
+        ),
         text,
     )
     return re.sub(r"\x00(\d+)\x00", lambda m: spans[int(m.group(1))], text)
