@@ -229,3 +229,9 @@ def test_dollar_and_numeric_passwords_are_not_treated_as_placeholders():
         assert "credential" in kinds(s), s
         out = scan.redact(s)
         assert "ecret" not in out and "12345678" not in out, s
+
+
+def test_a_word_segment_does_not_hide_a_random_secret():
+    for s in ["Zm9vYmFy/abc/Qk9P4kL+Xc2vT9mNqRtYw3HsLp0uVaZ", "src/xK9vQ2mLp7RtYw3HsLp0uVaZb4N8cE1"]:
+        assert "token" in kinds(f"x {s} y"), s
+        assert s not in scan.redact(f"x {s} y"), s

@@ -78,11 +78,20 @@ VOCAB_KEYS = ("projects", "repos", "hosts", "users")
 
 
 _WORD_SEGMENT = re.compile(r"[A-Za-z][a-z]{2,}")
+# Identifier made of words: UserController, Header2026Banner, HTTPServer, my-component.
+_IDENTIFIER = re.compile(r"(?:[A-Z]?[a-z]{2,}|[A-Z]{2,}(?![a-z])|[0-9]+|[_\-])+")
 
 
 def _is_path_like(match: str) -> bool:
-    """A token candidate with '/' is a file path when a segment is an ordinary word (src, app, Header)."""
-    return "/" in match and any(_WORD_SEGMENT.fullmatch(seg) for seg in match.split("/"))
+    """A token candidate with '/' is a file path only if it has an ordinary word segment
+    (src, app) and every long segment reads as an identifier made of words.
+    A single random-looking segment is enough to treat the whole string as a secret."""
+    if "/" not in match:
+        return False
+    segments = [seg for seg in match.split("/") if seg]
+    if not any(_WORD_SEGMENT.fullmatch(seg) for seg in segments):
+        return False
+    return all(len(seg) < 8 or _IDENTIFIER.fullmatch(seg) for seg in segments)
 
 
 def _sub(kind: str, pattern: re.Pattern[str], text: str) -> str:
