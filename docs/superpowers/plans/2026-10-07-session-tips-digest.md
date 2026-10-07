@@ -1406,7 +1406,7 @@ git commit -m "feat(knowledge-sharing): Tips の Markdown を Artifact 用 HTML 
 - Create: `S/templates/tips.md`
 - Create: `S/templates/references.md`
 - Create: `knowledge_sharing/.claude-plugin/plugin.json`
-- Create: `knowledge_sharing/.claude-plugin/marketplace.json`
+- Create: `knowledge_sharing/.claude-plugin/marketplace.json`（実装時に削除。台帳の Ruling 参照）
 - Create: `knowledge_sharing/README.md`
 - Modify: `.claude-plugin/marketplace.json`（`plugins` 配列の末尾にエントリを追加）
 - Modify: `README.md:15`（公開中のプラグイン一覧に 1 行追加）
@@ -1813,7 +1813,7 @@ Claude Code の利用記録から、チームで共有できる知見を抽出�
 /knowledge-sharing:session-tips-digest
 /knowledge-sharing:session-tips-digest --since 7d --projects my-app
 /knowledge-sharing:session-tips-digest --artifact-url https://claude.ai/artifact/<id>
-/knowledge-sharing:session-tips-digest --notion https://www.notion.so/<page> --no-research
+/knowledge-sharing:session-tips-digest --notion <Notion ページの URL> --no-research
 ```
 
 | 引数 | 既定 | 意味 |
