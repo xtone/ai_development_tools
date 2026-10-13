@@ -366,3 +366,28 @@ def test_options_cli_reads_raw_fetch_output(tmp_path):
     bad = tmp_path / "bad.txt"
     bad.write_text("no schema here", encoding="utf-8")
     assert run("options", src, "--schema", bad).returncode == 2
+
+
+# ---- confidential topics ----
+
+
+def test_validate_rejects_cards_on_confidential_topics():
+    sys.path.insert(0, str(SCRIPTS))
+    import topics as topics_mod  # noqa: E402
+
+    loaded = topics_mod.load_topics([topics_mod.DEFAULT_FILE])
+    bad = card(context="経営会議の資料づくりで、数字の確認を先に頼んだ。")
+    errors, _ = cards.validate([bad], CATALOG, loaded)
+    assert any("confidential topic" in e for e in errors)
+    bad2 = card(evidence=[{"type": "prompt", "ref": "a@1", "excerpt": "部下の人事評価を下書きして"}])
+    assert any("confidential topic" in e for e in cards.validate([bad2], CATALOG, loaded)[0])
+    assert cards.validate([card()], CATALOG, loaded) == ([], [])
+    dropped = card(status="dropped", context="経営会議の資料")
+    assert cards.validate([dropped], CATALOG, loaded)[0] == []
+
+
+def test_validate_cli_uses_default_topics(tmp_path):
+    bad = tmp_path / "bad.jsonl"
+    bad.write_text(json.dumps(card(claim="取締役会の資料を一発で作れた依頼の書き方がある"), ensure_ascii=False) + "\n", encoding="utf-8")
+    r = run("validate", bad)
+    assert r.returncode == 1 and "confidential topic" in r.stdout

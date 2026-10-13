@@ -281,3 +281,13 @@ README・SKILL.md に同じ文を置く。
 
 - **Notion の選択肢**: Notion MCP の create-pages は、multi_select に選択肢に無い値を渡すと全件を拒否し、選択肢は自動で増えない。提出前に `cards.py options` で足りない選択肢と `ALTER COLUMN ... SET MULTI_SELECT(...)` 文を出し、update-data-source で足す。この文は既存の選択肢を色ごとすべて並べる（並べ忘れると消えるため、手で書かない）。REST API（`notion_submit.py`）は選択肢を自動で足すので不要
 - **抽出の期間**: `extract_sessions.py` に `--until`（その日を含む）と `--tz`（既定はローカル）を足した。日付は `--tz` のその日の 0 時として解釈する。prompt、ツールの利用回数、Bash の例、commit、PR を期間で絞る。memory は絞らない。SKILL.md の既定は、`--since` が対象週の月曜、`--until` が日曜
+
+## 改訂（2026-10-13、v0.2.2）: カードにしない話題
+
+人事評価・処遇と、Xtone・PKSHA の経営に関する話題は、カードにしない。経営層のメンバーが使ったときに、社内秘の情報が全社エリアに出ないようにするため。3 段で防ぐ。
+
+1. **抽出**: `extract_sessions.py` は、prompt または commit・PR のタイトルが `confidential_topics.json` の語に当たるセッションを、まるごと外す（prompt、commit、PR、ツールの利用回数、Bash の例）。memory は本文まで見て、当たるものを外す。出力の `excluded` には件数と話題ごとのセッション数だけを入れる。ファイルの中身などツールの入力は判定に使わない。実データで試すと、コードや顧客の文書にある「昇格」「代表取締役」「予実管理」で、普段の開発セッションまで外れたため
+2. **下書き**: card-writing.md と SKILL.md に禁止事項として書く
+3. **検査**: `cards.py validate` は、提出するカードの claim・文脈・プロジェクト名・根拠の抜粋のどれかが当たればエラーにする
+
+語は、一般語（評価、予算、昇格、社名だけ）を避けて複合語で書く。個人で足したい語は `~/.claude/knowledge-cards/confidential_topics.json` に置き、同じ id の話題に合流させる。直近 30 日の実データでは、除外されたのはこの機能を依頼したセッション 1 件だけで、memory の誤除外は 0 件だった。

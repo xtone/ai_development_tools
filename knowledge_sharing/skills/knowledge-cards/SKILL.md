@@ -23,6 +23,14 @@ description: Claude Code のセッション記録（~/.claude の履歴・セッ
 - この仕組みは課題の抽出とアイデア創出のためのもので、人事評価には使わない
 - Notion のページは全社エリアにある。エンジニア以外も読む前提で書く
 
+## カードにしない話題
+
+人事評価・処遇（評価、査定、給与、賞与、昇格要件、1on1 など）と、Xtone・PKSHA の経営（経営会議、役員、決算、業績、事業計画、M&A、組織変更など）に関する話題は、カードにしない。経営層のメンバーが使ったときに、社内秘の情報が全社エリアに出ないようにするため。
+
+- `extract_sessions.py` は、prompt または commit・PR のタイトルがこの話題に当たるセッションを、まるごと抽出から外す（prompt、commit、PR、ツールの利用回数、Bash の例）。memory も当たるものは外す。出力の `excluded` には件数だけが入る
+- 話題の判定に使う語は `<plugin-dir>/confidential_topics.json`。自分だけ足したい語は `~/.claude/knowledge-cards/confidential_topics.json` に同じ形式で置く（コミットされない）
+- 抽出をすり抜けた材料でも、この話題のカードは書かない。`cards.py validate` は、claim・文脈・プロジェクト名・根拠の抜粋のどれかが当たるカードをエラーにする。言い換えて通そうとせず、カードごと消す
+
 ## 引数
 
 `$ARGUMENTS` を次のように解釈する。指定が無いものは既定値を使う。
@@ -70,13 +78,16 @@ python3 -I <skill-dir>/scripts/extract_sessions.py --since <since> [--until <unt
 
 日付は `--tz`（既定はこのマシンのタイムゾーン）のその日の 0 時として解釈し、`--until` の日は終わりまで含む。期間で絞られるのは prompt、ツールの利用回数、Bash の例、commit と PR。memory は期間で絞らない（更新日 `modified` を見て判断する）。
 
+出力の `excluded` に、カードにしない話題として外したセッションの数が入る（中身は出ない）。完了報告でその件数だけを伝え、外したセッションの中身をユーザーに聞いたり推測したりしない。
+
 出力には、期間内の prompt（`session_id` 付き）、ツール・スキル・MCP の利用回数、Bash の例、commit と PR のタイトル、memory、ハーネス構成（名前だけ）、匿名化辞書（`vocabulary`）が入る。秘密情報は伏せ字済み。
 
 ## Phase 2: 下書き
 
 1. `references/card-writing.md` を読む
-2. 問いごとに、`plan` の `text` と `draft_hint`、`card-writing.md` の「問いごとに見る場所」に従って `sessions.json` の該当部分を読み、カードを書く。1 問 1〜3 枚、材料が無ければ「該当なし」を 1 枚
-3. カードを `<out>/.work/cards.jsonl` に 1 行 1 枚で書く。形式は次のとおり
+2. 「カードにしない話題」に当たるものは、材料に残っていても書かない
+3. 問いごとに、`plan` の `text` と `draft_hint`、`card-writing.md` の「問いごとに見る場所」に従って `sessions.json` の該当部分を読み、カードを書く。1 問 1〜3 枚、材料が無ければ「該当なし」を 1 枚
+4. カードを `<out>/.work/cards.jsonl` に 1 行 1 枚で書く。形式は次のとおり
 
 ```json
 {"card_id": "<week>/<問い>/<メールの@より前>/001", "question_id": "Q2", "week": "<week>", "week_range": ["<monday>", "<sunday>"], "author_email": "<git config user.email>", "project": "<プロジェクト名>", "claim": "20〜80 字の結論", "context": "2〜3 文", "polarity": "failed", "confidence": "observed", "evidence": [{"type": "prompt", "ref": "<session_id>@<time>", "excerpt": "伏せ字済みの抜粋"}], "tags": ["prompt"], "sensitivity": "internal", "status": "draft", "notion_url": null}
@@ -84,13 +95,13 @@ python3 -I <skill-dir>/scripts/extract_sessions.py --since <since> [--until <unt
 
 `author_email` は `git config user.email` から取る。`project` は `sessions.json` のプロジェクト名をそのまま使う。
 
-4. 検査する。エラーが 0 になるまで直す
+5. 検査する。エラーが 0 になるまで直す。「confidential topic」のエラーはカードを消して直す
 
 ```bash
 python3 -I <skill-dir>/scripts/cards.py validate <out>/.work/cards.jsonl
 ```
 
-5. 確認用の Markdown を出す
+6. 確認用の Markdown を出す
 
 ```bash
 python3 -I <skill-dir>/scripts/cards.py render <out>/.work/cards.jsonl --out <out>/cards-<week>.md
@@ -145,6 +156,7 @@ Notion MCP が使えない、または接続されていないときは、同じ
 - Notion の週の行の URL（`--dry-run` / `--no-notion` のときはその旨）
 - Notion に選択肢として足したプロジェクト名・タグ
 - 機密スキャンの結果（0 件）と、許可リストに入れた語とその理由
+- カードにしない話題として抽出から外したセッションの数（`excluded.sessions`。中身には触れない）
 - 開始から終了までの所要時間（参加者が週の行の「備考」に書けるように）
 - 投稿者を自動で足せなかった場合は、その旨と手順
 
