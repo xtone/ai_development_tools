@@ -59,22 +59,48 @@ def load_topics(paths: list[Path] | None = None, require: bool = False) -> list[
     return topics
 
 
+# Markdown / Notion-flavored Markdown that changes how text is displayed but not what it says.
+_LINK = re.compile(r"\[([^\]]*)\]\([^)]*\)")
+_MARKUP = re.compile(r"<[^>]*>|\\|[*_~`]")
+
+
 def normalize(text: str) -> str:
-    """NFKC, with invisible format characters (zero-width space, BOM, ...) removed so they cannot split a word."""
-    return "".join(ch for ch in unicodedata.normalize("NFKC", str(text)) if unicodedata.category(ch) != "Cf")
+    """NFKC, without invisible format characters (zero-width space, BOM, ...) and combining
+    marks (variation selectors, ...), so neither can split a word."""
+    return "".join(ch for ch in unicodedata.normalize("NFKC", str(text)) if unicodedata.category(ch) not in ("Cf", "Mn"))
+
+
+def displayed(text: str) -> str:
+    """Roughly what Notion shows for the text: links reduced to their label, tags, escapes and
+    emphasis marks removed. `取**締**役` and `経<span>営</span>会議` read as the words they spell."""
+    return _MARKUP.sub("", _LINK.sub(r"\1", str(text)))
+
+
+def variants(text: str) -> list[str]:
+    """The text as written and as displayed (both normalized); matching runs on each."""
+    written = normalize(text or "")
+    shown = normalize(displayed(text or ""))
+    return [written] if shown == written else [written, shown]
 
 
 def classify(text: str, topics) -> tuple[str, str, str] | None:
-    """(topic id, "strong" or "review", matched words) for the first hit; strong words win."""
+    """(topic id, "strong" or "review", matched words) for the first hit; strong words win.
+
+    The text is checked as written and as displayed, so markup that splits a word on the
+    page (a parser differential) does not hide it.
+    """
     if not text:
         return None
-    norm = normalize(text)
+    forms = variants(text)
     for level, index in (("strong", 2), ("review", 3)):
         for topic in topics:
             pattern = topic[index]
-            m = pattern.search(norm) if pattern else None
-            if m:
-                return topic[0], level, m.group(0)
+            if not pattern:
+                continue
+            for form in forms:
+                m = pattern.search(form)
+                if m:
+                    return topic[0], level, m.group(0)
     return None
 
 
@@ -85,9 +111,8 @@ def match_topic(text: str, topics) -> str | None:
 
 
 def review_words(text: str, topics) -> set[str]:
-    """Every review word in the text, so a person sees all of them before clearing anything."""
-    norm = normalize(text or "")
-    return {m.group(0) for topic in topics if topic[3] for m in topic[3].finditer(norm)}
+    """Every review word in the text (as written and as displayed), so a person sees all of them."""
+    return {m.group(0) for form in variants(text) for topic in topics if topic[3] for m in topic[3].finditer(form)}
 
 
 def blocked(text: str, topics, allowed_terms=()) -> tuple[str, str, str] | None:
@@ -98,10 +123,12 @@ def blocked(text: str, topics, allowed_terms=()) -> tuple[str, str, str] | None:
     clearing one word never clears a different review word or a strong word next to it.
     """
     allowed = {normalize(t).lower() for t in allowed_terms if str(t).strip()}
-    current = normalize(text or "")
-    for _ in range(len(current) + 1):
-        hit = classify(current, topics)
-        if not hit or hit[1] == "strong" or normalize(hit[2]).lower() not in allowed:
-            return hit
-        current = re.sub(re.escape(hit[2]), " ", current, flags=re.IGNORECASE)
+    for current in variants(text):
+        for _ in range(len(current) + 1):
+            hit = classify(current, topics)
+            if not hit:
+                break
+            if hit[1] == "strong" or normalize(hit[2]).lower() not in allowed:
+                return hit
+            current = re.sub(re.escape(hit[2]), " ", current, flags=re.IGNORECASE)
     return None

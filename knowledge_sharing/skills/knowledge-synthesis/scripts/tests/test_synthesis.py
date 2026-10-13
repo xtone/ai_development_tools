@@ -272,3 +272,21 @@ def test_to_notion_refuses_confidential_theme_text():
     import pytest
     with pytest.raises(synth.InputError):
         synth.to_notion(t, loaded(), CATALOG, "https://app.notion.com/week", TOPICS, allowed_terms=["昇格"])
+
+
+def test_to_notion_checks_the_exact_values_it_writes():
+    import pytest
+    t = themes()
+    t["themes"][1]["kinds"] = ["取締役会で決める"]
+    with pytest.raises(synth.InputError):
+        synth.to_notion(t, loaded(), CATALOG, "https://app.notion.com/week", TOPICS, allowed_terms=["昇格"])
+    t = themes()
+    t["themes"][1]["cards"] = ["https://x/経営会議"]
+    with pytest.raises(synth.InputError):
+        synth.to_notion(t, loaded(), CATALOG, "https://app.notion.com/week", TOPICS, allowed_terms=["昇格"])
+
+
+def test_check_catches_markup_split_words_in_the_summary():
+    data = loaded()
+    md = synth.render(themes(), data, CATALOG) + "\n- 取**締**役会で共有する\n"
+    assert any("strong" in p for p in synth.check(md, data, TOPICS, allowed_terms=["昇格"]))

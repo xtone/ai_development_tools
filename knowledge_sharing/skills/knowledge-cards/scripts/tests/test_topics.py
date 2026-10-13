@@ -114,3 +114,28 @@ def test_invisible_characters_cannot_split_a_word():
     assert topics.classify("取\u200b締役会", DEFAULT)[1] == "strong"
     assert topics.classify("経\ufeff営会議", DEFAULT)[1] == "strong"
     assert topics.classify("人事\u2060評価", DEFAULT)[1] == "strong"
+
+
+import pytest as _pytest
+
+
+@_pytest.mark.parametrize(
+    "text",
+    [
+        "取**締**役会の資料",
+        "取\\締役会の資料",
+        "経<span>営</span>会議",
+        "[取締](https://example.com)役会",
+        "人事`評価`",
+        "人~~事~~評価",
+        "経️営会議",
+    ],
+)
+def test_markup_that_renders_as_a_strong_word_is_caught(text):
+    hit = topics.classify(text, DEFAULT)
+    assert hit is not None and hit[1] == "strong", text
+    assert topics.blocked(text, DEFAULT, allowed_terms=["昇格"]) is not None
+
+
+def test_markup_split_review_word_is_listed():
+    assert "退職" in topics.review_words("退**職**の件", DEFAULT)

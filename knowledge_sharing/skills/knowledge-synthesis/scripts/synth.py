@@ -267,11 +267,10 @@ def to_notion(themes: dict, cards: dict, catalog: dict, week_url: str, topics=No
     """Properties for the 合成テーマ data source. Refuses theme text that fails the same check as the summary."""
     if topics is None:
         topics = load_topics(default_files(), require=True)
+    errors, _ = validate(themes, cards, catalog)
+    if errors:
+        raise InputError("themes do not validate: " + "; ".join(errors))
     index = card_index(cards)
-    for t in themes.get("themes", []):
-        problems = check("\n".join(_texts(t)), cards, topics, allowed_terms=allowed_terms)
-        if problems:
-            raise InputError(f"theme '{t.get('title', '')}' cannot be written: {'; '.join(problems)}")
     pages = []
     for t in (enrich(t, index, catalog) for t in themes.get("themes", [])):
         synthesis = f"{'＋'.join(t['kinds'])}: {t['proposal']} 根拠: {strength(t)}。限界: {t['limits']}"
@@ -288,6 +287,13 @@ def to_notion(themes: dict, cards: dict, catalog: dict, week_url: str, topics=No
             },
             "content": f"{cards['week']} の合成で作ったテーマ。詳細は週の行の配下の「まとめ」ページを参照。",
         })
+    # Check exactly what will be written: every text property and the page body. The card
+    # relation holds only URLs of this week's cards, which validate() has already enforced.
+    for page in pages:
+        values = [v for v in page["properties"].values() if isinstance(v, str)] + [page["content"]]
+        problems = check("\n".join(values), cards, topics, allowed_terms=allowed_terms)
+        if problems:
+            raise InputError(f"theme '{page['title']}' cannot be written: {'; '.join(problems)}")
     return pages
 
 
