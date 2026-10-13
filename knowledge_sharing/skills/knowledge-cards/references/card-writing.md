@@ -89,7 +89,7 @@ Phase 1 の抽出には中断・訂正・エラーの専用シグナルが無い
 
 ## タグ
 
-`questions.json` の `tags`（prompt, plan-mode, worktree, review, hooks, skill, mcp, testing, git, ci）から選ぶ。合うものが無ければ空でよい。新しいタグを付けると Notion の選択肢が増えるので、`validate` の警告を見て本当に要るか判断する。
+`questions.json` の `tags`（prompt, plan-mode, worktree, review, hooks, skill, mcp, testing, git, ci）から選ぶ。合うものが無ければ空でよい。`questions.json` に無いタグを付けると `validate` が警告を出す。提出するには Notion の選択肢に足す必要がある（`references/notion-submit.md` の手順 4）ので、本当に要るか判断する。
 
 ## 機密
 

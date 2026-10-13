@@ -322,3 +322,47 @@ def test_mark_submitted_cli_records_and_dedupes(tmp_path):
     cards.write_cards(again, [card(card_id="2026-W44/Q2/y.toyota/001")])
     assert "1 card(s) were already submitted" in run("dedupe", again, "--submitted", submitted).stdout
     assert cards.read_cards(again)[0]["status"] == "submitted"
+
+
+# ---- options (multi_select choices missing in Notion) ----
+
+SCHEMA_STATE = {
+    "name": "ナレッジカード",
+    "schema": {
+        "プロジェクト": {"type": "multi_select", "options": [
+            {"name": "その他", "color": "gray"}, {"name": "akita-shoten", "color": "orange"}]},
+        "タグ": {"type": "multi_select", "options": [{"name": "prompt", "color": "blue"}, {"name": "git", "color": "gray"}]},
+    },
+}
+
+
+def test_missing_options_and_alter_statements_keep_existing():
+    cs = [card(project="akita-shoten", tags=["prompt"]), card(card_id="x", project="o'brien-app", tags=["git", "ci"]),
+          card(card_id="d", project="dropped-app", status="dropped")]
+    result = cards.missing_options(cs, SCHEMA_STATE)
+    assert result["missing"] == {"プロジェクト": ["o'brien-app"], "タグ": ["ci"]}
+    assert result["statements"] == [
+        "ALTER COLUMN \"プロジェクト\" SET MULTI_SELECT('その他':gray, 'akita-shoten':orange, 'o''brien-app':default)",
+        "ALTER COLUMN \"タグ\" SET MULTI_SELECT('prompt':blue, 'git':gray, 'ci':default)",
+    ]
+
+
+def test_no_missing_options_means_no_statements():
+    result = cards.missing_options([card(project="akita-shoten", tags=["prompt"])], SCHEMA_STATE)
+    assert result == {"missing": {"プロジェクト": [], "タグ": []}, "statements": []}
+
+
+def test_options_cli_reads_raw_fetch_output(tmp_path):
+    src = tmp_path / "cards.jsonl"
+    cards.write_cards(src, [card(project="new-app", tags=["prompt"])])
+    fetched = tmp_path / "schema.txt"
+    fetched.write_text("<data-source>\n<data-source-state>\n" + json.dumps(SCHEMA_STATE, ensure_ascii=False)
+                       + "\n</data-source-state>\n</data-source>", encoding="utf-8")
+    r = run("options", src, "--schema", fetched)
+    assert r.returncode == 0, r.stderr
+    out = json.loads(r.stdout)
+    assert out["missing"]["プロジェクト"] == ["new-app"]
+    assert out["statements"][0].endswith("'new-app':default)")
+    bad = tmp_path / "bad.txt"
+    bad.write_text("no schema here", encoding="utf-8")
+    assert run("options", src, "--schema", bad).returncode == 2

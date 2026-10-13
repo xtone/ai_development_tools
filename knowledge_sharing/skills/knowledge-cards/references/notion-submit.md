@@ -47,7 +47,21 @@ query-data-sources（SQL モード）で週の行を探す。
 3. どれでも決まらなければ `me` にする。提出は止めない
 4. 決めた結果をユーザーに名前で示して確認し、`<out>/.work/notion-user.json` に `{"name": "...", "user_id": "<id または me>"}` で保存する
 
-## 4. カードを作る
+## 4. 選択肢を足す
+
+Notion MCP の create-pages は、multi_select（`プロジェクト`、`タグ`）に選択肢に無い値を渡すと、全件を validation_error で拒否する。自動では増えない（2026-10-13 に実環境で確認）。提出前に足りない選択肢を足す。
+
+1. 手順 1 の fetch で得た `<cards-ds>` の出力（`<data-source-state>` を含む部分）を `<out>/.work/cards-schema.txt` に保存する
+2. 足りない選択肢と DDL を出す
+
+```bash
+python3 -I <skill-dir>/scripts/cards.py options <out>/.work/cards.jsonl --schema <out>/.work/cards-schema.txt
+```
+
+3. `statements` が空でなければ、各文を update-data-source（`data_source_id` は `<cards-ds>`、`statements` にその文）で実行する。`ALTER COLUMN ... SET` は選択肢の一覧を丸ごと置き換えるので、既存の選択肢を並べた `cards.py options` の出力をそのまま使い、手で書き換えない
+4. 足したプロジェクト名とタグをユーザーに伝える
+
+## 5. カードを作る
 
 ```bash
 python3 -I <skill-dir>/scripts/cards.py dedupe <out>/.work/cards.jsonl --submitted <out>/.work/submitted.jsonl
@@ -56,7 +70,7 @@ python3 -I <skill-dir>/scripts/cards.py to-notion <out>/.work/cards.jsonl --week
 
 `pages.json` の各要素の `properties` と `content` を、そのまま create-pages の `pages[]` に入れる。`parent` は `{"type": "data_source_id", "data_source_id": "<cards-ds の ID>"}`。1 回の呼び出しで 100 件まで。`allow_async` は `false` にして、作られたページの URL を受け取る。
 
-- `プロジェクト` と `タグ` に選択肢に無い値があると、選択肢が自動で増える
+- `プロジェクト` と `タグ` の値は、手順 4 で選択肢に足してあること
 - 失敗したカードがあれば、そのカードは記録せずに残す（次の実行で送れる）
 
 成功したカードの `card_id` と URL を `<out>/.work/results.json` に書き、記録する。
@@ -69,7 +83,7 @@ python3 -I <skill-dir>/scripts/cards.py to-notion <out>/.work/cards.jsonl --week
 python3 -I <skill-dir>/scripts/cards.py mark-submitted <out>/.work/cards.jsonl --submitted <out>/.work/submitted.jsonl --results <out>/.work/results.json
 ```
 
-## 5. 週の行に投稿者を足す
+## 6. 週の行に投稿者を足す
 
 fetch で週の行を読み、`投稿者` の現在の値を得る。自分が入っていなければ、既存の値に自分を足した配列で update-page（`command: "update_properties"`）を呼ぶ。
 
@@ -92,4 +106,4 @@ python3 -I <skill-dir>/scripts/cards.py mark-submitted <out>/.work/cards.jsonl -
 python3 -I <skill-dir>/scripts/notion_submit.py add-author --week-page <ensure-week の url> --user <user id>
 ```
 
-各コマンドに `--dry-run` を付けると、送る内容だけを表示する（トークン不要）。
+各コマンドに `--dry-run` を付けると、送る内容だけを表示する（トークン不要）。REST API は multi_select に無い値を渡すと選択肢を自動で足すので、手順 4 は要らない。

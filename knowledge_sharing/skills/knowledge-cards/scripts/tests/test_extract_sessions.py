@@ -352,3 +352,42 @@ def test_commit_titles_are_redacted(tmp_path):
     raw = out.read_text(encoding="utf-8")
     assert "HnRXa1s7" not in raw
     assert json.loads(raw)["commits"][0]["title"] == "token <redacted> を消す"
+
+
+def test_until_limits_prompts_commits_and_tool_usage_by_local_day(tmp_path):
+    claude = make_claude(tmp_path)
+    with (claude / "history.jsonl").open("a", encoding="utf-8") as fh:
+        for ts, text in (("2026-10-09T14:59:00+00:00", "金曜の夜（JST 23:59）"), ("2026-10-09T15:00:00+00:00", "土曜（JST 0:00）")):
+            ms_ = int(dt.datetime.fromisoformat(ts).timestamp() * 1000)
+            fh.write(json.dumps({"display": text, "timestamp": ms_, "project": "/w/acme-shop", "sessionId": "s9"}) + "\n")
+    _write_session(
+        claude,
+        "s9.jsonl",
+        _bash_line("2026-10-09T14:00:00Z", 'git commit -m "feat: 金曜の commit"', session="s9"),
+        _bash_line("2026-10-09T16:00:00Z", 'git commit -m "feat: 土曜の commit"', session="s9"),
+    )
+    out = tmp_path / "work" / "sessions.json"
+    r = run(claude, out, "--since", "2026-10-05", "--until", "2026-10-09", "--tz", "+09:00")
+    assert r.returncode == 0, r.stderr
+    data = json.loads(out.read_text(encoding="utf-8"))
+    texts = [p["text"] for p in data["prompts"]]
+    assert "金曜の夜（JST 23:59）" in texts and "土曜（JST 0:00）" not in texts
+    assert [c["title"] for c in data["commits"]] == ["feat: 金曜の commit"]
+    assert data["since"] == "2026-10-05T00:00:00+09:00"
+    assert data["until"] == "2026-10-10T00:00:00+09:00"
+    assert dict(data["tool_usage"]["tools"])["Bash"] == 4
+
+
+def test_until_must_not_precede_since_and_must_be_a_date(tmp_path):
+    claude = make_claude(tmp_path)
+    r = run(claude, tmp_path / "x.json", "--since", "2026-10-05", "--until", "2026-10-04")
+    assert r.returncode == 2 and "--until" in r.stderr
+    r = run(claude, tmp_path / "x.json", "--until", "friday")
+    assert r.returncode == 2 and "--until" in r.stderr
+    r = run(claude, tmp_path / "x.json", "--tz", "JST")
+    assert r.returncode == 2 and "--tz" in r.stderr
+
+
+def test_without_until_output_has_null_until(tmp_path):
+    data, _ = extract(tmp_path)
+    assert data["until"] is None

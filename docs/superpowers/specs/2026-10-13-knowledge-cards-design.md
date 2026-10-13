@@ -274,3 +274,10 @@ README・SKILL.md に同じ文を置く。
 - 合成レポートはパターンを並べる。個人別の件数ランキングは出さない
 - この仕組みは課題の抽出とアイデア創出のためのもので、人事評価には使わない
 - Notion のページは全社エリアにある。エンジニア以外も読む前提で書く
+
+## 改訂（2026-10-13、v0.2.1）
+
+初回の実提出（W41）で見つかった 2 点を直した。
+
+- **Notion の選択肢**: Notion MCP の create-pages は、multi_select に選択肢に無い値を渡すと全件を拒否し、選択肢は自動で増えない。提出前に `cards.py options` で足りない選択肢と `ALTER COLUMN ... SET MULTI_SELECT(...)` 文を出し、update-data-source で足す。この文は既存の選択肢を色ごとすべて並べる（並べ忘れると消えるため、手で書かない）。REST API（`notion_submit.py`）は選択肢を自動で足すので不要
+- **抽出の期間**: `extract_sessions.py` に `--until`（その日を含む）と `--tz`（既定はローカル）を足した。日付は `--tz` のその日の 0 時として解釈する。prompt、ツールの利用回数、Bash の例、commit、PR を期間で絞る。memory は絞らない。SKILL.md の既定は、`--since` が対象週の月曜、`--until` が日曜
