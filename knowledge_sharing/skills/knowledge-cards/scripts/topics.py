@@ -8,6 +8,7 @@ personal file at ~/.claude/knowledge-cards/confidential_topics.json.
 """
 from __future__ import annotations
 
+import html
 import json
 import re
 import unicodedata
@@ -59,21 +60,65 @@ def load_topics(paths: list[Path] | None = None, require: bool = False) -> list[
     return topics
 
 
+# Markdown / Notion-flavored Markdown that changes how text is displayed but not what it says.
+_LINK = re.compile(r"\[([^\]]*)\]\([^)]*\)")
+_MARKUP = re.compile(r"<[^>]*>|\\|[*_~`]")
+
+
+# Invisible characters Unicode classifies as letters (Hangul fillers, Khmer inherent vowels).
+_INVISIBLE_LETTERS = {"\u115f", "\u1160", "\u3164", "\uffa0", "\u17b4", "\u17b5"}
+# Anything that is neither a letter nor a digit, between two Japanese characters.
+_JA = "\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff"
+_JA_GAP = re.compile(rf"(?<=[{_JA}])[^\w]+(?=[{_JA}])")
+
+
 def normalize(text: str) -> str:
-    return unicodedata.normalize("NFKC", str(text))
+    """NFKC, without invisible characters (format characters such as zero-width space and BOM,
+    combining marks such as variation selectors, and invisible letters such as the Hangul
+    filler), so none of them can split a word."""
+    return "".join(
+        ch for ch in unicodedata.normalize("NFKC", str(text))
+        if unicodedata.category(ch) not in ("Cf", "Mn") and ch not in _INVISIBLE_LETTERS
+    )
+
+
+def displayed(text: str) -> str:
+    """Roughly what Notion shows for the text: links reduced to their label, tags, escapes and
+    emphasis marks removed. `取**締**役` and `経<span>営</span>会議` read as the words they spell."""
+    return _MARKUP.sub("", _LINK.sub(r"\1", html.unescape(str(text))))
+
+
+def variants(text: str) -> list[str]:
+    """Forms of the text that matching runs on: as written, as displayed, and as displayed with
+    every separator between Japanese characters removed. The last form closes the gap between
+    what a page shows and what a pattern sees, whatever symbol, space or markup splits a word
+    (取・締役, 人／事／評／価, 取 締役), instead of chasing each way of writing it."""
+    forms: list[str] = []
+    for form in (normalize(text or ""), normalize(displayed(text or ""))):
+        for candidate in (form, _JA_GAP.sub("", form)):
+            if candidate not in forms:
+                forms.append(candidate)
+    return forms
 
 
 def classify(text: str, topics) -> tuple[str, str, str] | None:
-    """(topic id, "strong" or "review", matched words) for the first hit; strong words win."""
+    """(topic id, "strong" or "review", matched words) for the first hit; strong words win.
+
+    The text is checked as written and as displayed, so markup that splits a word on the
+    page (a parser differential) does not hide it.
+    """
     if not text:
         return None
-    norm = normalize(text)
+    forms = variants(text)
     for level, index in (("strong", 2), ("review", 3)):
         for topic in topics:
             pattern = topic[index]
-            m = pattern.search(norm) if pattern else None
-            if m:
-                return topic[0], level, m.group(0)
+            if not pattern:
+                continue
+            for form in forms:
+                m = pattern.search(form)
+                if m:
+                    return topic[0], level, m.group(0)
     return None
 
 
@@ -84,9 +129,8 @@ def match_topic(text: str, topics) -> str | None:
 
 
 def review_words(text: str, topics) -> set[str]:
-    """Every review word in the text, so a person sees all of them before clearing anything."""
-    norm = normalize(text or "")
-    return {m.group(0) for topic in topics if topic[3] for m in topic[3].finditer(norm)}
+    """Every review word in the text (as written and as displayed), so a person sees all of them."""
+    return {m.group(0) for form in variants(text) for topic in topics if topic[3] for m in topic[3].finditer(form)}
 
 
 def blocked(text: str, topics, allowed_terms=()) -> tuple[str, str, str] | None:
@@ -97,10 +141,17 @@ def blocked(text: str, topics, allowed_terms=()) -> tuple[str, str, str] | None:
     clearing one word never clears a different review word or a strong word next to it.
     """
     allowed = {normalize(t).lower() for t in allowed_terms if str(t).strip()}
-    current = normalize(text or "")
-    for _ in range(len(current) + 1):
-        hit = classify(current, topics)
-        if not hit or hit[1] == "strong" or normalize(hit[2]).lower() not in allowed:
-            return hit
-        current = re.sub(re.escape(hit[2]), " ", current, flags=re.IGNORECASE)
+    for current in variants(text):
+        for _ in range(len(current) + 1):
+            hit = classify(current, topics)
+            if not hit:
+                break
+            if hit[1] == "strong" or normalize(hit[2]).lower() not in allowed:
+                return hit
+            blanked = re.sub(re.escape(hit[2]), " ", current, flags=re.IGNORECASE)
+            if blanked == current:
+                # The allowed word shows up only in another form of this text (displayed or
+                # with separators removed). That form is checked on its own in this loop.
+                break
+            current = blanked
     return None

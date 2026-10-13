@@ -14,6 +14,7 @@ Claude Code の利用記録から、チームで共有できる知見を抽出�
 | スキル | 説明 |
 |--------|------|
 | **knowledge-cards** | 週ごとの問いに答える「ナレッジカード」をセッション記録から下書きし、本人の確認と機密スキャンを経て Notion に提出する |
+| **knowledge-synthesis** | 週ごとに集まったカードを束ね、対立から合（提案）と次の問いを出して、Notion の合成テーマとまとめページに書き込む |
 | **session-tips-digest** | 過去のセッション記録から共有できる運用 Tips を抽出し、一次情報で裏付けを取って Markdown・Artifact・Notion に公開する。カードや記録から Tips 文書を作る下流工程 |
 
 ### 使い分け
@@ -21,6 +22,7 @@ Claude Code の利用記録から、チームで共有できる知見を抽出�
 | やりたいこと | スキル |
 |---|---|
 | 毎週、問いへの答えをカードで提出し、チームの合成（正・反・合）に回す | knowledge-cards |
+| 集まったカードを週ごとに合成し、対立から提案と次の問いを出す | knowledge-synthesis |
 | 自分の記録から、社外にも出せる Tips 文書を書いて公開する | session-tips-digest |
 | セッション 1 本に無駄が無かったか採点する | common-development の evaluate-session |
 
@@ -71,6 +73,7 @@ Claude Code の利用記録から、チームで共有できる知見を抽出�
 - 抽出の段階で、prompt または commit・PR のタイトルがこの話題に当たるセッションを、まるごと外します。期間の外の発言も含めて判定し、残るのは外した件数だけです
 - 語は 2 段です。強い語（人事評価、取締役会など）に当たると必ず外れます。要確認の語（昇格、退職、IR など業務用語でも使う語）に当たると既定で外れ、本人が人事・経営の話ではないと確認したセッションだけ戻せます（スキルがプロジェクトと語でまとめて聞きます）
 - 判定に使う語が読めないときは、抽出も検査もエラーで止まります
+- 守る対象は、うっかりの漏洩です（経営層の prompt、Claude の下書き、Notion 上で書き換えられたカード）。最後の歯止めは、Notion に書く前の本人の確認です。記号や記法で語を分けて意図的にすり抜ける書き方は想定の外です（knowledge-synthesis の `synthesis-method.md` の「脅威モデル」）
 - それでもカードに書かれた場合は、検査（validate）がエラーにして提出させません
 - 判定に使う語はプラグイン直下の `confidential_topics.json` にあります。自分だけ足したい語は `~/.claude/knowledge-cards/confidential_topics.json` に同じ形式で置いてください
 
@@ -145,14 +148,36 @@ Claude Code の利用記録から、チームで共有できる知見を抽出�
 | common-development の evaluate-session | セッション 1 本 | 無駄の有無を採点する |
 | session-tips-digest | 期間内の全セッション | 共有できる知見を抜き出す |
 
-## knowledge-synthesis（作成中）
+## knowledge-synthesis
 
-週ごとに集まったカードを束ね、正（worked）と反（failed）の対立から合（提案）を出すスキルです。いまは手順書だけがあり、スキル本体はまだありません。合成は手順書に沿って手作業で行います。
+週ごとに集まったカードを束ね、正（worked）と反（failed）の対立から合（提案）を出し、次の問いを決めて、Notion の「合成テーマ」DB と週の行の配下の「まとめ」ページに書き込みます。v0 は週次だけで、月次（P2・Q6・Q8 とプロジェクトマップ）は対象外です。
+
+### 使い方
+
+```
+/knowledge-sharing:knowledge-synthesis
+/knowledge-sharing:knowledge-synthesis --week 2026-W43 --dry-run
+```
+
+| 引数 | 既定 | 意味 |
+|---|---|---|
+| `--week` | 前の ISO 週 | 合成する週 |
+| `--out` | `synthesis/` | 成果物ディレクトリ。作業ファイルは `<out>/.work/` |
+| `--dry-run` | なし | Notion に書かず、書き込む内容を表示する |
+
+### 流れ
+
+1. Notion から週のカードを読み出し、`load_cards.py` で正規化する（投稿者は匿名のラベルにし、重複を束ね、強い語に当たるカードは外す）
+2. Claude が意見カードを問いをまたいで束ね、対立・合・次の問いを書く。根拠の強さはスクリプトが数える
+3. `synth.py` で検査し、まとめを作り、機密スキャンと話題判定をかける
+4. 下書きを確認してから、合成テーマ・まとめページを作り、週の行を「合成済み」にする。同じ週の合成テーマが既にあれば止まる
+
+機密スキャナと話題判定は、同じプラグインの knowledge-cards のスクリプトを使います。
 
 | パス | 内容 |
 |---|---|
-| `skills/knowledge-synthesis/references/synthesis-method.md` | 合成の手順。2026-W41 の手作業の合成で固めた、スキル v0 の仕様 |
-| `skills/knowledge-synthesis/templates/summary.md` | 週の行の配下に作る「まとめ」ページの形 |
+| `skills/knowledge-synthesis/references/synthesis-method.md` | 合成の手順と判断基準 |
+| `skills/knowledge-synthesis/templates/summary.md` | 「まとめ」ページの形 |
 
 要点は 3 つです。
 
@@ -166,6 +191,8 @@ Claude Code の利用記録から、チームで共有できる知見を抽出�
 cd knowledge_sharing/skills/session-tips-digest/scripts
 uv run --no-project --with pytest python -m pytest -q -p no:cacheprovider
 cd ../../knowledge-cards/scripts
+uv run --no-project --with pytest python -m pytest -q -p no:cacheprovider
+cd ../../knowledge-synthesis/scripts
 uv run --no-project --with pytest python -m pytest -q -p no:cacheprovider
 ```
 

@@ -108,3 +108,67 @@ def test_allowing_one_review_word_does_not_clear_another():
 def test_review_words_lists_every_review_word():
     assert topics.review_words("ADR の昇格と退職者処理と IR の件", DEFAULT) == {"昇格", "退職", "IR"}
     assert topics.review_words("人事評価", DEFAULT) == set()
+
+
+def test_invisible_characters_cannot_split_a_word():
+    assert topics.classify("取\u200b締役会", DEFAULT)[1] == "strong"
+    assert topics.classify("経\ufeff営会議", DEFAULT)[1] == "strong"
+    assert topics.classify("人事\u2060評価", DEFAULT)[1] == "strong"
+
+
+import pytest as _pytest
+
+
+@_pytest.mark.parametrize(
+    "text",
+    [
+        "取**締**役会の資料",
+        "取\\締役会の資料",
+        "経<span>営</span>会議",
+        "[取締](https://example.com)役会",
+        "人事`評価`",
+        "人~~事~~評価",
+        "経️営会議",
+    ],
+)
+def test_markup_that_renders_as_a_strong_word_is_caught(text):
+    hit = topics.classify(text, DEFAULT)
+    assert hit is not None and hit[1] == "strong", text
+    assert topics.blocked(text, DEFAULT, allowed_terms=["昇格"]) is not None
+
+
+def test_markup_split_review_word_is_listed():
+    assert "退職" in topics.review_words("退**職**の件", DEFAULT)
+
+
+@_pytest.mark.parametrize(
+    "text",
+    [
+        "取ㅤ締役会",          # hangul filler (invisible, not Cf)
+        "取⠀締役会",          # braille blank
+        "取・締役会",
+        "取 締役会",
+        "取　締役会",
+        "人／事／評／価",
+        "経&nbsp;営会議",
+        "人事<!-- -->評価",
+    ],
+)
+def test_any_separator_between_japanese_characters_is_ignored(text):
+    hit = topics.classify(text, DEFAULT)
+    assert hit is not None and hit[1] == "strong", text
+
+
+def test_ascii_words_keep_their_boundaries():
+    # Collapsing separators must not create matches across ordinary ASCII text.
+    assert topics.classify("cd ~/dir && irb", DEFAULT) is None
+    assert topics.classify("モデルの評価指標を足して", DEFAULT) is None
+
+
+def test_allowing_a_word_found_only_in_another_form_is_fast_and_still_checks_other_words():
+    import time
+    text = "退・職者処理の画面を直す。" * 300
+    start = time.perf_counter()
+    assert topics.blocked(text, DEFAULT, allowed_terms=["退職"]) is None
+    assert time.perf_counter() - start < 2
+    assert topics.blocked(text + "取・締役会", DEFAULT, allowed_terms=["退職"])[1] == "strong"
