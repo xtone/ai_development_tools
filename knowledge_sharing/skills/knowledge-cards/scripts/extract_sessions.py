@@ -27,7 +27,7 @@ from typing import Iterator
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from scan_sensitive import redact  # noqa: E402
-from topics import blocked, classify, default_files, load_topics, match_topic  # noqa: E402
+from topics import blocked, classify, default_files, load_topics, match_topic, review_words  # noqa: E402
 
 DEFAULT_PATTERNS = [
     "gh stack",
@@ -383,26 +383,42 @@ def _user_text(d: dict) -> str:
     return "\n".join(t for t in parts if not t.lstrip().startswith("<"))
 
 
-def _note(found: dict, session: str, hit) -> None:
-    """Remember the strongest hit per session: a strong word replaces a review word."""
-    if not hit or not session:
+def _note(found: dict, session: str, text: str, topics) -> None:
+    """Record a session's hit: the strongest level seen, and every review word seen.
+
+    All review words are kept because the user decides on a session by the words shown;
+    a word they never saw must not be cleared along with the ones they did.
+    """
+    if not session or not text:
         return
-    if session not in found or (found[session][1] == "review" and hit[1] == "strong"):
-        found[session] = hit
+    hit = classify(text, topics)
+    if not hit:
+        return
+    entry = found.setdefault(session, {"topic": hit[0], "level": hit[1], "words": set()})
+    if entry["level"] == "review" and hit[1] == "strong":
+        entry["topic"], entry["level"] = hit[0], "strong"
+    entry["words"] |= review_words(text, topics)
 
 
-def scan_whole_sessions(claude_dir: Path, cutoff: dt.datetime, topics) -> dict[str, tuple[str, str, str]]:
-    """Session id -> (topic, level, words) from every prompt and commit/PR title, regardless of --since/--until.
+def _merge(found: dict, session: str, other: dict) -> None:
+    entry = found.setdefault(session, {"topic": other["topic"], "level": other["level"], "words": set()})
+    if entry["level"] == "review" and other["level"] == "strong":
+        entry["topic"], entry["level"] = other["topic"], "strong"
+    entry["words"] |= other["words"]
+
+
+def scan_whole_sessions(claude_dir: Path, cutoff: dt.datetime, topics) -> dict[str, dict]:
+    """Session id -> {topic, level, words} from every prompt and commit/PR title, regardless of --since/--until.
 
     A session that touched a confidential topic before the period (or whose prompts lack a
     sessionId in history.jsonl) must still be dropped as a whole, so this pass reads all of
     history.jsonl and every line of the session logs that could contribute to the period.
     """
-    found: dict[str, tuple[str, str, str]] = {}
+    found: dict[str, dict] = {}
     for d in read_jsonl(claude_dir / "history.jsonl"):
         session = d.get("sessionId")
         if isinstance(session, str):
-            _note(found, session, classify(str(d.get("display", "")), topics))
+            _note(found, session, str(d.get("display", "")), topics)
     for f in sorted((claude_dir / "projects").glob("*/*.jsonl")):
         try:
             if dt.datetime.fromtimestamp(f.stat().st_mtime, dt.timezone.utc) < cutoff:
@@ -411,7 +427,7 @@ def scan_whole_sessions(claude_dir: Path, cutoff: dt.datetime, topics) -> dict[s
             continue
         for d in read_jsonl(f):
             session = d.get("sessionId") if isinstance(d.get("sessionId"), str) else f.stem
-            if found.get(session, ("", ""))[1] == "strong":
+            if found.get(session, {}).get("level") == "strong":
                 continue
             texts = [_user_text(d)]
             message = d.get("message")
@@ -422,23 +438,23 @@ def scan_whole_sessions(claude_dir: Path, cutoff: dt.datetime, topics) -> dict[s
                         event = {"name": "Bash", "input": c.get("input") if isinstance(c.get("input"), dict) else {}}
                         texts += [title for _, title in event_outcomes(event)]
             for text in texts:
-                _note(found, session, classify(text, topics))
+                _note(found, session, text, topics)
     return found
 
 
-def confidential_sessions(prompts, events, topics) -> dict[str, tuple[str, str, str]]:
-    """Session id -> (topic, level, words) for sessions whose prompts or commit/PR titles in the period hit.
+def confidential_sessions(prompts, events, topics) -> dict[str, dict]:
+    """Session id -> {topic, level, words} for sessions whose prompts or commit/PR titles in the period hit.
 
     Only what the user asked for and what they committed counts. File contents and other
     tool inputs are not checked: code and client documents mention words such as 昇格 or
     代表取締役 in unrelated senses, which would drop ordinary development sessions.
     """
-    found: dict[str, tuple[str, str, str]] = {}
+    found: dict[str, dict] = {}
     for p in prompts:
-        _note(found, p["session_id"], classify(p["_raw"], topics))
+        _note(found, p["session_id"], p["_raw"], topics)
     for e in events:
         for _, title in event_outcomes(e):
-            _note(found, e["session"], classify(title, topics))
+            _note(found, e["session"], title, topics)
     return found
 
 
@@ -471,7 +487,7 @@ def parse_memory(path: Path) -> tuple[str, str, str, str]:
     return meta.get("name", path.stem), meta.get("description", ""), how, body
 
 
-def collect_memories(claude_dir, filters, cache, texts, known, topics=(), dropped=None) -> list[dict]:
+def collect_memories(claude_dir, filters, cache, texts, known, topics=(), dropped=None, cleared=frozenset()) -> list[dict]:
     out = []
     for f in sorted((claude_dir / "projects").glob("*/memory/*.md")):
         if f.name == "MEMORY.md":
@@ -484,10 +500,15 @@ def collect_memories(claude_dir, filters, cache, texts, known, topics=(), droppe
             modified = dt.datetime.fromtimestamp(f.stat().st_mtime, dt.timezone.utc).date().isoformat()
         except OSError:
             continue
-        if match_topic("\n".join((name, desc, how, body)), topics):
-            if dropped is not None:
-                dropped.append(name)
-            continue
+        whole = "\n".join((name, desc, how, body))
+        hit = classify(whole, topics)
+        if hit:
+            words = review_words(whole, topics)
+            # The user may clear a memory held back by review words; strong words always drop it.
+            if not (hit[1] == "review" and f"memory:{proj}/{name}" in cleared and not blocked(whole, topics, words)):
+                if dropped is not None:
+                    dropped.append({"project": proj, "name": name, "level": hit[1], "words": sorted(words)})
+                continue
         texts.append(body)
         out.append(
             {
@@ -616,23 +637,22 @@ def main(argv: list[str] | None = None) -> int:
     raw_prompts = collect_prompts(claude_dir, cutoff, filters, names, known, until)
     events = collect_events(claude_dir, cutoff, filters, names, known, cache, until)
     secret = confidential_sessions(raw_prompts, events, topics)
-    for session, hit in scan_whole_sessions(claude_dir, cutoff, topics).items():
-        _note(secret, session, hit)
+    for session, entry in scan_whole_sessions(claude_dir, cutoff, topics).items():
+        _merge(secret, session, entry)
     try:
         cleared = read_session_list(args.include_sessions)
     except OSError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
     # Only sessions held back by review words can be let back in, and only by the user's list.
-    released = {s for s, hit in secret.items() if hit[1] == "review" and s in cleared}
-    for s in released:
-        del secret[s]
+    released = {s: secret.pop(s)["words"] for s in [s for s, e in secret.items() if e["level"] == "review" and s in cleared]}
 
     prompts = []
     dropped_prompts = 0
     for p in raw_prompts:
         raw = p.pop("_raw")
-        if p["session_id"] in secret or blocked(raw, topics, allow_review=p["session_id"] in released):
+        # A released session clears only the words the user was shown for it.
+        if p["session_id"] in secret or blocked(raw, topics, released.get(p["session_id"], ())):
             dropped_prompts += 1
             continue
         texts.append(raw)
@@ -640,11 +660,11 @@ def main(argv: list[str] | None = None) -> int:
     kept_events = [e for e in events if e["session"] not in secret]
     dropped_outcomes = Counter(key for e in events if e["session"] in secret for key, _ in event_outcomes(e))
     usage, samples, outcomes = aggregate_usage(kept_events, patterns, texts)
-    dropped_memories: list[str] = []
-    memories = collect_memories(claude_dir, filters, cache, texts, known, topics, dropped_memories)
+    dropped_memories: list[dict] = []
+    memories = collect_memories(claude_dir, filters, cache, texts, known, topics, dropped_memories, cleared)
     # Count only sessions that had material in the period; older ones never reached the output anyway.
     touched = {p["session_id"] for p in raw_prompts if p["session_id"]} | {e["session"] for e in events}
-    secret_in_period = {s: hit for s, hit in secret.items() if s in touched}
+    secret_in_period = {s: e for s, e in secret.items() if s in touched}
     first_seen: dict[str, tuple[str, str]] = {}
     for p in raw_prompts:
         first_seen.setdefault(p["session_id"], (p["time"], p["project"]))
@@ -654,9 +674,9 @@ def main(argv: list[str] | None = None) -> int:
     # Held back by review words: the user may check these (id, project, time, matched words only).
     review = [
         {"session_id": s, "project": first_seen.get(s, ("", ""))[1], "time": first_seen.get(s, ("", ""))[0],
-         "topic": hit[0], "words": hit[2]}
-        for s, hit in sorted(secret_in_period.items(), key=lambda kv: first_seen.get(kv[0], ("", ""))[0])
-        if hit[1] == "review"
+         "topic": e["topic"], "words": sorted(e["words"])}
+        for s, e in sorted(secret_in_period.items(), key=lambda kv: first_seen.get(kv[0], ("", ""))[0])
+        if e["level"] == "review"
     ]
     excluded = {
         "sessions": len(secret_in_period),
@@ -664,9 +684,10 @@ def main(argv: list[str] | None = None) -> int:
         "commits": dropped_outcomes["commits"],
         "prs": dropped_outcomes["prs"],
         "memories": len(dropped_memories),
-        "by_topic": dict(sorted(Counter(hit[0] for hit in secret_in_period.values()).items())),
-        "released": len(released & touched),
+        "by_topic": dict(sorted(Counter(e["topic"] for e in secret_in_period.values()).items())),
+        "released": len(set(released) & touched),
         "review": review,
+        "review_memories": [{k: m[k] for k in ("project", "name", "words")} for m in dropped_memories if m["level"] == "review"],
     }
     report = {
         "generated_at": now.isoformat(timespec="seconds"),

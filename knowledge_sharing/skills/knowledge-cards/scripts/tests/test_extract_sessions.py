@@ -446,6 +446,7 @@ def test_confidential_sessions_are_dropped_with_counts_only(tmp_path):
         "by_topic": {"evaluation": 1, "management": 1},
         "released": 0,
         "review": [],
+        "review_memories": [],
     }
 
 
@@ -566,7 +567,7 @@ def test_review_words_hold_sessions_until_the_user_includes_them(tmp_path):
     assert "退職" not in json.dumps(data["prompts"], ensure_ascii=False)  # held back by default
     held = {r["session_id"]: r for r in data["excluded"]["review"]}
     assert set(held) == {"feat-1", "people-1"}  # mixed-1 hit a strong word: not offered for review
-    assert held["feat-1"]["words"] == "退職" and held["feat-1"]["project"] == "acme-shop"
+    assert held["feat-1"]["words"] == ["退職"] and held["feat-1"]["project"] == "acme-shop"
     assert "管理画面" not in json.dumps(held, ensure_ascii=False)  # ids and words only, no prompt text
 
     cleared = tmp_path / "include.txt"
@@ -579,3 +580,39 @@ def test_review_words_hold_sessions_until_the_user_includes_them(tmp_path):
     assert "退職の件で相談したい" not in texts  # not in the list
     assert "退職者処理の画面と取締役会の資料" not in texts  # strong words cannot be released
     assert data["excluded"]["released"] == 1
+
+
+def test_released_session_only_clears_the_words_the_user_saw(tmp_path):
+    claude = make_claude(tmp_path)
+    _history(
+        claude,
+        ("2026-10-05T03:00:00+00:00", "ADR を昇格させて", "mix-1"),
+        ("2026-10-05T03:05:00+00:00", "退職の件で相談したい", "mix-1"),
+    )
+    out = tmp_path / "work" / "sessions.json"
+    assert run(claude, out, "--since", "2026-10-05", "--tz", "+00:00").returncode == 0
+    held = {r["session_id"]: r for r in json.loads(out.read_text(encoding="utf-8"))["excluded"]["review"]}
+    assert held["mix-1"]["words"] == ["昇格", "退職"]  # every word is shown, not only the first
+
+    cleared = tmp_path / "include.txt"
+    cleared.write_text("mix-1\n", encoding="utf-8")
+    assert run(claude, out, "--since", "2026-10-05", "--tz", "+00:00", "--include-sessions", cleared).returncode == 0
+    texts = [p["text"] for p in json.loads(out.read_text(encoding="utf-8"))["prompts"]]
+    assert "ADR を昇格させて" in texts and "退職の件で相談したい" in texts  # both words were shown
+
+
+def test_review_memories_are_listed_and_can_be_released(tmp_path):
+    claude = make_claude(tmp_path)
+    mem = claude / "projects" / "-w-acme-shop" / "memory"
+    (mem / "promote.md").write_text("---\nname: adr-promote\ndescription: ADR の昇格手順\n---\n\n本文\n", encoding="utf-8")
+    (mem / "board.md").write_text("---\nname: board\ndescription: 取締役会の資料\n---\n\n本文\n", encoding="utf-8")
+    out = tmp_path / "work" / "sessions.json"
+    assert run(claude, out, "--since", "2026-10-05").returncode == 0
+    data = json.loads(out.read_text(encoding="utf-8"))
+    assert data["excluded"]["review_memories"] == [{"project": "acme-shop", "name": "adr-promote", "words": ["昇格"]}]
+    assert "board" not in json.dumps(data["excluded"], ensure_ascii=False)
+    cleared = tmp_path / "include.txt"
+    cleared.write_text("memory:acme-shop/adr-promote\nmemory:acme-shop/board\n", encoding="utf-8")
+    assert run(claude, out, "--since", "2026-10-05", "--include-sessions", cleared).returncode == 0
+    names = [m["name"] for m in json.loads(out.read_text(encoding="utf-8"))["memories"]]
+    assert "adr-promote" in names and "board" not in names

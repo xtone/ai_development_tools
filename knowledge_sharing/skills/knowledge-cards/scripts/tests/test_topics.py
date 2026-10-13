@@ -72,13 +72,13 @@ def test_ambiguous_words_are_held_for_review(text, word):
     hit = topics.classify(text, DEFAULT)
     assert hit is not None and hit[1] == "review" and hit[2] == word
     assert topics.match_topic(text, DEFAULT) is not None  # excluded by default (fail closed)
-    assert topics.blocked(text, DEFAULT, allow_review=True) is None
+    assert topics.blocked(text, DEFAULT, allowed_terms=[word]) is None
 
 
 def test_allowing_a_review_word_never_hides_a_strong_word():
     text = "退職者処理の画面と取締役会の資料"
     assert topics.blocked(text, DEFAULT, allowed_terms=["退職"])[1] == "strong"
-    assert topics.blocked(text, DEFAULT, allow_review=True)[1] == "strong"
+    assert topics.blocked(text, DEFAULT, allowed_terms=["退職", "取締役"])[1] == "strong"
     assert topics.blocked("退職者処理の画面", DEFAULT, allowed_terms=["退職"]) is None
 
 
@@ -96,3 +96,15 @@ def test_bad_pattern_is_an_error(tmp_path):
     bad.write_text(json.dumps({"topics": [{"id": "x", "patterns": ["("]}]}), encoding="utf-8")
     with pytest.raises(ValueError):
         topics.load_topics([bad])
+
+
+def test_allowing_one_review_word_does_not_clear_another():
+    text = "退職者の昇格処理"
+    hit = topics.blocked(text, DEFAULT, allowed_terms=["昇格"])
+    assert hit is not None and hit[2] == "退職"
+    assert topics.blocked(text, DEFAULT, allowed_terms=["昇格", "退職"]) is None
+
+
+def test_review_words_lists_every_review_word():
+    assert topics.review_words("ADR の昇格と退職者処理と IR の件", DEFAULT) == {"昇格", "退職", "IR"}
+    assert topics.review_words("人事評価", DEFAULT) == set()

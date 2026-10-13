@@ -83,13 +83,24 @@ def match_topic(text: str, topics) -> str | None:
     return hit[0] if hit else None
 
 
-def blocked(text: str, topics, allow_review: bool = False, allowed_terms=()) -> tuple[str, str, str] | None:
-    """The hit that keeps text out: strong words always; review words unless allowed."""
-    hit = classify(text, topics)
-    if not hit:
-        return None
-    if hit[1] == "review" and (allow_review or normalize(hit[2]).lower() in {normalize(t).lower() for t in allowed_terms}):
-        # A cleared review word must not hide a strong word later in the text.
-        strong_only = [(t[0], t[1], t[2], None) for t in topics]
-        return classify(text, strong_only)
-    return hit
+def review_words(text: str, topics) -> set[str]:
+    """Every review word in the text, so a person sees all of them before clearing anything."""
+    norm = normalize(text or "")
+    return {m.group(0) for topic in topics if topic[3] for m in topic[3].finditer(norm)}
+
+
+def blocked(text: str, topics, allowed_terms=()) -> tuple[str, str, str] | None:
+    """The hit that keeps text out, or None.
+
+    Strong words always block. A review word blocks unless the person allowed that exact
+    word; allowed words are blanked out one at a time and the text is checked again, so
+    clearing one word never clears a different review word or a strong word next to it.
+    """
+    allowed = {normalize(t).lower() for t in allowed_terms if str(t).strip()}
+    current = normalize(text or "")
+    for _ in range(len(current) + 1):
+        hit = classify(current, topics)
+        if not hit or hit[1] == "strong" or normalize(hit[2]).lower() not in allowed:
+            return hit
+        current = re.sub(re.escape(hit[2]), " ", current, flags=re.IGNORECASE)
+    return None

@@ -84,10 +84,10 @@ python3 -I <skill-dir>/scripts/extract_sessions.py --since <since> [--until <unt
 
 `excluded.review` が空でなければ（要確認の語で外したセッションがあれば）、本人に確認する。
 
-1. `review` を「プロジェクト × 当たった語（`words`）」でまとめ、グループごとにセッション数と期間を出す。prompt の中身は出さない（`review` にも入っていない）
+1. `review` を「プロジェクト × 当たった語（`words`。そのセッションで当たった要確認の語のすべて）」でまとめ、グループごとにセッション数と期間を出す。prompt の中身は出さない（`review` にも入っていない）。`review_memories`（要確認の語で外した memory の名前と語）も同じように示す
 2. AskUserQuestion（multiSelect）で、「人事評価・処遇や経営の話ではない」グループを選んでもらう。例: 「ourpick-mt-proto の『昇格』12 件（仮判断の昇格などの業務用語か）」。迷うものは選ばないよう添える。グループが 4 つを超えるときは質問を分ける
-3. 選ばれたグループのセッション id を `<out>/.work/include-sessions.txt` に、`# <プロジェクト> の <語> は業務用語（本人確認 <日付>）` のコメント付きで書く
-4. `--include-sessions <out>/.work/include-sessions.txt` を付けて抽出をやり直す。強い語に当たったセッションは、このファイルに書いても戻らない
+3. 選ばれたグループのセッション id を `<out>/.work/include-sessions.txt` に、`# <プロジェクト> の <語> は業務用語（本人確認 <日付>）` のコメント付きで書く。memory を戻すときは `memory:<project>/<name>` の行を書く
+4. `--include-sessions <out>/.work/include-sessions.txt` を付けて抽出をやり直す。戻したセッションで解除されるのは、本人に示した語だけ。強い語に当たったセッションと memory は、このファイルに書いても戻らない
 
 出力には、期間内の prompt（`session_id` 付き）、ツール・スキル・MCP の利用回数、Bash の例、commit と PR のタイトル、memory、ハーネス構成（名前だけ）、匿名化辞書（`vocabulary`）が入る。秘密情報は伏せ字済み。
 
