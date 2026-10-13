@@ -145,6 +145,21 @@ Claude Code の利用記録から、チームで共有できる知見を抽出�
 | common-development の evaluate-session | セッション 1 本 | 無駄の有無を採点する |
 | session-tips-digest | 期間内の全セッション | 共有できる知見を抜き出す |
 
+## knowledge-synthesis（作成中）
+
+週ごとに集まったカードを束ね、正（worked）と反（failed）の対立から合（提案）を出すスキルです。いまは手順書だけがあり、スキル本体はまだありません。合成は手順書に沿って手作業で行います。
+
+| パス | 内容 |
+|---|---|
+| `skills/knowledge-synthesis/references/synthesis-method.md` | 合成の手順。2026-W41 の手作業の合成で固めた、スキル v0 の仕様 |
+| `skills/knowledge-synthesis/templates/summary.md` | 週の行の配下に作る「まとめ」ページの形 |
+
+要点は 3 つです。
+
+- 意見カードは問いをまたいで束ねる。問いごとに極性が固定されているため、正と反が別の問いに分かれて届くからです
+- 合には、根拠の強さ（人数・プロジェクト数・枚数）と反証を必ず添える
+- 個人別の件数や「誰が何を失敗した」は書かない
+
 ## 開発
 
 ```bash
