@@ -11,7 +11,7 @@ Usage:
   cards.py to-notion CARDS.jsonl --week-url URL --author USER_ID|me
   cards.py mark-submitted CARDS.jsonl --submitted submitted.jsonl --results results.json
   cards.py options CARDS.jsonl --schema FETCHED_SCHEMA
-  cards.py workdir --kind cards|synthesis|tips [--week 2026-W43] [--root DIR]
+  cards.py workdir --kind cards|synthesis|tips [--week 2026-W43] [--root DIR] [--out DIR]
   cards.py cleanup RUN_DIR [--root DIR]
 
 Exit code: 0 on success, 1 when validation finds errors, 2 on input errors.
@@ -660,7 +660,6 @@ def missing_options(cards: list[dict], state: dict) -> dict:
 
 DEFAULT_ROOT = Path.home() / ".claude" / "knowledge-cards"
 RUN_PARENTS = {"cards": "runs", "synthesis": "synthesis"}
-STATE_FILES = ("notion-user.json", "allow.txt")
 LEGACY_WORK = Path("cards") / ".work"
 
 
@@ -670,31 +669,32 @@ def _private_dir(path: Path) -> Path:
 
 
 def _merge_legacy(legacy: Path, state: Path) -> list[str]:
-    """Copy state kept by older versions in <cwd>/cards/.work/ without overwriting newer files."""
-    moved = []
-    for name in STATE_FILES:
-        src, dst = legacy / name, state / name
-        if src.is_file() and not dst.exists():
-            shutil.copyfile(src, dst)
-            moved.append(name)
+    """Carry over the submitted record kept by older versions in <cwd>/cards/.work/.
+
+    Only submitted.jsonl (used to skip cards already in Notion) is read. allow.txt and
+    notion-user.json are not: the current directory may be a client repository, and those
+    files would weaken the scanner or change the author for every later run.
+    """
     src, dst = legacy / "submitted.jsonl", state / "submitted.jsonl"
-    if src.is_file():
-        have = {json.dumps(r, sort_keys=True) for r in read_submitted(dst)}
-        new = [r for r in read_submitted(src) if json.dumps(r, sort_keys=True) not in have]
-        if new:
-            with dst.open("a", encoding="utf-8") as fh:
-                for row in new:
-                    fh.write(json.dumps(row, ensure_ascii=False) + "\n")
-            moved.append(f"submitted.jsonl (+{len(new)})")
-    return moved
+    if not src.is_file() or src.is_symlink():
+        return []
+    have = {json.dumps(r, sort_keys=True) for r in read_submitted(dst)}
+    new = [r for r in read_submitted(src) if json.dumps(r, sort_keys=True) not in have]
+    if not new:
+        return []
+    with dst.open("a", encoding="utf-8") as fh:
+        for row in new:
+            fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+    return [f"submitted.jsonl (+{len(new)})"]
 
 
-def workdir(kind: str, week: str | None, root: Path, cwd: Path) -> dict:
+def workdir(kind: str, week: str | None, root: Path, cwd: Path, out: Path | None = None) -> dict:
     """Create the work directories outside the current repository and return their paths.
 
     cards:     <root>/runs/<week>/ (deleted after submitting) and <root>/state/ (kept)
     synthesis: <root>/synthesis/<week>/ (deleted after writing to Notion)
     tips:      <root>/tips/.work/ (deliverables stay in the tips output directory)
+    With out, the run directory is out/ instead (kept after submitting; cleanup refuses it).
     """
     root = root.expanduser()
     root.parent.mkdir(parents=True, exist_ok=True)
@@ -703,16 +703,21 @@ def workdir(kind: str, week: str | None, root: Path, cwd: Path) -> dict:
         return {"root": str(root), "work": str(_private_dir(_private_dir(root / "tips") / ".work"))}
     if not week:
         raise InputError(f"--week is required for {kind}")
-    run = _private_dir(_private_dir(root / RUN_PARENTS[kind]) / week_info(week)["week"])
-    out = {"root": str(root), "run": str(run), "work": str(_private_dir(run / ".work"))}
+    week = week_info(week)["week"]
+    if out is not None:
+        run = out.expanduser()
+        run.mkdir(parents=True, exist_ok=True)
+    else:
+        run = _private_dir(_private_dir(root / RUN_PARENTS[kind]) / week)
+    paths = {"root": str(root), "run": str(run), "work": str(_private_dir(run / ".work"))}
     if kind == "cards":
         state = _private_dir(root / "state")
-        out["state"] = str(state)
+        paths["state"] = str(state)
         legacy = cwd / LEGACY_WORK
         if legacy.is_dir():
-            out["legacy"] = str(legacy)
-            out["migrated"] = _merge_legacy(legacy, state)
-    return out
+            paths["legacy"] = str(legacy)
+            paths["migrated"] = _merge_legacy(legacy, state)
+    return paths
 
 
 def cleanup(run: Path, root: Path) -> Path:
@@ -786,6 +791,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--kind", required=True, choices=("cards", "synthesis", "tips"))
     p.add_argument("--week", help="2026-W43 (required for cards and synthesis)")
     p.add_argument("--root", default=str(DEFAULT_ROOT))
+    p.add_argument("--out", help="run directory chosen by the user (not deleted after submitting)")
 
     p = sub.add_parser("cleanup", help="delete a run directory created by workdir")
     p.add_argument("run")
@@ -843,7 +849,7 @@ def main(argv: list[str] | None = None) -> int:
                 raise InputError(f"cannot read schema: {exc}") from None
             _print_json(missing_options(read_cards(Path(args.cards)), load_schema_state(text)))
         elif args.cmd == "workdir":
-            _print_json(workdir(args.kind, args.week, Path(args.root), Path.cwd()))
+            _print_json(workdir(args.kind, args.week, Path(args.root), Path.cwd(), Path(args.out) if args.out else None))
         elif args.cmd == "cleanup":
             print(f"deleted {cleanup(Path(args.run), Path(args.root))}")
         elif args.cmd == "mark-submitted":

@@ -77,7 +77,7 @@ description: Claude Code のセッション記録（~/.claude の履歴・セッ
 | `<work>` | `<run>/.work/` | 抽出結果、カードの正本、Notion に送る内容（prompt の抜粋を含む） | `<run>` と一緒に |
 | `<state>` | `~/.claude/knowledge-cards/state/` | 提出済みの記録 `submitted.jsonl`、投稿者 `notion-user.json`、機密スキャンの許可リスト `allow.txt` | 消さない（回をまたいで使う） |
 
-`--out` を指定したときは、`<run>` をそのディレクトリ、`<work>` を `<out>/.work/` に読み替える（`<state>` は変えない）。
+`--out` を指定したときは、`<run>` がそのディレクトリ、`<work>` が `<out>/.work/` になる（`<state>` は変わらない）。
 
 ## Phase 0: 準備
 
@@ -93,12 +93,12 @@ python3 -I <skill-dir>/scripts/cards.py week [--week <week>]
 3. 作業ディレクトリを作る
 
 ```bash
-python3 -I <skill-dir>/scripts/cards.py workdir --kind cards --week <week>
+python3 -I <skill-dir>/scripts/cards.py workdir --kind cards --week <week> [--out <out>]
 ```
 
-出力の `run`、`work`、`state` を `<run>`、`<work>`、`<state>` として使う。`--out` の指定があれば `<run>` と `<work>` だけ読み替え、そのディレクトリが git 管理下で `.gitignore` に `.work/` が無ければ追加を提案する。
+出力の `run`、`work`、`state` を `<run>`、`<work>`、`<state>` として使う。`--out` を渡したときは、そのディレクトリが git 管理下で `.gitignore` に `.work/` が無ければ追加を提案する。
 
-出力に `legacy` があれば、旧版が実行ディレクトリに作った `cards/.work/` が残っている。`migrated` に挙がったファイル（提出済みの記録など）は `<state>` に取り込み済み。完了報告で、`legacy` のディレクトリ（prompt の抜粋を含む）は不要になったので消してよいこと、リポジトリにコミットしないことを伝える。自分では消さない。
+出力に `legacy` があれば、旧版が実行ディレクトリに作った `cards/.work/` が残っている。取り込むのは提出済みの記録（`submitted.jsonl`）だけで、`migrated` にその件数が出る。許可リスト `allow.txt` と投稿者 `notion-user.json` は、実行ディレクトリのファイルを信用しないので取り込まない（許可リストは必要になったらまた足し、投稿者は Phase 5 で解決し直す）。完了報告で、`legacy` のディレクトリ（prompt の抜粋を含む）は不要になったので消してよいこと、リポジトリにコミットしないことを伝える。自分では消さない。
 
 4. 問いを決める。`--questions` があればそれを使う。無ければ、Notion MCP が使えて `--no-notion` でないとき、`references/notion-submit.md` の「2. 週の行を確保する」の query だけを実行して `今週の問い` を読む（行が無くてもここでは作らない）。それも無ければ cadence に従う
 

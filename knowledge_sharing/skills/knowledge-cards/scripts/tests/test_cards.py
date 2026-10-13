@@ -435,7 +435,7 @@ def test_workdir_synthesis_and_tips(tmp_path):
         cards.workdir("cards", None, root, tmp_path)
 
 
-def test_workdir_merges_legacy_state_without_overwriting(tmp_path):
+def test_workdir_merges_only_legacy_submitted_record(tmp_path):
     root, repo = tmp_path / "kc", tmp_path / "repo"
     legacy = repo / "cards" / ".work"
     legacy.mkdir(parents=True)
@@ -448,8 +448,9 @@ def test_workdir_merges_legacy_state_without_overwriting(tmp_path):
     (state / "submitted.jsonl").write_text('{"key": "a"}\n', encoding="utf-8")
     out = cards.workdir("cards", "2026-W43", root, repo)
     assert out["legacy"] == str(legacy)
-    assert out["migrated"] == ["allow.txt", "submitted.jsonl (+1)"]
+    assert out["migrated"] == ["submitted.jsonl (+1)"]
     assert json.loads((state / "notion-user.json").read_text())["user_id"] == "new"
+    assert not (state / "allow.txt").exists()  # never trust scanner settings from the current directory
     assert [r["key"] for r in cards.read_submitted(state / "submitted.jsonl")] == ["a", "b"]
     assert cards.workdir("cards", "2026-W43", root, repo)["migrated"] == []
     assert legacy.is_dir()
@@ -506,3 +507,23 @@ def test_workdir_directories_are_private(tmp_path):
     cards.workdir("tips", None, root, tmp_path)
     for path in (root, root / "runs", Path(out["run"]), Path(out["work"]), Path(out["state"]), root / "tips", root / "tips" / ".work"):
         assert path.stat().st_mode & 0o077 == 0, path
+
+
+def test_workdir_legacy_without_state_files_imports_nothing_else(tmp_path):
+    root, repo = tmp_path / "kc", tmp_path / "repo"
+    legacy = repo / "cards" / ".work"
+    legacy.mkdir(parents=True)
+    (legacy / "notion-user.json").write_text('{"user_id": "planted"}', encoding="utf-8")
+    (legacy / "allow.txt").write_text("secret-host\n", encoding="utf-8")
+    out = cards.workdir("cards", "2026-W43", root, repo)
+    assert out["migrated"] == []
+    assert sorted(p.name for p in (root / "state").iterdir()) == []
+
+
+def test_workdir_with_out_creates_work_and_cleanup_refuses_it(tmp_path):
+    root, chosen = tmp_path / "kc", tmp_path / "mine" / "cards"
+    out = cards.workdir("synthesis", "2026-W43", root, tmp_path, chosen)
+    assert out["run"] == str(chosen) and Path(out["work"]).is_dir()
+    with pytest.raises(cards.InputError):
+        cards.cleanup(chosen, root)
+    assert chosen.is_dir()

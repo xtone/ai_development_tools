@@ -32,12 +32,12 @@ description: 週ごとに Notion「ナレッジカード」DB に集まったカ
 
 以下、このスキルのディレクトリを `<skill-dir>`、knowledge-cards のスクリプトを `<cards-scripts>`（`<skill-dir>/../knowledge-cards/scripts`）、プラグインのディレクトリを `<plugin-dir>`（`<skill-dir>/../..`）と書く。スクリプトはすべて `python3 -I` で実行する。このスキルは knowledge-cards の機密スキャナと話題判定をそのまま使うので、同じプラグインの knowledge-cards が必要。
 
-作業ファイルは実行したディレクトリ（案件のリポジトリかもしれない）には作らない。`<run>` は `~/.claude/knowledge-cards/synthesis/<week>/`（まとめの下書き `summary-<week>.md`）、`<work>` は `<run>/.work/`（カードの全文、テーマ、Notion に送る内容）。`--out` を指定したときは `<run>` をそのディレクトリ、`<work>` を `<out>/.work/` に読み替える。
+作業ファイルは実行したディレクトリ（案件のリポジトリかもしれない）には作らない。`<run>` は `~/.claude/knowledge-cards/synthesis/<week>/`（まとめの下書き `summary-<week>.md`）、`<work>` は `<run>/.work/`（カードの全文、テーマ、Notion に送る内容）。`--out` を指定したときは `<run>` がそのディレクトリ、`<work>` が `<out>/.work/` になる。
 
 ## Phase 0: 準備
 
 1. 対象週を決める: `python3 -I <cards-scripts>/cards.py week [--week <week>]`。`week` と `title` を以降で使う
-2. 作業ディレクトリを作る: `python3 -I <cards-scripts>/cards.py workdir --kind synthesis --week <week>`。出力の `run` と `work` を `<run>` と `<work>` に使う（`--out` の指定があれば読み替える）
+2. 作業ディレクトリを作る: `python3 -I <cards-scripts>/cards.py workdir --kind synthesis --week <week> [--out <out>]`。出力の `run` と `work` を `<run>` と `<work>` に使う
 3. `<plugin-dir>/notion.json` から、週次 Tips・ナレッジカード・合成テーマの data source を読む
 4. Notion MCP の query-data-sources で週の行を探す（`"週" LIKE '<week>%'`）。`url`、`ステータス` を控える
    - 週の行が無ければ、合成するカードも無いので、その旨を伝えて終える
