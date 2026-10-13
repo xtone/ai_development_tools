@@ -10,11 +10,16 @@ Usage:
 CARDS.json comes from load_cards.py. THEMES.json is written by Claude:
 
   {"week": "2026-W43",
-   "themes": [{"title": "結論の一文", "cards": ["<card url>", ...],
-               "conflict": "正と反の要約（無ければ空）",
-               "kinds": ["条件分け", "仕組み化"], "proposal": "合", "limits": "反証・限界",
-               "decision": "共有会で決めることの一文（省略時は proposal）"}],
+   "themes": [{"title": "結論の一文（10〜60 字）", "cards": ["<card url>", ...],
+               "proposal": "提案の一文（80 字まで）", "kinds": ["条件分け", "仕組み化"],
+               "split": "正と反の分かれ目の一文（80 字まで。正と反がそろわないテーマは空）",
+               "limits": "反証・限界（100 字まで）",
+               "decision": "共有会で決める問い（60 字まで、「〜か？」で終える）"}],
    "next_questions": [{"id": "Q4", "reason": "..."}, {"text": "新しい問いの案", "reason": "..."}]}
+
+The summary is laid out for progressive disclosure: what we learned and what to
+decide come first; examples, reasoning and numbers sit in toggles. The examples are
+the cards' own claims, listed by the script, so Claude never retells them.
 
 The strength of each theme (people, projects, cards) and its question are computed
 here from the cards, never taken from THEMES.json.
@@ -69,9 +74,18 @@ def card_index(cards: dict) -> dict[str, dict]:
 
 # ---- strength and question per theme ----------------------------------------
 
+POLARITY_LABELS = {
+    "worked": "うまくいった例",
+    "failed": "うまくいかなかった例",
+    "proposal": "提案",
+    "question": "問い・懸念",
+    "fact": "事実",
+}
+POLARITY_ORDER = ("worked", "failed", "proposal", "question", "fact")
+
 
 def enrich(theme: dict, index: dict[str, dict], catalog: dict) -> dict:
-    """Add what the cards say about a theme: question, polarities and the strength of evidence."""
+    """Add what the cards say about a theme: question, examples by polarity and the strength of evidence."""
     members = [index[u] for u in theme.get("cards", []) if u in index]
     order = [q["id"] for q in catalog["questions"]]
     counts = Counter(c["question_id"] for c in members)
@@ -79,7 +93,8 @@ def enrich(theme: dict, index: dict[str, dict], catalog: dict) -> dict:
     return {
         **theme,
         "question": question,
-        "polarities": sorted({c["polarity"] for c in members}),
+        "members": members,
+        "by_polarity": {pol: [c for c in members if c["polarity"] == pol] for pol in POLARITY_ORDER},
         "people": len({c["person"] for c in members}),
         "projects": len({p for c in members for p in c["projects"]}),
         "count": len(members),
@@ -88,19 +103,25 @@ def enrich(theme: dict, index: dict[str, dict], catalog: dict) -> dict:
 
 
 def strength(t: dict) -> str:
-    return f"{t['people']} 人・{t['projects']} プロジェクト・{t['count']} 枚（observed {t['observed']}）"
+    return f"{t['people']} 人・{t['projects']} プロジェクト・{t['count']} 枚"
+
+
+def opposition(t: dict) -> str:
+    """The 対立 line: how many cards stand on each side, and where they split."""
+    worked, failed = len(t["by_polarity"]["worked"]), len(t["by_polarity"]["failed"])
+    if not (worked and failed):
+        return ""
+    return f"うまくいった {worked} 件／うまくいかなかった {failed} 件。分かれ目: {t.get('split', '')}"
 
 
 # ---- validate ---------------------------------------------------------------
 
-
-def _texts(theme: dict) -> list[str]:
-    return [str(theme.get(k, "")) for k in ("title", "conflict", "proposal", "limits", "decision")]
-
-
-TEXT_FIELDS = ("title", "conflict", "proposal", "limits")
+TEXT_FIELDS = ("title", "proposal", "split", "limits")
 OPTIONAL_TEXT_FIELDS = ("decision",)
 LIST_FIELDS = ("cards", "kinds")
+# Short, single-sentence fields keep the summary scannable (UX writing).
+MAX_CHARS = {"title": 60, "proposal": 80, "split": 80, "limits": 100, "decision": 60}
+ONE_SENTENCE = ("title", "proposal", "split", "decision")
 
 
 def _is_str_list(value) -> bool:
@@ -141,6 +162,24 @@ def type_errors(themes) -> list[str]:
     return errors
 
 
+def _texts(theme: dict) -> list[str]:
+    return [str(theme.get(k, "")) for k in (*TEXT_FIELDS, *OPTIONAL_TEXT_FIELDS)]
+
+
+def _style_errors(theme: dict) -> list[str]:
+    errors = []
+    for key, limit in MAX_CHARS.items():
+        text = str(theme.get(key, "")).strip()
+        if len(text) > limit:
+            errors.append(f"{key} is {len(text)} chars (max {limit}); keep it to one short sentence")
+        if key in ONE_SENTENCE and text.rstrip("。.？?").count("。") > 0:
+            errors.append(f"{key} has more than one sentence; split the rest into limits or drop it")
+    decision = str(theme.get("decision", "")).strip()
+    if decision and not decision.endswith(("か？", "か?")):
+        errors.append("decision must be a yes/no question ending with か？ (e.g. 〜を置きますか？)")
+    return errors
+
+
 def validate(themes: dict, cards: dict, catalog: dict) -> tuple[list[str], list[str]]:
     errors: list[str] = type_errors(themes)
     warnings: list[str] = []
@@ -155,17 +194,18 @@ def validate(themes: dict, cards: dict, catalog: dict) -> tuple[list[str], list[
     for n, theme in enumerate(themes.get("themes", []), 1):
         label = f"theme {n} ({theme.get('title', '')[:20]})"
         title = str(theme.get("title", "")).strip()
-        if not (TITLE_MIN <= len(title) <= TITLE_MAX):
-            errors.append(f"{label}: title is {len(title)} chars ({TITLE_MIN}-{TITLE_MAX}); write the conclusion")
+        if len(title) < TITLE_MIN:
+            errors.append(f"{label}: title is {len(title)} chars (min {TITLE_MIN}); write the conclusion")
         if title.rstrip("。.").endswith(VAGUE_ENDINGS):
             errors.append(f"{label}: title ends with について/に関して; write the conclusion")
+        errors += [f"{label}: {e}" for e in _style_errors(theme)]
         urls = theme.get("cards") or []
         if not urls:
             errors.append(f"{label}: no cards")
         for url in urls:
             used[url] += 1
             if url in facts:
-                errors.append(f"{label}: {url} is a fact card; facts go to the project table, not to themes")
+                errors.append(f"{label}: {url} is a fact card; facts go to the project list, not to themes")
             elif url not in index:
                 errors.append(f"{label}: {url} is not among this week's opinion cards")
         kinds = theme.get("kinds") or []
@@ -175,10 +215,11 @@ def validate(themes: dict, cards: dict, catalog: dict) -> tuple[list[str], list[
             if not str(theme.get(key, "")).strip():
                 errors.append(f"{label}: {key} is empty (the synthesis needs a proposal and its limits)")
         polarities = {index[u]["polarity"] for u in urls if u in index}
-        if {"worked", "failed"} <= polarities and not str(theme.get("conflict", "")).strip():
-            errors.append(f"{label}: has worked and failed cards; write the conflict")
-        if str(theme.get("conflict", "")).strip() and len(urls) < 2:
-            warnings.append(f"{label}: a conflict with a single card; is it a common answer instead?")
+        split = str(theme.get("split", "")).strip()
+        if {"worked", "failed"} <= polarities and not split:
+            errors.append(f"{label}: has worked and failed cards; write where they split (split)")
+        if split and not {"worked", "failed"} <= polarities:
+            warnings.append(f"{label}: split is set but the theme has no worked/failed pair; is it a common answer?")
         for text in _texts(theme):
             if PERSON_LABEL_RE.search(text):
                 errors.append(f"{label}: mentions an author label ({PERSON_LABEL_RE.search(text).group(0)}); never name people")
@@ -213,68 +254,76 @@ def _mention(url: str) -> str:
     return f'<mention-page url="{url}"/>'
 
 
-def _cell(text: str) -> str:
-    return code_filenames(text).replace("\n", " ")
+def _one_line(text: str) -> str:
+    return code_filenames(text).replace("\n", " ").strip()
+
+
+def _toggle(summary: str, items: list[str]) -> list[str]:
+    """A Notion toggle: closed by default, so details stay one click away."""
+    return ["<details>", f"<summary>{summary}</summary>", *[f"\t{item}" for item in items], "</details>"]
+
+
+def theme_detail(t: dict) -> list[str]:
+    """The third layer of one theme: proposal and strength, then examples and reasoning in toggles."""
+    lines = [
+        f"**提案**（{'＋'.join(t['kinds'])}）: {_one_line(t['proposal'])}",
+        f"**根拠**: {strength(t)}",
+    ]
+    for pol in POLARITY_ORDER:
+        group = t["by_polarity"][pol]
+        if group:
+            items = [f"- {_one_line(c['claim'])}（{', '.join(c['projects'])}）{_mention(c['url'])}" for c in group]
+            lines += _toggle(f"{POLARITY_LABELS[pol]}（{len(group)}）", items)
+    split = str(t.get("split", "")).strip()
+    reasoning = [f"- 分かれ目（推定）: {_one_line(split)}"] if split else ["- 共通解（正と反の対立は無い）"]
+    reasoning.append(f"- 限界: {_one_line(t['limits'])}")
+    lines += _toggle("分かれ目と限界", reasoning)
+    return lines
 
 
 def render(themes: dict, cards: dict, catalog: dict, theme_urls: dict[str, str] | None = None) -> str:
     index = card_index(cards)
     rich = [enrich(t, index, catalog) for t in themes.get("themes", [])]
     m = cards["metrics"]
-    conflicts = sum(1 for t in rich if str(t.get("conflict", "")).strip())
-    by_q = "、".join(f"{q} {n}" for q, n in m["by_question"].items())
-    caution = "参加者が少ないため、合は仮説として扱う。" if m["people"] <= 2 else ""
+    conflicts = sum(1 for t in rich if opposition(t))
+    caution = "参加者が少ないので、提案は仮説として読んでください。" if m["people"] <= 2 else ""
     lines = [
         '<callout icon="🧭" color="gray_bg">',
-        f"\t{cards['title']}のナレッジカードの合成。参加者 {m['people']} 人・カード {m['cards']} 枚から、"
-        f"テーマ {len(rich)}・対立 {conflicts}・提案 {len(rich)} を出した。{caution}採否は共有会で決める。",
+        f"\t{cards['title']}のまとめ。{m['people']} 人のカード {m['cards']} 枚から、わかったことを {len(rich)} 点にまとめました。"
+        f"{caution}採否は共有会で決めます。",
         "</callout>",
-        "## 指標",
-        '<table header-row="true">',
-        "\t<tr>",
-        *[f"\t\t<td>{h}</td>" for h in ("参加者", "カード", "テーマ", "対立", "提案", "確度 observed")],
-        "\t</tr>",
-        "\t<tr>",
-        *[
-            f"\t\t<td>{v}</td>"
-            for v in (f"{m['people']} 人", f"{m['cards']} 枚（{by_q}）", len(rich), conflicts, len(rich), f"{m['observed']} / {m['cards']}")
-        ],
-        "\t</tr>",
-        "</table>",
-        "## 共有会で決めること",
+        "## 今週わかったこと",
     ]
     for t in rich:
-        ref = _mention(theme_urls[t["title"]]) if theme_urls and t["title"] in theme_urls else t["title"]
-        lines.append(f"- [ ] {code_filenames(t.get('decision') or t['proposal'])}（テーマ: {ref}）")
-    lines.append("## テーマと合")
+        lines.append(f"- **{_one_line(t['title'])}**<br>→ {_one_line(t['proposal'])}")
+    lines.append("## 共有会で決めること")
     for t in rich:
-        refs = "、".join(
-            f"{_mention(u)}（{index[u]['question_id']}・{index[u]['polarity']}・{', '.join(index[u]['projects'])}）"
-            for u in t["cards"] if u in index
-        )
-        lines += [f"### {code_filenames(t['title'])}", f"- **カード**: {refs}"]
-        if str(t.get("conflict", "")).strip():
-            lines.append(f"- **対立**: {code_filenames(t['conflict'])}")
-        else:
-            lines.append("- **共通解**（対立なし）")
-        lines += [
-            f"- **合**（{'＋'.join(t['kinds'])}）: {code_filenames(t['proposal'])}",
-            f"- **根拠の強さ**: {strength(t)}",
-            f"- **反証・限界**: {code_filenames(t['limits'])}",
-        ]
-    lines += ["## 今週動いていたプロジェクト", '<table header-row="true">', "\t<tr>"]
-    lines += [f"\t\t<td>{h}</td>" for h in ("プロジェクト", "内容", "カード")]
-    lines.append("\t</tr>")
-    for c in cards.get("facts", []):
-        project = ", ".join(c["projects"])
-        content = c["claim"].split(": ", 1)[1] if ": " in c["claim"] else c["claim"]
-        lines += ["\t<tr>", f"\t\t<td>{_cell(project)}</td>", f"\t\t<td>{_cell(content)}</td>",
-                  f"\t\t<td>{_mention(c['url'])}</td>", "\t</tr>"]
-    lines += ["</table>", "## 次の問い"]
+        ref = _mention(theme_urls[t["title"]]) if theme_urls and t["title"] in theme_urls else _one_line(t["title"])
+        question = t.get("decision") or t["proposal"]
+        lines.append(f"- [ ] {_one_line(question)}（テーマ: {ref}）")
+    lines.append("## テーマの詳細")
+    for t in rich:
+        lines.append(f"### {_one_line(t['title'])}")
+        lines += theme_detail(t)
+    lines.append("## 次に聞くこと")
     by_id = {q["id"]: q for q in catalog["questions"]}
     for q in themes.get("next_questions", []):
-        head = f"{q['id']}（{by_id[q['id']]['text']}）" if q.get("id") in by_id else f"新しい問いの案「{q.get('text', '')}」"
-        lines.append(f"- {code_filenames(head)}: {code_filenames(q['reason'])}")
+        head = f"{q['id']}「{by_id[q['id']]['text']}」" if q.get("id") in by_id else f"新しい問いの案「{q.get('text', '')}」"
+        lines.append(f"- {_one_line(head)}: {_one_line(q['reason'])}")
+    facts = cards.get("facts", [])
+    project_items = []
+    for c in facts:
+        content = c["claim"].split(": ", 1)[1] if ": " in c["claim"] else c["claim"]
+        project_items.append(f"- **{_one_line(', '.join(c['projects']))}**: {_one_line(content)} {_mention(c['url'])}")
+    if project_items:
+        lines += _toggle(f"今週動いていたプロジェクト（{len(facts)} 件）", project_items)
+    by_q = "、".join(f"{q} {n}" for q, n in m["by_question"].items())
+    lines += _toggle("数字で見る今週", [
+        f"- 参加者: {m['people']} 人",
+        f"- カード: {m['cards']} 枚（{by_q}）",
+        f"- テーマ: {len(rich)}（うち正と反の対立があるもの {conflicts}）",
+        f"- 記録に直接あるカード（observed）: {m['observed']} / {m['cards']}",
+    ])
     return "\n".join(lines) + "\n"
 
 
@@ -318,7 +367,7 @@ def to_notion(themes: dict, cards: dict, catalog: dict, week_url: str, topics=No
     index = card_index(cards)
     pages = []
     for t in (enrich(t, index, catalog) for t in themes.get("themes", [])):
-        synthesis = f"{'＋'.join(t['kinds'])}: {t['proposal']} 根拠: {strength(t)}。限界: {t['limits']}"
+        body = [f"{cards['week']} の合成で作ったテーマ。週全体の流れは、週の行の配下の「まとめ」ページにあります。", *theme_detail(t)]
         pages.append({
             "title": t["title"],
             "properties": {
@@ -326,11 +375,11 @@ def to_notion(themes: dict, cards: dict, catalog: dict, week_url: str, topics=No
                 "週": [week_url],
                 "問い": t["question"],
                 "カード": list(t["cards"]),
-                "対立": t.get("conflict", "") or "",
-                "合": synthesis,
+                "対立": opposition(t),
+                "合": t["proposal"],
                 "採否": "検討中",
             },
-            "content": f"{cards['week']} の合成で作ったテーマ。詳細は週の行の配下の「まとめ」ページを参照。",
+            "content": "\n".join(body) + "\n",
         })
     # Check exactly what will be written: every text property and the page body. The card
     # relation holds only URLs of this week's cards, which validate() has already enforced.
