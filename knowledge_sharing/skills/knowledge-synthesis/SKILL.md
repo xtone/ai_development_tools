@@ -58,10 +58,11 @@ python3 -I <skill-dir>/scripts/load_cards.py <out>/.work/query-*.json --week <we
 
 ```json
 {"week": "<week>",
- "themes": [{"title": "結論の一文（10〜80 字）", "cards": ["<カードの url>"],
-             "conflict": "正と反の要約と分かれ目（推定は推定と書く）。対立が無ければ空",
-             "kinds": ["条件分け", "仕組み化"], "proposal": "合", "limits": "反証・限界",
-             "decision": "共有会で決めることの一文"}],
+ "themes": [{"title": "結論の一文（10〜60 字）", "cards": ["<カードの url>"],
+             "proposal": "何をするかの一文（80 字まで、動詞で終える）", "kinds": ["条件分け", "仕組み化"],
+             "split": "正と反の分かれ目の一文（80 字まで）。対立が無ければ空",
+             "limits": "反証・限界（100 字まで）",
+             "decision": "共有会で決める問い（60 字まで、「〜しますか？」で終える）"}],
  "next_questions": [{"id": "Q4", "reason": "なぜ次に聞くか"}, {"text": "新しい問いの案", "reason": "..."}]}
 ```
 
@@ -69,6 +70,8 @@ python3 -I <skill-dir>/scripts/load_cards.py <out>/.work/query-*.json --week <we
 - `kinds` は「両立案」「条件分け」「仕組み化」から選ぶ。仕組み化なら還元先（スキル、hook、CLAUDE.md、プラグイン設定など）を名指しする
 - テーマの問い・根拠の強さ（人数・プロジェクト数・枚数）はスクリプトが数えるので書かない
 - 対立の分かれ目や合は、カードの文脈と根拠から言えることに限る
+- 正と反のカードの claim は書き写さない。まとめと合成テーマの本文に、スクリプトがカードから並べる
+- 読み手は Web 制作会社のエンジニアで、開発の進め方を議論するために読む。結論から書き、1 項目 1 文にする。書き方の規則は `references/synthesis-method.md` の「まとめの読ませ方」
 
 検査して、エラーが 0 になるまで直す。
 
@@ -76,7 +79,7 @@ python3 -I <skill-dir>/scripts/load_cards.py <out>/.work/query-*.json --week <we
 python3 -I <skill-dir>/scripts/synth.py validate <out>/.work/themes-<week>.json --cards <out>/.work/cards-<week>.json
 ```
 
-worked と failed が同じテーマにあるのに対立が空、テーマに入っていない意見カード、事実カードの混入、合や限界の空欄、投稿者ラベルの記載はエラーになる。
+worked と failed が同じテーマにあるのに分かれ目が空、テーマに入っていない意見カード、事実カードの混入、合や限界の空欄、字数の超過や 2 文以上の項目、「〜か？」で終わらない問い、投稿者ラベルの記載はエラーになる。
 
 ## Phase 3: まとめの下書きと機密の再確認
 

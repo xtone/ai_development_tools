@@ -130,7 +130,8 @@ def test_valid_card_passes():
         ({"evidence": [{"type": "chat", "ref": "x", "excerpt": "y"}]}, "type must be"),
         ({"evidence": [{"type": "prompt", "ref": "", "excerpt": "y"}]}, "ref is empty"),
         ({"evidence": [{"type": "session", "ref": "abc@10:00", "excerpt": "y"}]}, "<session_id>#<uuid>"),
-        ({"evidence": [{"type": "prompt", "ref": "x", "excerpt": "あ" * 301}]}, "max 300"),
+        ({"evidence": [{"type": "prompt", "ref": "x", "excerpt": "あ" * 121}]}, "max 120"),
+        ({"evidence": [{"type": "prompt", "ref": f"x{i}", "excerpt": "y"} for i in range(4)]}, "max 3"),
         ({"polarity": "worked"}, "not allowed for Q2"),
         ({"polarity": "great"}, "polarity must be"),
         ({"confidence": "maybe"}, "confidence must be"),
@@ -286,8 +287,9 @@ def test_dedupe_matches_normalized_claims():
 
 
 def test_to_notion_properties():
-    long_card = card(evidence=[{"type": "prompt", "ref": "a@1", "excerpt": "あ" * 200},
-                               {"type": "memory", "ref": "memory:x/y", "excerpt": "い" * 200}])
+    long_card = card(context="CLAUDE.md の書き方を直す依頼で、完了条件を書かなかった。",
+                     evidence=[{"type": "prompt", "ref": "a@1", "excerpt": "あ" * 120},
+                               {"type": "memory", "ref": "memory:x/y", "excerpt": "い" * 120}])
     pages = cards.to_notion([long_card, card(card_id="d", status="dropped")], "https://www.notion.so/week", "user-1")
     assert len(pages) == 1
     props = pages[0]["properties"]
@@ -297,10 +299,13 @@ def test_to_notion_properties():
     assert props["投稿者"] == ["user-1"]
     assert props["プロジェクト"] == ["ai_development_tools"]
     assert props["タグ"] == ["prompt", "testing"]
-    assert len(props["根拠"]) == 300
+    assert len(props["根拠"]) == 241
     assert props["根拠参照"] == "a@1, memory:x/y"
     assert "author_email" not in json.dumps(pages)
-    assert pages[0]["content"].startswith("## 文脈\n")
+    body = pages[0]["content"]
+    assert body.startswith("`CLAUDE.md` の書き方を直す依頼で")  # context first, file names as code
+    assert "<summary>記録の抜粋（2）</summary>\n\t- 依頼文: " in body
+    assert "<summary>記録の場所（本人が見返す用）</summary>\n\t- `a@1`" in body
     me = cards.to_notion([card()], "u", "me")[0]["properties"]
     assert "投稿者" not in me
 
@@ -401,3 +406,8 @@ def test_review_words_fail_until_allowed_but_strong_words_never_pass(tmp_path):
     assert run("validate", src, "--allow-term", "退職").returncode == 0
     cards.write_cards(src, [card(context="取締役会の資料の依頼で、完了条件を書かなかった。")])
     assert run("validate", src, "--allow-term", "取締役").returncode == 1
+
+
+def test_long_context_warns():
+    _, warnings = cards.validate([card(context="あ" * 161)], CATALOG)
+    assert any("context is 161 chars" in w for w in warnings)

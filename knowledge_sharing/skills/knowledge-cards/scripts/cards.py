@@ -44,7 +44,16 @@ FIELD_ORDER = (
     "context", "polarity", "confidence", "evidence", "tags", "sensitivity", "status", "notion_url",
 )
 CLAIM_MIN, CLAIM_MAX = 20, 80
-EXCERPT_MAX = 300
+EXCERPT_MAX = 120  # one readable line per excerpt
+EVIDENCE_MAX = 3
+CONTEXT_MAX = 160  # about two sentences
+PROPERTY_EVIDENCE_MAX = 400
+EVIDENCE_LABELS = {
+    "prompt": "依頼文", "command": "コマンド", "commit": "commit", "pr": "PR",
+    "memory": "memory", "harness": "設定", "session": "セッション",
+}
+# Notion turns CLAUDE.md and the like into links to a domain; keep them as code in page bodies.
+FILENAME_RE = re.compile(r"(?<![`\w./-])([\w.-]+\.(?:md|json|jsonl|py|ts|tsx|js|yml|yaml|sh|toml))(?![`\w])")
 NONE_PREFIX = "該当なし"
 VAGUE_ENDINGS = ("について", "に関して")
 SESSION_REF_RE = re.compile(r"^[\w-]+#[\w-]+$")
@@ -211,6 +220,8 @@ def _evidence_errors(evidence) -> list[str]:
     if not isinstance(evidence, list) or not evidence:
         return ["evidence needs at least one item"]
     errors = []
+    if len(evidence) > EVIDENCE_MAX:
+        errors.append(f"evidence has {len(evidence)} items (max {EVIDENCE_MAX}); keep the clearest ones")
     for i, ev in enumerate(evidence, 1):
         if not isinstance(ev, dict):
             errors.append(f"evidence[{i}] must be an object")
@@ -227,7 +238,7 @@ def _evidence_errors(evidence) -> list[str]:
         if not isinstance(excerpt, str):
             errors.append(f"evidence[{i}].excerpt must be a string")
         elif len(excerpt) > EXCERPT_MAX:
-            errors.append(f"evidence[{i}].excerpt is {len(excerpt)} chars (max {EXCERPT_MAX})")
+            errors.append(f"evidence[{i}].excerpt is {len(excerpt)} chars (max {EXCERPT_MAX}); quote only the part that shows it")
     return errors
 
 
@@ -301,6 +312,9 @@ def validate(cards: list[dict], catalog: dict, topics=(), allowed_terms=()) -> t
                     f"{label}: tag(s) {', '.join(map(str, unknown))} are not in questions.json; "
                     "they must be added to Notion before submitting (cards.py options)"
                 )
+        if len(str(card.get("context", ""))) > CONTEXT_MAX:
+            warnings.append(f"{label}: context is {len(str(card.get('context', '')))} chars; two sentences "
+                            f"(what kind of work, what happened) read best (about {CONTEXT_MAX})")
         card_id = card.get("card_id")
         if card_id:
             if card_id in seen_ids:
@@ -527,7 +541,27 @@ def _evidence_text(card: dict) -> tuple[str, str]:
     evidence = card.get("evidence") or []
     excerpts = "\n".join(str(e.get("excerpt", "")) for e in evidence if e.get("excerpt"))
     refs = ", ".join(str(e.get("ref", "")) for e in evidence if e.get("ref"))
-    return excerpts[:EXCERPT_MAX], refs
+    return excerpts[:PROPERTY_EVIDENCE_MAX], refs
+
+
+def _code_filenames(text: str) -> str:
+    return FILENAME_RE.sub(lambda m: f"`{m.group(1)}`", str(text))
+
+
+def page_body(card: dict) -> str:
+    """Card page: the context first; excerpts and refs stay in closed toggles (progressive disclosure)."""
+    evidence = [e for e in card.get("evidence") or [] if isinstance(e, dict)]
+    excerpts = [
+        f"\t- {EVIDENCE_LABELS.get(e.get('type'), e.get('type'))}: {_code_filenames(str(e.get('excerpt', '')).replace(chr(10), ' ').strip())}"
+        for e in evidence if str(e.get("excerpt", "")).strip()
+    ]
+    refs = [f"\t- `{e.get('ref')}`" for e in evidence if e.get("ref")]
+    lines = [_code_filenames(str(card["context"]).strip())]
+    if excerpts:
+        lines += ["<details>", f"<summary>記録の抜粋（{len(excerpts)}）</summary>", *excerpts, "</details>"]
+    if refs:
+        lines += ["<details>", "<summary>記録の場所（本人が見返す用）</summary>", *refs, "</details>"]
+    return "\n".join(lines) + "\n"
 
 
 def to_notion(cards: list[dict], week_url: str, author: str) -> list[dict]:
@@ -551,12 +585,7 @@ def to_notion(cards: list[dict], week_url: str, author: str) -> list[dict]:
         }
         if author and author != "me":
             props["投稿者"] = [author]
-        evidence_md = "\n".join(
-            f"- {e.get('type')}: {str(e.get('excerpt', '')).replace(chr(10), ' ')}" for e in card.get("evidence") or []
-        )
-        refs_md = "\n".join(f"- `{e.get('ref')}`" for e in card.get("evidence") or [])
-        content = f"## 文脈\n{card['context']}\n\n## 根拠\n{evidence_md}\n\n## 根拠参照\n{refs_md}\n"
-        pages.append({"card_id": card.get("card_id"), "properties": props, "content": content})
+        pages.append({"card_id": card.get("card_id"), "properties": props, "content": page_body(card)})
     return pages
 
 

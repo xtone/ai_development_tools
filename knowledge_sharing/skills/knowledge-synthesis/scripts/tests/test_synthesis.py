@@ -55,15 +55,16 @@ def themes(**over):
             {
                 "title": "前提を書かずに頼めるのは、問い返す手順を挟むときだけ",
                 "cards": [u(2), u(3)],
-                "conflict": "正「目的を 1 文で伝えて通った」と反「前提を書かずに言い直した」。分かれ目は問い返しの有無（推定）",
+                "split": "問い返す手順を挟んだかどうかで分かれた",
                 "kinds": ["条件分け", "仕組み化"],
-                "proposal": "調査の依頼では、誰が何のために使うかを最初に書く。テンプレを CLAUDE.md に置く",
+                "proposal": "調査の依頼では、誰が何のために使うかを最初に書き、テンプレを CLAUDE.md に置く",
                 "limits": "参加者が少ない",
+                "decision": "調査依頼のテンプレを CLAUDE.md に置きますか？",
             },
             {
                 "title": "入力に依存する処理は、計画の段階でテストを決める",
                 "cards": [u(4)],
-                "conflict": "",
+                "split": "",
                 "kinds": ["仕組み化"],
                 "proposal": "実装計画に性能テストを入れる",
                 "limits": "手戻りの量はカードから言えない",
@@ -71,7 +72,7 @@ def themes(**over):
             {
                 "title": "業務用語の昇格は依頼文に書けば通る",
                 "cards": [u(7)],
-                "conflict": "",
+                "split": "",
                 "kinds": ["両立案"],
                 "proposal": "ADR の昇格条件を依頼文に書く",
                 "limits": "1 枚のみ",
@@ -136,10 +137,23 @@ def test_valid_themes_pass():
     assert synth.validate(themes(), loaded(), CATALOG) == ([], [])
 
 
-def test_validate_requires_conflict_when_worked_and_failed_meet():
+def test_validate_requires_split_when_worked_and_failed_meet():
     t = themes()
-    t["themes"][0]["conflict"] = ""
-    assert any("write the conflict" in e for e in errors_of(t))
+    t["themes"][0]["split"] = ""
+    assert any("write where they split" in e for e in errors_of(t))
+
+
+def test_validate_keeps_fields_short_and_single_sentence():
+    t = themes()
+    t["themes"][0]["proposal"] = "あ" * 81
+    t["themes"][1]["split"] = "一つ目の文。二つ目の文"
+    t["themes"][1]["decision"] = "テンプレを置く"
+    t["themes"][2]["limits"] = "い" * 101
+    errs = errors_of(t)
+    assert any("proposal is 81 chars" in e for e in errs)
+    assert any("split has more than one sentence" in e for e in errs)
+    assert any("decision must be a yes/no question" in e for e in errs)
+    assert any("limits is 101 chars" in e for e in errs)
 
 
 def test_validate_rejects_bad_themes():
@@ -174,18 +188,27 @@ def test_strength_and_question_come_from_cards():
 # ---- render / check / to-notion ----
 
 
-def test_render_follows_the_template_and_codes_filenames():
+def test_render_puts_findings_and_decisions_first_and_details_in_toggles():
     md = synth.render(themes(), loaded(), CATALOG)
     assert md.startswith('<callout icon="🧭" color="gray_bg">')
-    assert "\t2026-W43（10/19〜10/25）のナレッジカードの合成。参加者 3 人・カード 5 枚から、テーマ 3・対立 1・提案 3" in md
-    for heading in ("## 指標", "## 共有会で決めること", "## テーマと合", "## 今週動いていたプロジェクト", "## 次の問い"):
-        assert heading in md
-    assert f'<mention-page url="{u(2)}"/>（Q1・worked・app-a）' in md
-    assert "- **共通解**（対立なし）" in md
-    assert "`CLAUDE.md`" in md and "``CLAUDE.md``" not in md
-    assert "<td>管理画面を実装中</td>" in md
-    assert "- Q4（手戻りが最も大きかった作業" in md
-    assert "2 人・2 プロジェクト・2 枚（observed 2）" in md
+    assert "\t2026-W43（10/19〜10/25）のまとめ。3 人のカード 5 枚から、わかったことを 3 点にまとめました。" in md
+    order = [md.index(h) for h in ("## 今週わかったこと", "## 共有会で決めること", "## テーマの詳細", "## 次に聞くこと")]
+    assert order == sorted(order)
+    # layer 1: conclusion and proposal of each theme, two lines
+    assert "- **前提を書かずに頼めるのは、問い返す手順を挟むときだけ**<br>→ 調査の依頼では" in md
+    # layer 2: yes/no question per theme
+    assert "- [ ] 調査依頼のテンプレを `CLAUDE.md` に置きますか？（テーマ: 前提を書かずに" in md
+    # layer 3: examples come from the cards' claims, inside closed toggles
+    assert "<summary>うまくいった例（1）</summary>" in md and "<summary>うまくいかなかった例（1）</summary>" in md
+    assert f'\t- 目的を 1 文で伝えると承認だけで PR まで進んだ（app-a）<mention-page url="{u(2)}"/>' in md
+    assert "\t- 分かれ目（推定）: 問い返す手順を挟んだかどうかで分かれた" in md
+    assert "\t- 共通解（正と反の対立は無い）" in md
+    assert "**根拠**: 2 人・2 プロジェクト・2 枚" in md
+    assert "<summary>今週動いていたプロジェクト（1 件）</summary>" in md
+    assert "\t- **app-a**: 管理画面を実装中" in md
+    assert "<summary>数字で見る今週</summary>" in md and "記録に直接あるカード（observed）: 4 / 5" in md
+    assert "- Q4「手戻りが最も大きかった作業" in md
+    assert "``CLAUDE.md``" not in md
     assert "p1" not in md and "p2" not in md
 
 
@@ -215,8 +238,11 @@ def test_to_notion_properties():
     p = pages[0]["properties"]
     assert p["週"] == ["https://app.notion.com/week"] and p["問い"] == "Q1" and p["採否"] == "検討中"
     assert p["カード"] == [u(2), u(3)]
-    assert p["合"].startswith("条件分け＋仕組み化: ") and "根拠: 2 人・2 プロジェクト・2 枚" in p["合"]
+    assert p["合"] == "調査の依頼では、誰が何のために使うかを最初に書き、テンプレを CLAUDE.md に置く"
+    assert p["対立"] == "うまくいった 1 件／うまくいかなかった 1 件。分かれ目: 問い返す手順を挟んだかどうかで分かれた"
     assert pages[1]["properties"]["対立"] == ""
+    assert "<summary>うまくいった例（1）</summary>" in pages[0]["content"]
+    assert "**根拠**: 2 人・2 プロジェクト・2 枚" in pages[0]["content"]
 
 
 def test_cli_validate_render_check(tmp_path):
@@ -233,7 +259,7 @@ def test_cli_validate_render_check(tmp_path):
     r = run("check", md, "--cards", cards, "--allow-term", "昇格")
     assert r.returncode == 0, r.stdout
     bad = copy.deepcopy(themes())
-    bad["themes"][0]["conflict"] = ""
+    bad["themes"][0]["split"] = ""
     th.write_text(json.dumps(bad, ensure_ascii=False), encoding="utf-8")
     assert run("validate", th, "--cards", cards).returncode == 1
 
@@ -299,7 +325,7 @@ import pytest
     "field, value",
     [
         ("title", ["取締役会の資料をまとめる方針の結論"]),
-        ("conflict", ["取締役会"]),
+        ("split", ["取締役会"]),
         ("proposal", {"x": "取締役会"}),
         ("limits", 3),
         ("decision", ["経営会議"]),
@@ -321,3 +347,8 @@ def test_validate_rejects_wrong_top_level_types():
     assert any("must be" in e for e in synth.validate({"week": "2026-W43", "themes": {"a": 1}}, loaded(), CATALOG)[0])
     t = themes(next_questions=[["Q4"]])
     assert any("must be" in e for e in synth.validate(t, loaded(), CATALOG)[0])
+
+
+def test_opposition_without_split_does_not_end_with_a_dangling_label():
+    rich = synth.enrich({**themes()["themes"][0], "split": ""}, synth.card_index(loaded()), CATALOG)
+    assert synth.opposition(rich) == "うまくいった 1 件／うまくいかなかった 1 件"
