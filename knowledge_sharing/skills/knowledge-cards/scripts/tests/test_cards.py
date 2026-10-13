@@ -139,6 +139,7 @@ def test_valid_card_passes():
         ({"question_id": "Q99"}, "unknown question_id"),
         ({"week": "2026-43"}, "2026-W43"),
         ({"context": "  "}, "context is empty"),
+        ({"project": ""}, "project is empty"),
     ],
 )
 def test_validate_rejects(over, fragment):

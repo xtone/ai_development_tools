@@ -84,7 +84,7 @@ knowledge_sharing/
 3. **下書き**: Claude が問いごとに `sessions.json` の該当部分（`card-writing.md` の対応表）を読み、`draft_hint` に従って `<out>/.work/cards.jsonl` を書く。`cards.py validate` で検査し、エラーが 0 になるまで直す。`cards.py render` で `<out>/cards-<week>.md` を出す
 4. **自己確認**: 問いごとの枚数と claim を表示し、AskUserQuestion で「提出する / ファイルを直したので読み直す / 中止」を聞く。読み直しは `cards.py parse` で Markdown から JSONL に戻し、再び validate と render を通す
 5. **機密ゲート**: `scan_sensitive.py <out>/cards-<week>.md --vocab <out>/.work/sessions.json --tier internal [--allow-file <out>/.work/allow.txt]`。0 件になるまで先に進まない
-6. **提出**: `cards.py dedupe` で提出済みを除き、`cards.py to-notion` で create-pages 用のプロパティを出す。`references/notion-submit.md` の手順で、週の行の確保 → 投稿者の解決 → create-pages → 週の行の投稿者追加を行う。成功したカードは `cards.py mark-submitted` で `submitted.jsonl` に記録する。`--dry-run` では Notion にも `submitted.jsonl` にも書かない
+6. **提出**: `cards.py dedupe` で提出済みを除き、`cards.py to-notion` で create-pages 用のプロパティを出す。`references/notion-submit.md` の手順で、週の行の確保 → 投稿者の解決 → create-pages → 週の行の投稿者追加を行う。投稿者は Notion MCP の接続ユーザー（get-self）にする。git のメールアドレスで検索すると、Notion アカウントのメールアドレスが違う場合に別アカウントが返ることを実環境で確認した（2026-10-13）。成功したカードは `cards.py mark-submitted` で `submitted.jsonl` に記録する。`--dry-run` では Notion にも `submitted.jsonl` にも書かない
 7. **完了報告**: 問いごとの枚数、週の行の URL、スキャン結果、開始と終了の時刻、`.work/` をコミットしないことの注意
 
 Notion MCP が無い環境では、`notion_submit.py`（`NOTION_TOKEN` で REST API を叩く）を案内する。

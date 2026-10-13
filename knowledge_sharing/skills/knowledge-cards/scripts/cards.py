@@ -244,8 +244,9 @@ def validate(cards: list[dict], catalog: dict) -> tuple[list[str], list[str]]:
             problems.append(f"unknown question_id {qid}")
         if "claim" in card:
             problems += _claim_errors(card["claim"])
-        if "context" in card and not str(card["context"]).strip():
-            problems.append("context is empty")
+        for key in ("context", "project"):
+            if key in card and not str(card[key]).strip():
+                problems.append(f"{key} is empty")
         if "evidence" in card:
             problems += _evidence_errors(card["evidence"])
         polarity = card.get("polarity")

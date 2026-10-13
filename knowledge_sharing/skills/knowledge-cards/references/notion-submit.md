@@ -40,10 +40,12 @@ query-data-sources（SQL モード）で週の行を探す。
 
 ## 3. 投稿者を解決する
 
+投稿者は、Notion MCP に接続している本人とする。git のメールアドレスでは引かない。Notion アカウントのメールアドレスが git と違うことがあり、メールで検索すると同じ名前の別アカウントが返ることがあるため（2026-10-13 に実環境で確認）。
+
 1. `<out>/.work/notion-user.json` があれば、その `user_id` を使う
-2. 無ければ search を `query_type: "user"`、`query: <git config user.email>` で呼ぶ。見つかった人の ID（`user://` の後ろ、または返された id）を使う
-3. 見つからなければ `me` にする。提出は止めない
-4. 結果を `<out>/.work/notion-user.json` に `{"email": "...", "user_id": "<id または me>"}` で保存する
+2. 無ければ get-self（または get-users を `user_id: "self"` で）呼び、返った `user.id` を使う。`type` が `person` でなければ（bot 接続など）、ユーザーに自分の Notion アカウントのメールアドレスを聞き、search（`query_type: "user"`）で引く
+3. どれでも決まらなければ `me` にする。提出は止めない
+4. 決めた結果をユーザーに名前で示して確認し、`<out>/.work/notion-user.json` に `{"name": "...", "user_id": "<id または me>"}` で保存する
 
 ## 4. カードを作る
 
@@ -79,11 +81,11 @@ fetch で週の行を読み、`投稿者` の現在の値を得る。自分が�
 
 ## MCP が使えないとき
 
-社内インテグレーショントークンを `NOTION_TOKEN` に入れ、`notion_submit.py` を使う。インテグレーションに「Claude Codeまとめ置き場」への接続を許可しておく必要がある。トークンはチャットに貼らず、ユーザー自身のシェルで設定してもらう。
+社内インテグレーショントークンを `NOTION_TOKEN` に入れ、`notion_submit.py` を使う。インテグレーションに「Claude Codeまとめ置き場」への接続を許可しておく必要がある。トークンの持ち主はボットなので、投稿者は本人の Notion アカウントのメールアドレス（git のメールアドレスと違うことがある）で引く。トークンはチャットに貼らず、ユーザー自身のシェルで設定してもらう。
 
 ```bash
 python3 -I <skill-dir>/scripts/notion_submit.py ensure-week --week 2026-W43 --questions P1,Q1,Q2,Q3
-python3 -I <skill-dir>/scripts/notion_submit.py resolve-user --email <git config user.email>
+python3 -I <skill-dir>/scripts/notion_submit.py resolve-user --email <本人の Notion アカウントのメールアドレス>
 python3 -I <skill-dir>/scripts/cards.py to-notion <out>/.work/cards.jsonl --week-url <ensure-week の url> --author <user id> > <out>/.work/pages.json
 python3 -I <skill-dir>/scripts/notion_submit.py submit <out>/.work/pages.json --results <out>/.work/results.json
 python3 -I <skill-dir>/scripts/cards.py mark-submitted <out>/.work/cards.jsonl --submitted <out>/.work/submitted.jsonl --results <out>/.work/results.json

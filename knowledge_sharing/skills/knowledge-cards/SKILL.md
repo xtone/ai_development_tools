@@ -126,7 +126,7 @@ python3 -I <skill-dir>/scripts/scan_sensitive.py <out>/cards-<week>.md --vocab <
 
 1. スキーマを確認する
 2. 週の行を確保する（無ければ作る）
-3. 投稿者を解決する（見つからなければ `me`）
+3. 投稿者を解決する（Notion MCP の接続ユーザー。決まらなければ `me`）
 4. `cards.py dedupe` → `cards.py to-notion` → create-pages → `cards.py mark-submitted`
 5. 週の行に投稿者を足す
 
