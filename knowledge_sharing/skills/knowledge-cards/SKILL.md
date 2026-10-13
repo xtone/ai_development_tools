@@ -31,6 +31,8 @@ description: Claude Code のセッション記録（~/.claude の履歴・セッ
 |---|---|---|
 | `--week` | 前の ISO 週 | 対象週。`2026-W43` 形式 |
 | `--since` | 対象週の月曜 | 抽出の開始日。`14d` や `2026-10-12` も受ける。初めて参加する人には `14d` を勧める |
+| `--until` | 対象週の日曜 | 抽出の最終日（その日を含む）。`2026-10-16` 形式。「月〜金」なら金曜を指定する |
+| `--tz` | `local` | 日付を解釈するタイムゾーン。`+09:00` のようにも書ける |
 | `--questions` | 週の行の `今週の問い`。無ければ cadence | 答える問い（カンマ区切り） |
 | `--projects` | 全部 | 対象プロジェクト名の部分一致（カンマ区切り） |
 | `--out` | `cards/` | 成果物ディレクトリ。作業ファイルは `<out>/.work/` |
@@ -50,7 +52,7 @@ description: Claude Code のセッション記録（~/.claude の履歴・セッ
 python3 -I <skill-dir>/scripts/cards.py week [--week <week>]
 ```
 
-出力の `week`、`monday`、`sunday`、`title` を以降で使う。`--since` の指定が無ければ `monday` を使う。
+出力の `week`、`monday`、`sunday`、`title` を以降で使う。`--since` の指定が無ければ `monday`、`--until` の指定が無ければ `sunday` を使う。`--since` に `14d` のような日数を指定したときは、`--until` も指定が無ければ付けない。ユーザーが「月曜から金曜」のように期間を言葉で指定したら、それを `--since` と `--until` の日付に直す。
 
 4. 問いを決める。`--questions` があればそれを使う。無ければ、Notion MCP が使えて `--no-notion` でないとき、`references/notion-submit.md` の「2. 週の行を確保する」の query だけを実行して `今週の問い` を読む（行が無くてもここでは作らない）。それも無ければ cadence に従う
 
@@ -63,8 +65,10 @@ python3 -I <skill-dir>/scripts/cards.py plan --week <week> [--ids <問いのID>]
 ## Phase 1: 抽出
 
 ```bash
-python3 -I <skill-dir>/scripts/extract_sessions.py --since <since> [--projects <list>] --out <out>/.work/sessions.json
+python3 -I <skill-dir>/scripts/extract_sessions.py --since <since> [--until <until>] [--tz <tz>] [--projects <list>] --out <out>/.work/sessions.json
 ```
+
+日付は `--tz`（既定はこのマシンのタイムゾーン）のその日の 0 時として解釈し、`--until` の日は終わりまで含む。期間で絞られるのは prompt、ツールの利用回数、Bash の例、commit と PR。memory は期間で絞らない（更新日 `modified` を見て判断する）。
 
 出力には、期間内の prompt（`session_id` 付き）、ツール・スキル・MCP の利用回数、Bash の例、commit と PR のタイトル、memory、ハーネス構成（名前だけ）、匿名化辞書（`vocabulary`）が入る。秘密情報は伏せ字済み。
 
@@ -127,8 +131,9 @@ python3 -I <skill-dir>/scripts/scan_sensitive.py <out>/cards-<week>.md --vocab <
 1. スキーマを確認する
 2. 週の行を確保する（無ければ作る）
 3. 投稿者を解決する（Notion MCP の接続ユーザー。決まらなければ `me`）
-4. `cards.py dedupe` → `cards.py to-notion` → create-pages → `cards.py mark-submitted`
-5. 週の行に投稿者を足す
+4. 足りない選択肢（プロジェクト名・タグ）を `cards.py options` で調べて、データソースに足す。MCP は選択肢に無い値を自動では足さず、提出が全件失敗する
+5. `cards.py dedupe` → `cards.py to-notion` → create-pages → `cards.py mark-submitted`
+6. 週の行に投稿者を足す
 
 Notion MCP が使えない、または接続されていないときは、同じ文書の「MCP が使えないとき」の手順（`notion_submit.py` と `NOTION_TOKEN`）を案内する。トークンをチャットに貼らせない。
 
@@ -138,6 +143,7 @@ Notion MCP が使えない、または接続されていないときは、同じ
 
 - 対象週と問い、問いごとのカード枚数（提出した数、除外した数）
 - Notion の週の行の URL（`--dry-run` / `--no-notion` のときはその旨）
+- Notion に選択肢として足したプロジェクト名・タグ
 - 機密スキャンの結果（0 件）と、許可リストに入れた語とその理由
 - 開始から終了までの所要時間（参加者が週の行の「備考」に書けるように）
 - 投稿者を自動で足せなかった場合は、その旨と手順

@@ -10,6 +10,7 @@ Usage:
   cards.py dedupe CARDS.jsonl --submitted submitted.jsonl
   cards.py to-notion CARDS.jsonl --week-url URL --author USER_ID|me
   cards.py mark-submitted CARDS.jsonl --submitted submitted.jsonl --results results.json
+  cards.py options CARDS.jsonl --schema FETCHED_SCHEMA
 
 Exit code: 0 on success, 1 when validation finds errors, 2 on input errors.
 The question catalog defaults to questions.json at the plugin root.
@@ -272,7 +273,10 @@ def validate(cards: list[dict], catalog: dict) -> tuple[list[str], list[str]]:
         else:
             unknown = [t for t in tags if t not in known_tags]
             if unknown and known_tags:
-                warnings.append(f"{label}: new tag(s) {', '.join(map(str, unknown))} will be added to Notion")
+                warnings.append(
+                    f"{label}: tag(s) {', '.join(map(str, unknown))} are not in questions.json; "
+                    "they must be added to Notion before submitting (cards.py options)"
+                )
         card_id = card.get("card_id")
         if card_id:
             if card_id in seen_ids:
@@ -543,6 +547,55 @@ def mark_submitted(cards: list[dict], results: list[dict], now: str) -> tuple[li
     return out, rows
 
 
+# ---- multi_select choices ---------------------------------------------------
+
+# Card fields that become multi_select properties. Notion MCP rejects values that are
+# not existing choices, so missing ones must be added to the data source first.
+OPTION_FIELDS = (("プロジェクト", lambda c: [c.get("project")]), ("タグ", lambda c: list(c.get("tags") or [])))
+STATE_RE = re.compile(r"<data-source-state>\s*(\{.*?\})\s*</data-source-state>", re.DOTALL)
+
+
+def load_schema_state(text: str) -> dict:
+    """Read the data source state from Notion fetch output (raw text or the JSON itself)."""
+    m = STATE_RE.search(text)
+    try:
+        state = json.loads(m.group(1) if m else text)
+    except ValueError:
+        raise InputError("schema must be Notion fetch output with <data-source-state> or its JSON") from None
+    if not isinstance(state, dict) or not isinstance(state.get("schema"), dict):
+        raise InputError("schema has no properties")
+    return state
+
+
+def _sql_text(value: str) -> str:
+    return "'" + value.replace("'", "''") + "'"
+
+
+def missing_options(cards: list[dict], state: dict) -> dict:
+    """Choices used by cards to submit but absent in Notion, and DDL that adds them.
+
+    ALTER COLUMN ... SET replaces the whole list, so every existing choice is repeated
+    with its color; leaving one out would delete it.
+    """
+    live = [c for c in cards if c.get("status") in ("draft", "approved")]
+    missing: dict[str, list[str]] = {}
+    statements: list[str] = []
+    for prop, values_of in OPTION_FIELDS:
+        existing = state["schema"].get(prop, {}).get("options", [])
+        names = {o.get("name") for o in existing}
+        new: list[str] = []
+        for card in live:
+            for value in values_of(card):
+                if value and value not in names and value not in new:
+                    new.append(value)
+        missing[prop] = new
+        if new:
+            choices = [f"{_sql_text(o['name'])}:{o.get('color') or 'default'}" for o in existing]
+            choices += [f"{_sql_text(v)}:default" for v in new]
+            statements.append(f"ALTER COLUMN \"{prop}\" SET MULTI_SELECT({', '.join(choices)})")
+    return {"missing": missing, "statements": statements}
+
+
 # ---- CLI -------------------------------------------------------------------
 
 
@@ -591,6 +644,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--submitted", required=True)
     p.add_argument("--results", required=True, help='JSON list of {"card_id", "notion_url"}')
 
+    p = sub.add_parser("options", help="multi_select choices to add in Notion before submitting")
+    p.add_argument("cards")
+    p.add_argument("--schema", required=True, help="file with Notion fetch output of the cards data source")
+
     args = parser.parse_args(argv)
     try:
         if args.cmd == "week":
@@ -632,6 +689,12 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{marked} card(s) were already submitted")
         elif args.cmd == "to-notion":
             _print_json(to_notion(read_cards(Path(args.cards)), args.week_url, args.author))
+        elif args.cmd == "options":
+            try:
+                text = Path(args.schema).read_text(encoding="utf-8")
+            except OSError as exc:
+                raise InputError(f"cannot read schema: {exc}") from None
+            _print_json(missing_options(read_cards(Path(args.cards)), load_schema_state(text)))
         elif args.cmd == "mark-submitted":
             try:
                 results = json.loads(Path(args.results).read_text(encoding="utf-8"))

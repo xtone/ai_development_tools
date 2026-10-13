@@ -7,6 +7,7 @@ names that scan_sensitive.py uses. Secrets in prompts and commands are redacted.
 
 Usage:
   extract_sessions.py --out tips/.work/sessions.json [--since 30d|YYYY-MM-DD]
+                      [--until YYYY-MM-DD] [--tz local|+09:00]
                       [--projects a,b] [--claude-dir ~/.claude] [--patterns p1,p2]
 """
 from __future__ import annotations
@@ -85,7 +86,19 @@ def parse_now(value: str | None) -> dt.datetime:
     return d if d.tzinfo else d.replace(tzinfo=dt.timezone.utc)
 
 
-def parse_since(value: str, now: dt.datetime) -> dt.datetime:
+def parse_tz(value: str) -> dt.tzinfo:
+    """'local' for this machine's time zone, or a fixed offset such as +09:00."""
+    if value == "local":
+        return dt.datetime.now().astimezone().tzinfo or dt.timezone.utc
+    m = re.fullmatch(r"([+-])(\d{2}):?(\d{2})", value.strip())
+    if not m:
+        raise ValueError(f"--tz must be local or an offset like +09:00: {value}")
+    minutes = int(m.group(2)) * 60 + int(m.group(3))
+    return dt.timezone(dt.timedelta(minutes=-minutes if m.group(1) == "-" else minutes))
+
+
+def parse_since(value: str, now: dt.datetime, tz: dt.tzinfo = dt.timezone.utc) -> dt.datetime:
+    """A date means the start of that day in tz."""
     value = value.strip()
     m = re.fullmatch(r"(\d+)d", value)
     if m:
@@ -94,7 +107,22 @@ def parse_since(value: str, now: dt.datetime) -> dt.datetime:
         day = dt.date.fromisoformat(value)
     except ValueError:
         raise ValueError(f"--since must look like 30d or YYYY-MM-DD: {value}") from None
-    return dt.datetime.combine(day, dt.time.min, tzinfo=dt.timezone.utc)
+    return dt.datetime.combine(day, dt.time.min, tzinfo=tz)
+
+
+def parse_until(value: str | None, tz: dt.tzinfo = dt.timezone.utc) -> dt.datetime | None:
+    """The day is included: the result is the start of the next day in tz (exclusive)."""
+    if not value:
+        return None
+    try:
+        day = dt.date.fromisoformat(value.strip())
+    except ValueError:
+        raise ValueError(f"--until must look like YYYY-MM-DD: {value}") from None
+    return dt.datetime.combine(day + dt.timedelta(days=1), dt.time.min, tzinfo=tz)
+
+
+def in_range(ts: dt.datetime, cutoff: dt.datetime, until: dt.datetime | None) -> bool:
+    return ts >= cutoff and (until is None or ts < until)
 
 
 def parse_ts(value) -> dt.datetime | None:
@@ -214,13 +242,13 @@ def titles_in(command: str, start_re: re.Pattern[str], flag_re: re.Pattern[str])
     return out
 
 
-def collect_prompts(claude_dir, cutoff, filters, texts, names, known) -> list[dict]:
+def collect_prompts(claude_dir, cutoff, filters, texts, names, known, until=None) -> list[dict]:
     out = []
     for d in read_jsonl(claude_dir / "history.jsonl"):
         if isinstance(d.get("project"), str) and d["project"]:
             known.setdefault(encode_dir(d["project"]), project_name(d["project"]))
         ts = parse_ts(d.get("timestamp"))
-        if ts is None or ts < cutoff:
+        if ts is None or not in_range(ts, cutoff, until):
             continue
         proj = project_name(d.get("project", ""))
         if not wanted(proj, filters):
@@ -244,7 +272,7 @@ def _top(counter: Counter) -> list[list]:
     return [[k, v] for k, v in counter.most_common()]
 
 
-def collect_usage(claude_dir, cutoff, filters, patterns, texts, names, known, cache):
+def collect_usage(claude_dir, cutoff, filters, patterns, texts, names, known, cache, until=None):
     tools, skills, agents, mcp, gh = Counter(), Counter(), Counter(), Counter(), Counter()
     samples: list[dict] = []
     outcomes: dict[str, list[dict]] = {"commits": [], "prs": []}
@@ -258,7 +286,7 @@ def collect_usage(claude_dir, cutoff, filters, patterns, texts, names, known, ca
             continue
         for d in read_jsonl(f, '"tool_use"'):
             ts = parse_ts(d.get("timestamp"))
-            if ts is not None and ts < cutoff:
+            if ts is not None and not in_range(ts, cutoff, until):
                 continue
             proj = dir_project(f.parent, cache, known)
             if not wanted(proj, filters):
@@ -437,6 +465,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Summarize Claude Code records for tips extraction.")
     parser.add_argument("--out", required=True, help="output JSON path")
     parser.add_argument("--since", default="30d", help="30d style or YYYY-MM-DD (default 30d)")
+    parser.add_argument("--until", default=None, help="last day to include, YYYY-MM-DD (default: no end)")
+    parser.add_argument("--tz", default="local", help="time zone for dates: local or an offset like +09:00")
     parser.add_argument("--projects", default="", help="comma-separated substrings of project names")
     parser.add_argument("--claude-dir", default=str(Path.home() / ".claude"))
     parser.add_argument("--now", default=None, help="ISO datetime used as now (for tests)")
@@ -449,7 +479,11 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     try:
         now = parse_now(args.now)
-        cutoff = parse_since(args.since, now)
+        tz = parse_tz(args.tz)
+        cutoff = parse_since(args.since, now, tz)
+        until = parse_until(args.until, tz)
+        if until is not None and until <= cutoff:
+            raise ValueError(f"--until must not be before --since: {args.until}")
     except ValueError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
@@ -460,12 +494,13 @@ def main(argv: list[str] | None = None) -> int:
     names: set[str] = set()
     cache: dict[Path, str] = {}
     known: dict[str, str] = {}
-    prompts = collect_prompts(claude_dir, cutoff, filters, texts, names, known)
-    usage, samples, outcomes = collect_usage(claude_dir, cutoff, filters, patterns, texts, names, known, cache)
+    prompts = collect_prompts(claude_dir, cutoff, filters, texts, names, known, until)
+    usage, samples, outcomes = collect_usage(claude_dir, cutoff, filters, patterns, texts, names, known, cache, until)
     memories = collect_memories(claude_dir, filters, cache, texts, known)
     report = {
         "generated_at": now.isoformat(timespec="seconds"),
         "since": cutoff.isoformat(timespec="seconds"),
+        "until": until.isoformat(timespec="seconds") if until else None,
         "projects_filter": filters,
         "counts": {
             "prompts": len(prompts),
