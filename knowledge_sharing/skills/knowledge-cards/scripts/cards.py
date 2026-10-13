@@ -680,7 +680,7 @@ def main(argv: list[str] | None = None) -> int:
             catalog = load_questions(Path(args.questions))
             cards = read_cards(Path(args.cards))
             try:
-                topics = load_topics(default_files() + [Path(t) for t in args.topics or []])
+                topics = load_topics(default_files() + [Path(t) for t in args.topics or []], require=True)
             except ValueError as exc:
                 raise InputError(str(exc)) from None
             errors, warnings = validate(cards, catalog, topics)

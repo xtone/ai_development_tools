@@ -480,3 +480,65 @@ def test_file_contents_do_not_mark_a_session_confidential(tmp_path):
     data = json.loads(out.read_text(encoding="utf-8"))
     assert data["excluded"]["sessions"] == 0
     assert "会社概要ページを更新して" in [p["text"] for p in data["prompts"]]
+
+
+def test_confidential_prompt_before_since_still_drops_the_session(tmp_path):
+    claude = make_claude(tmp_path)
+    _history(
+        claude,
+        ("2026-09-20T03:00:00+00:00", "部下の人事評価コメントを下書きして", "secret-old"),
+        ("2026-10-05T03:00:00+00:00", "もう少し柔らかい表現にして", "secret-old"),
+    )
+    _write_session(
+        claude, "secret-old.jsonl",
+        _bash_line("2026-10-05T03:10:00Z", 'git commit -m "docs: 文面を調整"', session="secret-old"),
+    )
+    out = tmp_path / "work" / "sessions.json"
+    r = run(claude, out, "--since", "2026-10-05", "--tz", "+00:00")
+    assert r.returncode == 0, r.stderr
+    raw = out.read_text(encoding="utf-8")
+    assert "柔らかい表現" not in raw and "文面を調整" not in raw
+    assert json.loads(raw)["excluded"]["sessions"] == 1
+
+
+def test_user_messages_in_session_logs_count_without_history(tmp_path):
+    claude = make_claude(tmp_path)
+    user = json.dumps({
+        "type": "user", "timestamp": "2026-09-01T03:00:00Z", "sessionId": "no-hist",
+        "message": {"role": "user", "content": [{"type": "text", "text": "取締役会の議事録を要約して"}]},
+    })
+    _write_session(
+        claude, "no-hist.jsonl", user,
+        _bash_line("2026-10-05T03:10:00Z", 'git commit -m "docs: 要約を追加"', session="no-hist"),
+    )
+    out = tmp_path / "work" / "sessions.json"
+    r = run(claude, out, "--since", "2026-10-05", "--tz", "+00:00")
+    assert r.returncode == 0, r.stderr
+    raw = out.read_text(encoding="utf-8")
+    assert "要約を追加" not in raw
+    assert json.loads(raw)["excluded"]["by_topic"] == {"management": 1}
+
+
+def test_out_of_range_commit_title_still_drops_the_session(tmp_path):
+    claude = make_claude(tmp_path)
+    _write_session(
+        claude, "late.jsonl",
+        _bash_line("2026-09-01T03:00:00Z", 'git commit -m "docs: 賞与の配分案"', session="late"),
+        _bash_line("2026-10-05T03:00:00Z", 'git commit -m "docs: 表を整形"', session="late"),
+    )
+    out = tmp_path / "work" / "sessions.json"
+    assert run(claude, out, "--since", "2026-10-05", "--tz", "+00:00").returncode == 0
+    assert "表を整形" not in out.read_text(encoding="utf-8")
+
+
+def test_empty_topics_fail_closed(tmp_path):
+    claude = make_claude(tmp_path)
+    empty = tmp_path / "empty.json"
+    empty.write_text(json.dumps({"topics": []}), encoding="utf-8")
+    r = subprocess.run(
+        [sys.executable, "-I", "-c",
+         "import sys; sys.path.insert(0, sys.argv[1]); import topics; topics.load_topics([sys.argv[2]], require=True)",
+         str(SCRIPTS), str(empty)],
+        capture_output=True, text=True,
+    )
+    assert r.returncode != 0 and "no confidential topics" in r.stderr

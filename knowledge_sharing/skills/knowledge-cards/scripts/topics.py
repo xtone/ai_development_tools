@@ -21,8 +21,12 @@ def default_files() -> list[Path]:
     return [DEFAULT_FILE] + ([LOCAL_FILE] if LOCAL_FILE.is_file() else [])
 
 
-def load_topics(paths: list[Path] | None = None) -> list[tuple[str, str, re.Pattern[str]]]:
-    """(id, label, compiled pattern) per topic; topics with the same id are merged."""
+def load_topics(paths: list[Path] | None = None, require: bool = False) -> list[tuple[str, str, re.Pattern[str]]]:
+    """(id, label, compiled pattern) per topic; topics with the same id are merged.
+
+    With require=True an empty result is an error, so a missing or emptied file
+    stops extraction instead of silently letting every session through.
+    """
     merged: dict[str, tuple[str, list[str]]] = {}
     for path in default_files() if paths is None else paths:
         try:
@@ -42,6 +46,9 @@ def load_topics(paths: list[Path] | None = None) -> list[tuple[str, str, re.Patt
             topics.append((tid, label, re.compile("|".join(f"(?:{p})" for p in patterns), re.IGNORECASE)))
         except re.error as exc:
             raise ValueError(f"bad pattern in confidential topic {tid}: {exc}") from None
+    if require and not topics:
+        names = ", ".join(str(p) for p in (default_files() if paths is None else paths))
+        raise ValueError(f"no confidential topics loaded from {names}; refusing to run without the filter")
     return topics
 
 

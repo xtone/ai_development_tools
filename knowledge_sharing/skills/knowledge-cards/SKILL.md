@@ -27,7 +27,8 @@ description: Claude Code のセッション記録（~/.claude の履歴・セッ
 
 人事評価・処遇（評価、査定、給与、賞与、昇格要件、1on1 など）と、Xtone・PKSHA の経営（経営会議、役員、決算、業績、事業計画、M&A、組織変更など）に関する話題は、カードにしない。経営層のメンバーが使ったときに、社内秘の情報が全社エリアに出ないようにするため。
 
-- `extract_sessions.py` は、prompt または commit・PR のタイトルがこの話題に当たるセッションを、まるごと抽出から外す（prompt、commit、PR、ツールの利用回数、Bash の例）。memory も当たるものは外す。出力の `excluded` には件数だけが入る
+- `extract_sessions.py` は、prompt または commit・PR のタイトルがこの話題に当たるセッションを、まるごと抽出から外す（prompt、commit、PR、ツールの利用回数、Bash の例）。判定は期間の外も含めたセッション全体で行う（期間の前に評価の話をしたセッションの続きも外れる）。memory も当たるものは外す。出力の `excluded` には件数だけが入る
+- 判定に使う語が 1 つも読めないと、抽出と検査はエラーで止まる（フィルタ無しでは動かない）
 - 話題の判定に使う語は `<plugin-dir>/confidential_topics.json`。自分だけ足したい語は `~/.claude/knowledge-cards/confidential_topics.json` に同じ形式で置く（コミットされない）
 - 抽出をすり抜けた材料でも、この話題のカードは書かない。`cards.py validate` は、claim・文脈・プロジェクト名・根拠の抜粋のどれかが当たるカードをエラーにする。言い換えて通そうとせず、カードごと消す
 

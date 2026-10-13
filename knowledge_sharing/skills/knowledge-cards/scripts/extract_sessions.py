@@ -367,6 +367,62 @@ def aggregate_usage(events, patterns, texts):
     return usage, samples, outcomes
 
 
+def _user_text(d: dict) -> str:
+    """Text the user typed in a session log line; empty for tool results and injected text."""
+    if d.get("type") != "user" or d.get("isMeta"):
+        return ""
+    message = d.get("message")
+    content = message.get("content") if isinstance(message, dict) else None
+    if isinstance(content, str):
+        parts = [content]
+    elif isinstance(content, list):
+        parts = [str(c.get("text", "")) for c in content if isinstance(c, dict) and c.get("type") == "text"]
+    else:
+        return ""
+    # Skill bodies, hook output and command wrappers arrive as user text starting with a tag.
+    return "\n".join(t for t in parts if not t.lstrip().startswith("<"))
+
+
+def scan_whole_sessions(claude_dir: Path, cutoff: dt.datetime, topics) -> dict[str, str]:
+    """Session id -> topic from every prompt and commit/PR title, regardless of --since/--until.
+
+    A session that touched a confidential topic before the period (or whose prompts lack a
+    sessionId in history.jsonl) must still be dropped as a whole, so this pass reads all of
+    history.jsonl and every line of the session logs that could contribute to the period.
+    """
+    found: dict[str, str] = {}
+    for d in read_jsonl(claude_dir / "history.jsonl"):
+        session = d.get("sessionId")
+        if isinstance(session, str) and session and session not in found:
+            topic = match_topic(str(d.get("display", "")), topics)
+            if topic:
+                found[session] = topic
+    for f in sorted((claude_dir / "projects").glob("*/*.jsonl")):
+        try:
+            if dt.datetime.fromtimestamp(f.stat().st_mtime, dt.timezone.utc) < cutoff:
+                continue
+        except OSError:
+            continue
+        for d in read_jsonl(f):
+            session = d.get("sessionId") if isinstance(d.get("sessionId"), str) else f.stem
+            if session in found:
+                continue
+            texts = [_user_text(d)]
+            message = d.get("message")
+            content = message.get("content") if isinstance(message, dict) else None
+            if isinstance(content, list):
+                for c in content:
+                    if isinstance(c, dict) and c.get("type") == "tool_use" and c.get("name") == "Bash":
+                        event = {"name": "Bash", "input": c.get("input") if isinstance(c.get("input"), dict) else {}}
+                        texts += [title for _, title in event_outcomes(event)]
+            for text in texts:
+                topic = match_topic(text, topics)
+                if topic:
+                    found[session] = topic
+                    break
+    return found
+
+
 def confidential_sessions(prompts, events, topics) -> dict[str, str]:
     """Session id -> topic id for sessions whose prompts or commit/PR titles touch a confidential topic.
 
@@ -539,7 +595,7 @@ def main(argv: list[str] | None = None) -> int:
     filters = [f.strip().lower() for f in args.projects.split(",") if f.strip()]
     patterns = [p for p in args.patterns.split(",") if p.strip()]
     try:
-        topics = load_topics(default_files() + [Path(t) for t in args.topics or []])
+        topics = load_topics(default_files() + [Path(t) for t in args.topics or []], require=True)
     except ValueError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
@@ -551,6 +607,8 @@ def main(argv: list[str] | None = None) -> int:
     raw_prompts = collect_prompts(claude_dir, cutoff, filters, names, known, until)
     events = collect_events(claude_dir, cutoff, filters, names, known, cache, until)
     secret = confidential_sessions(raw_prompts, events, topics)
+    for session, topic in scan_whole_sessions(claude_dir, cutoff, topics).items():
+        secret.setdefault(session, topic)
 
     prompts = []
     dropped_prompts = 0
@@ -566,13 +624,16 @@ def main(argv: list[str] | None = None) -> int:
     usage, samples, outcomes = aggregate_usage(kept_events, patterns, texts)
     dropped_memories: list[str] = []
     memories = collect_memories(claude_dir, filters, cache, texts, known, topics, dropped_memories)
+    # Count only sessions that had material in the period; older ones never reached the output anyway.
+    touched = {p["session_id"] for p in raw_prompts if p["session_id"]} | {e["session"] for e in events}
+    secret_in_period = {s: t for s, t in secret.items() if s in touched}
     excluded = {
-        "sessions": len(secret),
+        "sessions": len(secret_in_period),
         "prompts": dropped_prompts,
         "commits": dropped_outcomes["commits"],
         "prs": dropped_outcomes["prs"],
         "memories": len(dropped_memories),
-        "by_topic": dict(sorted(Counter(secret.values()).items())),
+        "by_topic": dict(sorted(Counter(secret_in_period.values()).items())),
     }
     report = {
         "generated_at": now.isoformat(timespec="seconds"),
