@@ -391,3 +391,13 @@ def test_validate_cli_uses_default_topics(tmp_path):
     bad.write_text(json.dumps(card(claim="取締役会の資料を一発で作れた依頼の書き方がある"), ensure_ascii=False) + "\n", encoding="utf-8")
     r = run("validate", bad)
     assert r.returncode == 1 and "confidential topic" in r.stdout
+
+
+def test_review_words_fail_until_allowed_but_strong_words_never_pass(tmp_path):
+    src = tmp_path / "cards.jsonl"
+    cards.write_cards(src, [card(context="顧客アプリの退職者処理を非同期にした依頼で、完了条件を書かなかった。")])
+    r = run("validate", src)
+    assert r.returncode == 1 and "--allow-term '退職'" in r.stdout
+    assert run("validate", src, "--allow-term", "退職").returncode == 0
+    cards.write_cards(src, [card(context="取締役会の資料の依頼で、完了条件を書かなかった。")])
+    assert run("validate", src, "--allow-term", "取締役").returncode == 1

@@ -29,8 +29,9 @@ description: Claude Code のセッション記録（~/.claude の履歴・セッ
 
 - `extract_sessions.py` は、prompt または commit・PR のタイトルがこの話題に当たるセッションを、まるごと抽出から外す（prompt、commit、PR、ツールの利用回数、Bash の例）。判定は期間の外も含めたセッション全体で行う（期間の前に評価の話をしたセッションの続きも外れる）。memory も当たるものは外す。出力の `excluded` には件数だけが入る
 - 判定に使う語が 1 つも読めないと、抽出と検査はエラーで止まる（フィルタ無しでは動かない）
+- 語は 2 段ある。強い語（`patterns`。人事評価、取締役会など）に当たったセッションは必ず外れ、戻せない。要確認の語（`review_patterns`。昇格、退職、IR など、業務用語でも使う語）に当たったセッションも既定で外れるが、本人が人事・経営の話ではないと確認したものだけ戻せる（Phase 1）
 - 話題の判定に使う語は `<plugin-dir>/confidential_topics.json`。自分だけ足したい語は `~/.claude/knowledge-cards/confidential_topics.json` に同じ形式で置く（コミットされない）
-- 抽出をすり抜けた材料でも、この話題のカードは書かない。`cards.py validate` は、claim・文脈・プロジェクト名・根拠の抜粋のどれかが当たるカードをエラーにする。言い換えて通そうとせず、カードごと消す
+- 抽出をすり抜けた材料でも、この話題のカードは書かない。`cards.py validate` は、claim・文脈・プロジェクト名・根拠の抜粋のどれかが当たるカードをエラーにする。言い換えて通そうとせず、カードごと消す。要確認の語のエラーだけは、本人に聞いて「人事・経営の話ではない」と言われたときに限り `--allow-term <語>` で通してよい。強い語は通せない
 
 ## 引数
 
@@ -74,12 +75,19 @@ python3 -I <skill-dir>/scripts/cards.py plan --week <week> [--ids <問いのID>]
 ## Phase 1: 抽出
 
 ```bash
-python3 -I <skill-dir>/scripts/extract_sessions.py --since <since> [--until <until>] [--tz <tz>] [--projects <list>] --out <out>/.work/sessions.json
+python3 -I <skill-dir>/scripts/extract_sessions.py --since <since> [--until <until>] [--tz <tz>] [--projects <list>] [--include-sessions <out>/.work/include-sessions.txt] --out <out>/.work/sessions.json
 ```
 
 日付は `--tz`（既定はこのマシンのタイムゾーン）のその日の 0 時として解釈し、`--until` の日は終わりまで含む。期間で絞られるのは prompt、ツールの利用回数、Bash の例、commit と PR。memory は期間で絞らない（更新日 `modified` を見て判断する）。
 
 出力の `excluded` に、カードにしない話題として外したセッションの数が入る（中身は出ない）。完了報告でその件数だけを伝え、外したセッションの中身をユーザーに聞いたり推測したりしない。
+
+`excluded.review` が空でなければ（要確認の語で外したセッションがあれば）、本人に確認する。
+
+1. `review` を「プロジェクト × 当たった語（`words`）」でまとめ、グループごとにセッション数と期間を出す。prompt の中身は出さない（`review` にも入っていない）
+2. AskUserQuestion（multiSelect）で、「人事評価・処遇や経営の話ではない」グループを選んでもらう。例: 「ourpick-mt-proto の『昇格』12 件（仮判断の昇格などの業務用語か）」。迷うものは選ばないよう添える。グループが 4 つを超えるときは質問を分ける
+3. 選ばれたグループのセッション id を `<out>/.work/include-sessions.txt` に、`# <プロジェクト> の <語> は業務用語（本人確認 <日付>）` のコメント付きで書く
+4. `--include-sessions <out>/.work/include-sessions.txt` を付けて抽出をやり直す。強い語に当たったセッションは、このファイルに書いても戻らない
 
 出力には、期間内の prompt（`session_id` 付き）、ツール・スキル・MCP の利用回数、Bash の例、commit と PR のタイトル、memory、ハーネス構成（名前だけ）、匿名化辞書（`vocabulary`）が入る。秘密情報は伏せ字済み。
 
@@ -157,7 +165,7 @@ Notion MCP が使えない、または接続されていないときは、同じ
 - Notion の週の行の URL（`--dry-run` / `--no-notion` のときはその旨）
 - Notion に選択肢として足したプロジェクト名・タグ
 - 機密スキャンの結果（0 件）と、許可リストに入れた語とその理由
-- カードにしない話題として抽出から外したセッションの数（`excluded.sessions`。中身には触れない）
+- カードにしない話題として抽出から外したセッションの数（`excluded.sessions`。中身には触れない）と、本人の確認で戻したセッションの数（`excluded.released`）、`--allow-term` で通した語
 - 開始から終了までの所要時間（参加者が週の行の「備考」に書けるように）
 - 投稿者を自動で足せなかった場合は、その旨と手順
 

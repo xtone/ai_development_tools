@@ -41,26 +41,45 @@ def test_confidential_topics_match(text, expected):
 @pytest.mark.parametrize(
     "text",
     [
-        "動画生成にも「評価と改善」の項目を追加",
         "https://app.notion.com/p/pkshagroup/<redacted> 管理画面の設計",
         "https://github.com/xtone/akita-shoten/pull/227 をマージしました",
         "LLM のトークン予算とレート制限",
         "モデルの評価指標を足して",
+        "動画生成にも「評価と改善」の項目を追加",
         "cd ~/.claude/dir && irb を起動",
-        "Mermaid の図を修正してください",
-        "ADR を昇格させてください",
-        "SKILL.md 昇格候補は次回判断",
-        "verify 省略ボーナス事例を記録",
-        "管理者向けに退職者処理の機能を追加したい",
-        "`!` 演算子の評価結果は 0 か 1",
-        "その自己評価も不正確だった",
         "4rcit6K4IrhiuKK5+Ir6iv6LAIsBiwKLB",
-        "モデルの評価基準を見直す",
-        "develop への push で staging に昇格する PR を作る",
+        "Mermaid の図を修正してください",
     ],
 )
 def test_ordinary_development_text_does_not_match(text):
-    assert topics.match_topic(text, DEFAULT) is None
+    assert topics.classify(text, DEFAULT) is None
+
+
+@pytest.mark.parametrize(
+    "text, word",
+    [
+        ("管理者向けに退職者処理の機能を追加したい", "退職"),
+        ("退職の件で相談したい", "退職"),
+        ("`!` 演算子の評価結果は 0 か 1", "評価結果"),
+        ("その自己評価も不正確だった", "自己評価"),
+        ("ADR を昇格させてください", "昇格"),
+        ("SKILL.md 昇格候補は次回判断", "昇格"),
+        ("verify 省略ボーナス事例を記録", "ボーナス"),
+        ("IR の数字を確認", "IR"),
+    ],
+)
+def test_ambiguous_words_are_held_for_review(text, word):
+    hit = topics.classify(text, DEFAULT)
+    assert hit is not None and hit[1] == "review" and hit[2] == word
+    assert topics.match_topic(text, DEFAULT) is not None  # excluded by default (fail closed)
+    assert topics.blocked(text, DEFAULT, allow_review=True) is None
+
+
+def test_allowing_a_review_word_never_hides_a_strong_word():
+    text = "退職者処理の画面と取締役会の資料"
+    assert topics.blocked(text, DEFAULT, allowed_terms=["退職"])[1] == "strong"
+    assert topics.blocked(text, DEFAULT, allow_review=True)[1] == "strong"
+    assert topics.blocked("退職者処理の画面", DEFAULT, allowed_terms=["退職"]) is None
 
 
 def test_local_file_adds_patterns_to_the_same_topic(tmp_path):

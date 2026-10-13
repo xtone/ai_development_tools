@@ -1,6 +1,6 @@
 {
-  "version": 1,
-  "note": "この話題に当たる Claude Code のセッションはカードにしない（prompt・commit・PR・ツール利用回数ごと抽出から除く）。経営層の利用で社内秘が漏れないようにするため。パターンは NFKC 正規化した文字列に大文字小文字を区別せず当てる Python の正規表現。判定に使うのはユーザーの prompt と commit・PR のタイトルだけ（ファイルの中身は見ない）。一般語（評価・予算・昇格・社名だけ）は誤除外が多いので複合語で書く。個人で足したい語は ~/.claude/knowledge-cards/confidential_topics.json に同じ形式で置く。",
+  "version": 2,
+  "note": "この話題に当たる Claude Code のセッションはカードにしない（prompt・commit・PR・ツール利用回数ごと抽出から除く）。経営層の利用で社内秘が漏れないようにするため。判定に使うのはユーザーの prompt（期間外を含むセッション全体）と commit・PR のタイトル。パターンは NFKC 正規化した文字列に大文字小文字を区別せず当てる Python の正規表現。patterns は当たれば必ず除外する（取り消せない）。review_patterns は一般語でも使う語で、当たれば既定で除外し、本人が人事・経営の話でないと確認したセッションだけ --include-sessions で戻せる。個人で足したい語は ~/.claude/knowledge-cards/confidential_topics.json に同じ形式で置く。",
   "topics": [
     {
       "id": "evaluation",
@@ -28,6 +28,13 @@
         "1対1面談",
         "performance review",
         "performance evaluation"
+      ],
+      "review_patterns": [
+        "昇格",
+        "降格",
+        "ボーナス",
+        "(自己|相互|最終|一次|二次)評価",
+        "評価(結果|基準)"
       ]
     },
     {
@@ -59,6 +66,10 @@
         "(社員|メンバー|従業員|スタッフ|部下|役員)の?退職",
         "解雇",
         "リストラ"
+      ],
+      "review_patterns": [
+        "退職",
+        "(?<![a-z0-9])ir(?![a-z0-9])"
       ]
     }
   ]

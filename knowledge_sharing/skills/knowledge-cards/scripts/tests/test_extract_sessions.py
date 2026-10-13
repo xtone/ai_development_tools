@@ -444,6 +444,8 @@ def test_confidential_sessions_are_dropped_with_counts_only(tmp_path):
         "prs": 0,
         "memories": 1,
         "by_topic": {"evaluation": 1, "management": 1},
+        "released": 0,
+        "review": [],
     }
 
 
@@ -542,3 +544,38 @@ def test_empty_topics_fail_closed(tmp_path):
         capture_output=True, text=True,
     )
     assert r.returncode != 0 and "no confidential topics" in r.stderr
+
+
+def test_review_words_hold_sessions_until_the_user_includes_them(tmp_path):
+    claude = make_claude(tmp_path)
+    _history(
+        claude,
+        ("2026-10-05T03:00:00+00:00", "管理画面に退職者処理の機能を追加して", "feat-1"),
+        ("2026-10-05T03:05:00+00:00", "ボタンの文言を直して", "feat-1"),
+        ("2026-10-05T04:00:00+00:00", "退職の件で相談したい", "people-1"),
+        ("2026-10-05T05:00:00+00:00", "退職者処理の画面と取締役会の資料", "mixed-1"),
+    )
+    _write_session(
+        claude, "feat-1.jsonl",
+        _bash_line("2026-10-05T03:10:00Z", 'git commit -m "feat: 退職者処理を追加"', session="feat-1"),
+    )
+    out = tmp_path / "work" / "sessions.json"
+    assert run(claude, out, "--since", "2026-10-05", "--tz", "+00:00").returncode == 0
+    raw = out.read_text(encoding="utf-8")
+    data = json.loads(raw)
+    assert "退職" not in json.dumps(data["prompts"], ensure_ascii=False)  # held back by default
+    held = {r["session_id"]: r for r in data["excluded"]["review"]}
+    assert set(held) == {"feat-1", "people-1"}  # mixed-1 hit a strong word: not offered for review
+    assert held["feat-1"]["words"] == "退職" and held["feat-1"]["project"] == "acme-shop"
+    assert "管理画面" not in json.dumps(held, ensure_ascii=False)  # ids and words only, no prompt text
+
+    cleared = tmp_path / "include.txt"
+    cleared.write_text("# 退職者処理は顧客アプリの機能\nfeat-1\nmixed-1\n", encoding="utf-8")
+    assert run(claude, out, "--since", "2026-10-05", "--tz", "+00:00", "--include-sessions", cleared).returncode == 0
+    data = json.loads(out.read_text(encoding="utf-8"))
+    texts = [p["text"] for p in data["prompts"]]
+    assert "管理画面に退職者処理の機能を追加して" in texts and "ボタンの文言を直して" in texts
+    assert "feat: 退職者処理を追加" in [c["title"] for c in data["commits"]]
+    assert "退職の件で相談したい" not in texts  # not in the list
+    assert "退職者処理の画面と取締役会の資料" not in texts  # strong words cannot be released
+    assert data["excluded"]["released"] == 1
