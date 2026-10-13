@@ -38,7 +38,7 @@ from pathlib import Path
 CARDS_SCRIPTS = Path(__file__).resolve().parents[2] / "knowledge-cards" / "scripts"
 sys.path.insert(0, str(CARDS_SCRIPTS))
 try:
-    from cards import InputError, load_questions  # noqa: E402
+    from cards import FILENAME_RE, InputError, load_questions  # noqa: E402
     from scan_sensitive import load_vocab, scan_text  # noqa: E402
     from topics import blocked, default_files, load_topics  # noqa: E402
 except ImportError as exc:  # pragma: no cover - depends on the installed plugin
@@ -51,8 +51,6 @@ TITLE_MIN, TITLE_MAX = 10, 80
 VAGUE_ENDINGS = ("について", "に関して")
 PERSON_LABEL_RE = re.compile(r"(?<![A-Za-z0-9])p\d+(?![A-Za-z0-9])")
 MENTION_RE = re.compile(r'<mention-page url="([^"]*)"\s*/>')
-# Notion turns CLAUDE.md, SKILL.md and the like into links to a domain; keep them as code.
-FILENAME_RE = re.compile(r"(?<![`\w./-])([\w.-]+\.(?:md|json|jsonl|py|ts|tsx|js|yml|yaml|sh|toml))(?![`\w])")
 
 
 # ---- input -----------------------------------------------------------------
@@ -111,7 +109,9 @@ def opposition(t: dict) -> str:
     worked, failed = len(t["by_polarity"]["worked"]), len(t["by_polarity"]["failed"])
     if not (worked and failed):
         return ""
-    return f"うまくいった {worked} 件／うまくいかなかった {failed} 件。分かれ目: {t.get('split', '')}"
+    counts = f"うまくいった {worked} 件／うまくいかなかった {failed} 件"
+    split = str(t.get("split", "")).strip()
+    return f"{counts}。分かれ目: {split}" if split else counts
 
 
 # ---- validate ---------------------------------------------------------------

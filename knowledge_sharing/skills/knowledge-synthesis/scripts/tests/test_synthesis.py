@@ -347,3 +347,8 @@ def test_validate_rejects_wrong_top_level_types():
     assert any("must be" in e for e in synth.validate({"week": "2026-W43", "themes": {"a": 1}}, loaded(), CATALOG)[0])
     t = themes(next_questions=[["Q4"]])
     assert any("must be" in e for e in synth.validate(t, loaded(), CATALOG)[0])
+
+
+def test_opposition_without_split_does_not_end_with_a_dangling_label():
+    rich = synth.enrich({**themes()["themes"][0], "split": ""}, synth.card_index(loaded()), CATALOG)
+    assert synth.opposition(rich) == "うまくいった 1 件／うまくいかなかった 1 件"
