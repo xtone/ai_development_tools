@@ -527,3 +527,35 @@ def test_workdir_with_out_creates_work_and_cleanup_refuses_it(tmp_path):
     with pytest.raises(cards.InputError):
         cards.cleanup(chosen, root)
     assert chosen.is_dir()
+
+
+@pytest.mark.parametrize("link", ["runs", "runs/2026-W43", "runs/2026-W43/.work", "state"])
+def test_workdir_refuses_symlinked_directories(tmp_path, link):
+    root, victim = tmp_path / "kc", tmp_path / "repo"
+    victim.mkdir()
+    target = root / link
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.symlink_to(victim)
+    with pytest.raises(cards.InputError):
+        cards.workdir("cards", "2026-W43", root, tmp_path)
+    assert list(victim.iterdir()) == []
+
+
+def test_workdir_with_out_refuses_symlinked_work(tmp_path):
+    chosen, victim = tmp_path / "mine", tmp_path / "repo"
+    chosen.mkdir()
+    victim.mkdir()
+    (chosen / ".work").symlink_to(victim)
+    with pytest.raises(cards.InputError):
+        cards.workdir("cards", "2026-W43", tmp_path / "kc", tmp_path, chosen)
+
+
+def test_workdir_ignores_symlinked_legacy(tmp_path):
+    root, repo, elsewhere = tmp_path / "kc", tmp_path / "repo", tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    (elsewhere / "submitted.jsonl").write_text('{"key": "x"}\n', encoding="utf-8")
+    (repo / "cards").mkdir(parents=True)
+    (repo / "cards" / ".work").symlink_to(elsewhere)
+    out = cards.workdir("cards", "2026-W43", root, repo)
+    assert "legacy" not in out
+    assert not (root / "state" / "submitted.jsonl").exists()

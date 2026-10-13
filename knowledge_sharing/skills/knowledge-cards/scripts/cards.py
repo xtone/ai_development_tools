@@ -664,7 +664,14 @@ LEGACY_WORK = Path("cards") / ".work"
 
 
 def _private_dir(path: Path) -> Path:
+    """Create a directory only the user can read. An existing symlink is refused so that
+    work files never land where the link points (for example a client repository)."""
+    if path.is_symlink():
+        raise InputError(f"refusing to use a symlink as a work directory: {path}")
     path.mkdir(exist_ok=True, mode=0o700)
+    if not path.is_dir():
+        raise InputError(f"not a directory: {path}")
+    path.chmod(0o700)
     return path
 
 
@@ -714,7 +721,7 @@ def workdir(kind: str, week: str | None, root: Path, cwd: Path, out: Path | None
         state = _private_dir(root / "state")
         paths["state"] = str(state)
         legacy = cwd / LEGACY_WORK
-        if legacy.is_dir():
+        if legacy.is_dir() and not legacy.is_symlink() and not legacy.parent.is_symlink():
             paths["legacy"] = str(legacy)
             paths["migrated"] = _merge_legacy(legacy, state)
     return paths
