@@ -9,8 +9,8 @@ description: Claude Code のセッション記録（~/.claude の履歴・セッ
 
 成果物は 3 つ。
 
-- `<out>/cards-<week>.md`: 本人が確認・修正するカード一覧
-- `<out>/.work/cards.jsonl`: カードの正本（1 行 1 カード）
+- `<run>/cards-<week>.md`: 本人が確認・修正するカード一覧
+- `<work>/cards.jsonl`: カードの正本（1 行 1 カード）
 - Notion「ナレッジカード」DB の行と、「週次 Tips」DB の週の行への投稿者の追加
 
 ## 既定の動き
@@ -19,7 +19,7 @@ description: Claude Code のセッション記録（~/.claude の履歴・セッ
 
 - **期間**: 先週の月曜 0 時から日曜の終わりまで（このマシンのタイムゾーン）。`cards.py week` が今日から前の ISO 週を出す
 - **問い**: Notion の週の行の「今週の問い」。無ければ `questions.json` の cadence
-- **出力先**: `cards/`（作業ファイルは `cards/.work/`）
+- **出力先**: `~/.claude/knowledge-cards/runs/<week>/`。実行したディレクトリ（案件のリポジトリかもしれない）にはファイルを作らない。提出が終わったら消す
 - **提出**: 機密スキャンが 0 件になったら、Notion の「ナレッジカード」DB に提出し、週の行に投稿者として載る
 
 期間・問い・出力先はユーザーに聞かない。途中でユーザーに聞くのは次の場合だけにする。
@@ -62,24 +62,43 @@ description: Claude Code のセッション記録（~/.claude の履歴・セッ
 | `--tz` | `local` | 日付を解釈するタイムゾーン。`+09:00` のようにも書ける |
 | `--questions` | 週の行の `今週の問い`。無ければ cadence | 答える問い（カンマ区切り） |
 | `--projects` | 全部 | 対象プロジェクト名の部分一致（カンマ区切り） |
-| `--out` | `cards/` | 成果物ディレクトリ。作業ファイルは `<out>/.work/` |
+| `--out` | `cards/` | 成果物ディレクトリ。作業ファイルは `<work>/` |
 | `--tier` | `internal` | 機密スキャンの区分。社外に転用するときだけ `public` |
 | `--dry-run` | なし | Notion に書かない。送る内容を表示して終える |
 | `--no-notion` | なし | カードの確認と機密スキャンまでで終える |
 
-以下、このスキルのディレクトリを `<skill-dir>`、プラグインのディレクトリ（`<skill-dir>/../..`）を `<plugin-dir>`、`--out` を `<out>` と書く。スクリプトはすべて `python3 -I` で実行する。
+以下、このスキルのディレクトリを `<skill-dir>`、プラグインのディレクトリ（`<skill-dir>/../..`）を `<plugin-dir>` と書く。スクリプトはすべて `python3 -I` で実行する。
+
+作業ファイルは次の 3 か所に置く。どれも Phase 0 の `cards.py workdir` が作り、パスを出力する。
+
+| 名前 | 既定のパス | 中身 | 消すとき |
+|---|---|---|---|
+| `<run>` | `~/.claude/knowledge-cards/runs/<week>/` | `cards-<week>.md` | 提出が終わったとき（Phase 6） |
+| `<work>` | `<run>/.work/` | 抽出結果、カードの正本、Notion に送る内容（prompt の抜粋を含む） | `<run>` と一緒に |
+| `<state>` | `~/.claude/knowledge-cards/state/` | 提出済みの記録 `submitted.jsonl`、投稿者 `notion-user.json`、機密スキャンの許可リスト `allow.txt` | 消さない（回をまたいで使う） |
+
+`--out` を指定したときは、`<run>` をそのディレクトリ、`<work>` を `<out>/.work/` に読み替える（`<state>` は変えない）。
 
 ## Phase 0: 準備
 
 1. 開始時刻を控える（完了報告で所要時間を出す）
-2. `<out>/.work/` を作る。`<out>` が git 管理下で `.gitignore` に `.work/` が無ければ、追加を提案する
-3. 対象週を決める
+2. 対象週を決める
 
 ```bash
 python3 -I <skill-dir>/scripts/cards.py week [--week <week>]
 ```
 
 出力の `week`、`monday`、`sunday`、`title` を以降で使う。`--since` の指定が無ければ `monday`、`--until` の指定が無ければ `sunday` を使う。`--since` に `14d` のような日数を指定したときは、`--until` も指定が無ければ付けない。ユーザーが「月曜から金曜」のように期間を言葉で指定したら、それを `--since` と `--until` の日付に直す。
+
+3. 作業ディレクトリを作る
+
+```bash
+python3 -I <skill-dir>/scripts/cards.py workdir --kind cards --week <week>
+```
+
+出力の `run`、`work`、`state` を `<run>`、`<work>`、`<state>` として使う。`--out` の指定があれば `<run>` と `<work>` だけ読み替え、そのディレクトリが git 管理下で `.gitignore` に `.work/` が無ければ追加を提案する。
+
+出力に `legacy` があれば、旧版が実行ディレクトリに作った `cards/.work/` が残っている。`migrated` に挙がったファイル（提出済みの記録など）は `<state>` に取り込み済み。完了報告で、`legacy` のディレクトリ（prompt の抜粋を含む）は不要になったので消してよいこと、リポジトリにコミットしないことを伝える。自分では消さない。
 
 4. 問いを決める。`--questions` があればそれを使う。無ければ、Notion MCP が使えて `--no-notion` でないとき、`references/notion-submit.md` の「2. 週の行を確保する」の query だけを実行して `今週の問い` を読む（行が無くてもここでは作らない）。それも無ければ cadence に従う
 
@@ -92,7 +111,7 @@ python3 -I <skill-dir>/scripts/cards.py plan --week <week> [--ids <問いのID>]
 ## Phase 1: 抽出
 
 ```bash
-python3 -I <skill-dir>/scripts/extract_sessions.py --since <since> [--until <until>] [--tz <tz>] [--projects <list>] [--include-sessions <out>/.work/include-sessions.txt] --out <out>/.work/sessions.json
+python3 -I <skill-dir>/scripts/extract_sessions.py --since <since> [--until <until>] [--tz <tz>] [--projects <list>] [--include-sessions <work>/include-sessions.txt] --out <work>/sessions.json
 ```
 
 日付は `--tz`（既定はこのマシンのタイムゾーン）のその日の 0 時として解釈し、`--until` の日は終わりまで含む。期間で絞られるのは prompt、ツールの利用回数、Bash の例、commit と PR。memory は期間で絞らない（更新日 `modified` を見て判断する）。
@@ -103,8 +122,8 @@ python3 -I <skill-dir>/scripts/extract_sessions.py --since <since> [--until <unt
 
 1. `review` を「プロジェクト × 当たった語（`words`。そのセッションで当たった要確認の語のすべて）」でまとめ、グループごとにセッション数と期間を出す。prompt の中身は出さない（`review` にも入っていない）。`review_memories`（要確認の語で外した memory の名前と語）も同じように示す
 2. AskUserQuestion（multiSelect）で、「人事評価・処遇や経営の話ではない」グループを選んでもらう。例: 「ourpick-mt-proto の『昇格』12 件（仮判断の昇格などの業務用語か）」。迷うものは選ばないよう添える。グループが 4 つを超えるときは質問を分ける
-3. 選ばれたグループのセッション id を `<out>/.work/include-sessions.txt` に、`# <プロジェクト> の <語> は業務用語（本人確認 <日付>）` のコメント付きで書く。memory を戻すときは `memory:<project>/<name>` の行を書く
-4. `--include-sessions <out>/.work/include-sessions.txt` を付けて抽出をやり直す。戻したセッションで解除されるのは、本人に示した語だけ。強い語に当たったセッションと memory は、このファイルに書いても戻らない
+3. 選ばれたグループのセッション id を `<work>/include-sessions.txt` に、`# <プロジェクト> の <語> は業務用語（本人確認 <日付>）` のコメント付きで書く。memory を戻すときは `memory:<project>/<name>` の行を書く
+4. `--include-sessions <work>/include-sessions.txt` を付けて抽出をやり直す。戻したセッションで解除されるのは、本人に示した語だけ。強い語に当たったセッションと memory は、このファイルに書いても戻らない
 
 出力には、期間内の prompt（`session_id` 付き）、ツール・スキル・MCP の利用回数、Bash の例、commit と PR のタイトル、memory、ハーネス構成（名前だけ）、匿名化辞書（`vocabulary`）が入る。秘密情報は伏せ字済み。
 
@@ -113,7 +132,7 @@ python3 -I <skill-dir>/scripts/extract_sessions.py --since <since> [--until <unt
 1. `references/card-writing.md` を読む
 2. 「カードにしない話題」に当たるものは、材料に残っていても書かない
 3. 問いごとに、`plan` の `text` と `draft_hint`、`card-writing.md` の「問いごとに見る場所」に従って `sessions.json` の該当部分を読み、カードを書く。1 問 1〜3 枚、材料が無ければ「該当なし」を 1 枚
-4. カードを `<out>/.work/cards.jsonl` に 1 行 1 枚で書く。形式は次のとおり
+4. カードを `<work>/cards.jsonl` に 1 行 1 枚で書く。形式は次のとおり
 
 ```json
 {"card_id": "<week>/<問い>/<メールの@より前>/001", "question_id": "Q2", "week": "<week>", "week_range": ["<monday>", "<sunday>"], "author_email": "<git config user.email>", "project": "<プロジェクト名>", "claim": "20〜80 字の結論", "context": "2〜3 文", "polarity": "failed", "confidence": "observed", "evidence": [{"type": "prompt", "ref": "<session_id>@<time>", "excerpt": "伏せ字済みの抜粋"}], "tags": ["prompt"], "sensitivity": "internal", "status": "draft", "notion_url": null}
@@ -124,25 +143,25 @@ python3 -I <skill-dir>/scripts/extract_sessions.py --since <since> [--until <unt
 5. 検査する。エラーが 0 になるまで直す。「confidential topic」のエラーはカードを消して直す
 
 ```bash
-python3 -I <skill-dir>/scripts/cards.py validate <out>/.work/cards.jsonl
+python3 -I <skill-dir>/scripts/cards.py validate <work>/cards.jsonl
 ```
 
 6. 確認用の Markdown を出す
 
 ```bash
-python3 -I <skill-dir>/scripts/cards.py render <out>/.work/cards.jsonl --out <out>/cards-<week>.md
+python3 -I <skill-dir>/scripts/cards.py render <work>/cards.jsonl --out <run>/cards-<week>.md
 ```
 
 ## Phase 3: 自己確認
 
-1. 問いごとの枚数と、各カードの claim を一覧で表示する。`<out>/cards-<week>.md` を開けば直せることも伝える
+1. 問いごとの枚数と、各カードの claim を一覧で表示する。`<run>/cards-<week>.md` を開けば直せることも伝える
 2. AskUserQuestion で聞く: 「このまま進める」「ファイルを直したので読み直す」「中止する」
 3. 「読み直す」なら、Markdown を正本に戻してから検査し、再び 1 に戻る
 
 ```bash
-python3 -I <skill-dir>/scripts/cards.py parse <out>/cards-<week>.md --base <out>/.work/cards.jsonl --out <out>/.work/cards.jsonl
-python3 -I <skill-dir>/scripts/cards.py validate <out>/.work/cards.jsonl
-python3 -I <skill-dir>/scripts/cards.py render <out>/.work/cards.jsonl --out <out>/cards-<week>.md
+python3 -I <skill-dir>/scripts/cards.py parse <run>/cards-<week>.md --base <work>/cards.jsonl --out <work>/cards.jsonl
+python3 -I <skill-dir>/scripts/cards.py validate <work>/cards.jsonl
+python3 -I <skill-dir>/scripts/cards.py render <work>/cards.jsonl --out <run>/cards-<week>.md
 ```
 
 4. 「中止する」なら、作ったファイルの場所を伝えて終える
@@ -152,10 +171,10 @@ python3 -I <skill-dir>/scripts/cards.py render <out>/.work/cards.jsonl --out <ou
 ## Phase 4: 機密ゲート
 
 ```bash
-python3 -I <skill-dir>/scripts/scan_sensitive.py <out>/cards-<week>.md --vocab <out>/.work/sessions.json --tier <tier> [--allow-file <out>/.work/allow.txt]
+python3 -I <skill-dir>/scripts/scan_sensitive.py <run>/cards-<week>.md --vocab <work>/sessions.json --tier <tier> [--allow-file <state>/allow.txt]
 ```
 
-終了コードが 1 なら、検出箇所を `<out>/cards-<week>.md` で書き換え、Phase 3 の 3（parse → validate → render）を通してから再実行する。検出語が一般語で伏せる必要が無いと判断できるときだけ、`<out>/.work/allow.txt` に理由のコメント付きで追記する。社内で公知のホスト名（社内ツールのドメインなど）も同じ扱い。秘密情報（トークン、メール、組織 ID、ホームパス）は許可リストに入れない。
+終了コードが 1 なら、検出箇所を `<run>/cards-<week>.md` で書き換え、Phase 3 の 3（parse → validate → render）を通してから再実行する。検出語が一般語で伏せる必要が無いと判断できるときだけ、`<state>/allow.txt` に理由のコメント付きで追記する。社内で公知のホスト名（社内ツールのドメインなど）も同じ扱い。秘密情報（トークン、メール、組織 ID、ホームパス）は許可リストに入れない。
 
 **スキャンが 0 件になるまで Phase 5 に進まない。**
 
@@ -174,6 +193,21 @@ python3 -I <skill-dir>/scripts/scan_sensitive.py <out>/cards-<week>.md --vocab <
 
 Notion MCP が使えない、または接続されていないときは、同じ文書の「MCP が使えないとき」の手順（`notion_submit.py` と `NOTION_TOKEN`）を案内する。トークンをチャットに貼らせない。
 
+## Phase 6: 後片付け
+
+Phase 5 で全件の提出（`mark-submitted` まで）が終わったら、その回の作業ディレクトリを消す。prompt の抜粋が手元に残らないようにするため。
+
+```bash
+python3 -I <skill-dir>/scripts/cards.py cleanup <run>
+```
+
+`cleanup` は `~/.claude/knowledge-cards/runs/<週>` と `synthesis/<週>` 以外を消さずにエラーで止まる。次のときは消さずに残し、完了報告で `<run>` のパスを伝える。
+
+- `--dry-run`、`--no-notion`、確認で「提出しない」を選んだとき、途中で止まったとき、提出に失敗したカードがあるとき（直して再実行するのに使う）
+- `--out` を指定したとき（`cleanup` が拒否する）
+
+`<state>` は消さない。
+
 ## 完了報告
 
 最後のメッセージに次を入れる。
@@ -186,4 +220,4 @@ Notion MCP が使えない、または接続されていないときは、同じ
 - 開始から終了までの所要時間（参加者が週の行の「備考」に書けるように）
 - 投稿者を自動で足せなかった場合は、その旨と手順
 
-作業ファイル `<out>/.work/` は個人の記録を含むので、共有リポジトリにコミットしないよう伝える。
+- 作業ディレクトリを消したか。残したときはそのパスと、個人の記録（prompt の抜粋）を含むので共有リポジトリにコミットしないこと

@@ -411,3 +411,98 @@ def test_review_words_fail_until_allowed_but_strong_words_never_pass(tmp_path):
 def test_long_context_warns():
     _, warnings = cards.validate([card(context="あ" * 161)], CATALOG)
     assert any("context is 161 chars" in w for w in warnings)
+
+
+def test_workdir_cards_creates_run_and_state_outside_cwd(tmp_path):
+    root = tmp_path / "home" / "knowledge-cards"
+    out = cards.workdir("cards", "2026-W43", root, tmp_path / "repo")
+    assert out["run"] == str(root / "runs" / "2026-W43")
+    assert out["work"] == str(root / "runs" / "2026-W43" / ".work")
+    assert out["state"] == str(root / "state")
+    assert Path(out["work"]).is_dir() and Path(out["state"]).is_dir()
+    assert "legacy" not in out
+    assert not (tmp_path / "repo").exists()
+
+
+def test_workdir_synthesis_and_tips(tmp_path):
+    root = tmp_path / "kc"
+    syn = cards.workdir("synthesis", "2026-W41", root, tmp_path)
+    assert syn["work"] == str(root / "synthesis" / "2026-W41" / ".work")
+    assert "state" not in syn
+    tips = cards.workdir("tips", None, root, tmp_path)
+    assert tips == {"root": str(root), "work": str(root / "tips" / ".work")}
+    with pytest.raises(cards.InputError):
+        cards.workdir("cards", None, root, tmp_path)
+
+
+def test_workdir_merges_legacy_state_without_overwriting(tmp_path):
+    root, repo = tmp_path / "kc", tmp_path / "repo"
+    legacy = repo / "cards" / ".work"
+    legacy.mkdir(parents=True)
+    (legacy / "notion-user.json").write_text('{"user_id": "old"}', encoding="utf-8")
+    (legacy / "allow.txt").write_text("foo\n", encoding="utf-8")
+    (legacy / "submitted.jsonl").write_text('{"key": "a"}\n{"key": "b"}\n', encoding="utf-8")
+    state = root / "state"
+    state.mkdir(parents=True)
+    (state / "notion-user.json").write_text('{"user_id": "new"}', encoding="utf-8")
+    (state / "submitted.jsonl").write_text('{"key": "a"}\n', encoding="utf-8")
+    out = cards.workdir("cards", "2026-W43", root, repo)
+    assert out["legacy"] == str(legacy)
+    assert out["migrated"] == ["allow.txt", "submitted.jsonl (+1)"]
+    assert json.loads((state / "notion-user.json").read_text())["user_id"] == "new"
+    assert [r["key"] for r in cards.read_submitted(state / "submitted.jsonl")] == ["a", "b"]
+    assert cards.workdir("cards", "2026-W43", root, repo)["migrated"] == []
+    assert legacy.is_dir()
+
+
+def test_cleanup_deletes_only_run_directories(tmp_path):
+    root = tmp_path / "kc"
+    run = Path(cards.workdir("cards", "2026-W43", root, tmp_path)["run"])
+    (run / ".work" / "sessions.json").write_text("{}", encoding="utf-8")
+    syn = Path(cards.workdir("synthesis", "2026-W43", root, tmp_path)["run"])
+    assert cards.cleanup(run, root) == run.resolve()
+    assert not run.exists()
+    cards.cleanup(syn, root)
+    assert not syn.exists()
+    assert (root / "state").is_dir()
+    cards.cleanup(run, root)  # already gone: no error
+
+    for bad in (root, root / "state", root / "runs", tmp_path / "cards", root / "runs" / "2026-W43" / ".work",
+                root / "runs" / ".." / "state", root / "tips" / "2026-W43", tmp_path / "other" / "runs" / "2026-W43"):
+        with pytest.raises(cards.InputError):
+            cards.cleanup(bad, root)
+    assert (root / "state").is_dir()
+
+
+def test_cleanup_refuses_symlinks(tmp_path):
+    root = tmp_path / "kc"
+    victim = tmp_path / "repo"
+    victim.mkdir()
+    (root / "runs").mkdir(parents=True)
+    link = root / "runs" / "2026-W43"
+    link.symlink_to(victim)
+    with pytest.raises(cards.InputError):
+        cards.cleanup(link, root)
+    assert victim.is_dir()
+
+
+def test_workdir_cleanup_cli(tmp_path):
+    root = tmp_path / "kc"
+    res = subprocess.run([sys.executable, "-I", str(CARDS), "workdir", "--kind", "cards", "--week", "2026-W43",
+                          "--root", str(root)], capture_output=True, text=True, cwd=tmp_path)
+    assert res.returncode == 0, res.stderr
+    run = json.loads(res.stdout)["run"]
+    res = subprocess.run([sys.executable, "-I", str(CARDS), "cleanup", str(tmp_path), "--root", str(root)],
+                         capture_output=True, text=True)
+    assert res.returncode == 2 and "refusing" in res.stderr
+    res = subprocess.run([sys.executable, "-I", str(CARDS), "cleanup", run, "--root", str(root)],
+                         capture_output=True, text=True)
+    assert res.returncode == 0 and not Path(run).exists()
+
+
+def test_workdir_directories_are_private(tmp_path):
+    root = tmp_path / "home" / ".claude" / "knowledge-cards"
+    out = cards.workdir("cards", "2026-W43", root, tmp_path)
+    cards.workdir("tips", None, root, tmp_path)
+    for path in (root, root / "runs", Path(out["run"]), Path(out["work"]), Path(out["state"]), root / "tips", root / "tips" / ".work"):
+        assert path.stat().st_mode & 0o077 == 0, path

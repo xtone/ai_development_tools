@@ -27,15 +27,17 @@ description: 週ごとに Notion「ナレッジカード」DB に集まったカ
 | 引数 | 既定 | 意味 |
 |---|---|---|
 | `--week` | 前の ISO 週 | 合成する週。`2026-W43` 形式 |
-| `--out` | `synthesis/` | 成果物ディレクトリ。作業ファイルは `<out>/.work/` |
+| `--out` | `~/.claude/knowledge-cards/synthesis/<week>/` | その回の成果物ディレクトリ。指定したときは書き込み後も消さない |
 | `--dry-run` | なし | Notion に書かない。書き込む内容を表示して終える |
 
 以下、このスキルのディレクトリを `<skill-dir>`、knowledge-cards のスクリプトを `<cards-scripts>`（`<skill-dir>/../knowledge-cards/scripts`）、プラグインのディレクトリを `<plugin-dir>`（`<skill-dir>/../..`）と書く。スクリプトはすべて `python3 -I` で実行する。このスキルは knowledge-cards の機密スキャナと話題判定をそのまま使うので、同じプラグインの knowledge-cards が必要。
 
+作業ファイルは実行したディレクトリ（案件のリポジトリかもしれない）には作らない。`<run>` は `~/.claude/knowledge-cards/synthesis/<week>/`（まとめの下書き `summary-<week>.md`）、`<work>` は `<run>/.work/`（カードの全文、テーマ、Notion に送る内容）。`--out` を指定したときは `<run>` をそのディレクトリ、`<work>` を `<out>/.work/` に読み替える。
+
 ## Phase 0: 準備
 
-1. `<out>/.work/` を作る
-2. 対象週を決める: `python3 -I <cards-scripts>/cards.py week [--week <week>]`。`week` と `title` を以降で使う
+1. 対象週を決める: `python3 -I <cards-scripts>/cards.py week [--week <week>]`。`week` と `title` を以降で使う
+2. 作業ディレクトリを作る: `python3 -I <cards-scripts>/cards.py workdir --kind synthesis --week <week>`。出力の `run` と `work` を `<run>` と `<work>` に使う（`--out` の指定があれば読み替える）
 3. `<plugin-dir>/notion.json` から、週次 Tips・ナレッジカード・合成テーマの data source を読む
 4. Notion MCP の query-data-sources で週の行を探す（`"週" LIKE '<week>%'`）。`url`、`ステータス` を控える
    - 週の行が無ければ、合成するカードも無いので、その旨を伝えて終える
@@ -44,17 +46,17 @@ description: 週ごとに Notion「ナレッジカード」DB に集まったカ
 
 ## Phase 1: カードの読み出し
 
-`references/synthesis-method.md` の手順 1 の SQL で、週の行のページ ID（URL の末尾 32 桁）を `LIKE` で含むカードを全件読む。結果は、MCP が返した JSON をそのまま `<out>/.work/query-1.json` に保存する（100 件を超えたら `query-2.json` 以降に分ける）。
+`references/synthesis-method.md` の手順 1 の SQL で、週の行のページ ID（URL の末尾 32 桁）を `LIKE` で含むカードを全件読む。結果は、MCP が返した JSON をそのまま `<work>/query-1.json` に保存する（100 件を超えたら `query-2.json` 以降に分ける）。
 
 ```bash
-python3 -I <skill-dir>/scripts/load_cards.py <out>/.work/query-*.json --week <week> --out <out>/.work/cards-<week>.json
+python3 -I <skill-dir>/scripts/load_cards.py <work>/query-*.json --week <week> --out <work>/cards-<week>.json
 ```
 
 出力には、指標（参加者数、問い・極性ごとの枚数、observed の数）、事実カード、意見カードが入る。投稿者は匿名のラベルに置き換わっている。重複は代表カードの `duplicates` に束ねられる。強い語に当たるカードは外れ、`excluded.confidential` に件数だけが入る。指標と除外の件数をユーザーに伝える。意見カードが 0 枚なら、事実カードの表だけのまとめになると伝えてから進む。
 
 ## Phase 2: 合成（Claude が判断する）
 
-`references/synthesis-method.md` の手順 4〜7 に従い、`<out>/.work/cards-<week>.json` の意見カードを読んで、`<out>/.work/themes-<week>.json` を書く。
+`references/synthesis-method.md` の手順 4〜7 に従い、`<work>/cards-<week>.json` の意見カードを読んで、`<work>/themes-<week>.json` を書く。
 
 ```json
 {"week": "<week>",
@@ -76,7 +78,7 @@ python3 -I <skill-dir>/scripts/load_cards.py <out>/.work/query-*.json --week <we
 検査して、エラーが 0 になるまで直す。
 
 ```bash
-python3 -I <skill-dir>/scripts/synth.py validate <out>/.work/themes-<week>.json --cards <out>/.work/cards-<week>.json
+python3 -I <skill-dir>/scripts/synth.py validate <work>/themes-<week>.json --cards <work>/cards-<week>.json
 ```
 
 worked と failed が同じテーマにあるのに分かれ目が空、テーマに入っていない意見カード、事実カードの混入、合や限界の空欄、字数の超過や 2 文以上の項目、「〜か？」で終わらない問い、投稿者ラベルの記載はエラーになる。
@@ -84,8 +86,8 @@ worked と failed が同じテーマにあるのに分かれ目が空、テー�
 ## Phase 3: まとめの下書きと機密の再確認
 
 ```bash
-python3 -I <skill-dir>/scripts/synth.py render <out>/.work/themes-<week>.json --cards <out>/.work/cards-<week>.json --out <out>/summary-<week>.md
-python3 -I <skill-dir>/scripts/synth.py check <out>/summary-<week>.md --cards <out>/.work/cards-<week>.json
+python3 -I <skill-dir>/scripts/synth.py render <work>/themes-<week>.json --cards <work>/cards-<week>.json --out <run>/summary-<week>.md
+python3 -I <skill-dir>/scripts/synth.py check <run>/summary-<week>.md --cards <work>/cards-<week>.json
 ```
 
 `check` は、今週のカードへのメンションだけを除いた本文に、機密スキャナとカードにしない話題の判定をかける。行ごとと、改行をつないだ全文の両方を見る（改行や見えない文字で分けた語も止まる）。
@@ -97,7 +99,7 @@ python3 -I <skill-dir>/scripts/synth.py check <out>/summary-<week>.md --cards <o
 
 ## Phase 4: 確認
 
-1. テーマの一覧（テーマ名、対立の有無、合の一文、根拠の強さ）と次の問いを表示する。`<out>/summary-<week>.md` を開けば全文を読めると伝える
+1. テーマの一覧（テーマ名、対立の有無、合の一文、根拠の強さ）と次の問いを表示する。`<run>/summary-<week>.md` を開けば全文を読めると伝える
 2. AskUserQuestion で聞く: 「Notion に書き込む」「themes を直したので読み直す」「書き込まずに終える」
 3. 「読み直す」なら Phase 2 の validate からやり直す
 
@@ -109,23 +111,33 @@ python3 -I <skill-dir>/scripts/synth.py check <out>/summary-<week>.md --cards <o
 2. 合成テーマを作る
 
 ```bash
-python3 -I <skill-dir>/scripts/synth.py to-notion <out>/.work/themes-<week>.json --cards <out>/.work/cards-<week>.json --week-url <週の行の URL> [--allow-term <確認済みの語> ...] > <out>/.work/theme-pages.json
+python3 -I <skill-dir>/scripts/synth.py to-notion <work>/themes-<week>.json --cards <work>/cards-<week>.json --week-url <週の行の URL> [--allow-term <確認済みの語> ...] > <work>/theme-pages.json
 ```
 
-`to-notion` は、テーマの文章が check と同じ判定を通らないと、出力せずにエラーで止まる。各要素の `properties` と `content` を create-pages の `pages[]` に入れる（parent は合成テーマの data source、`allow_async: false`）。返ってきた URL を `title` と組にして `<out>/.work/theme-urls.json`（`[{"title": "...", "url": "..."}]`）に書く。
+`to-notion` は、テーマの文章が check と同じ判定を通らないと、出力せずにエラーで止まる。各要素の `properties` と `content` を create-pages の `pages[]` に入れる（parent は合成テーマの data source、`allow_async: false`）。返ってきた URL を `title` と組にして `<work>/theme-urls.json`（`[{"title": "...", "url": "..."}]`）に書く。
 
 3. テーマへのメンション付きで、まとめを作り直して再確認する
 
 ```bash
-python3 -I <skill-dir>/scripts/synth.py render <out>/.work/themes-<week>.json --cards <out>/.work/cards-<week>.json --theme-urls <out>/.work/theme-urls.json --out <out>/summary-<week>.md
-python3 -I <skill-dir>/scripts/synth.py check <out>/summary-<week>.md --cards <out>/.work/cards-<week>.json --theme-urls <out>/.work/theme-urls.json [--allow-term <確認済みの語> ...]
+python3 -I <skill-dir>/scripts/synth.py render <work>/themes-<week>.json --cards <work>/cards-<week>.json --theme-urls <work>/theme-urls.json --out <run>/summary-<week>.md
+python3 -I <skill-dir>/scripts/synth.py check <run>/summary-<week>.md --cards <work>/cards-<week>.json --theme-urls <work>/theme-urls.json [--allow-term <確認済みの語> ...]
 ```
 
 `--theme-urls` を渡すと、作ったテーマのページへのメンションも検査から除く。それ以外のメンションは URL ごと検査される。
 
-4. 週の行の配下に「まとめ」ページを create-pages で作る（parent は `{"type": "page_id", "page_id": "<週の行のページ ID>"}`、properties は `{"title": "まとめ（<week>）"}`、icon は 🧭、content は `<out>/summary-<week>.md` の中身）
+4. 週の行の配下に「まとめ」ページを create-pages で作る（parent は `{"type": "page_id", "page_id": "<週の行のページ ID>"}`、properties は `{"title": "まとめ（<week>）"}`、icon は 🧭、content は `<run>/summary-<week>.md` の中身）
 5. fetch でまとめページを読み返し、崩れ（ファイル名の自動リンクなど）が無いか確かめる。あれば update-page の `update_content` で直す
 6. 週の行の `ステータス` を update-page（`update_properties`）で `合成済み` にする
+
+## Phase 6: 後片付け
+
+Phase 5 の 6（週の行を `合成済み`）まで終わったら、その回の作業ディレクトリを消す。カードの全文が手元に残らないようにするため。
+
+```bash
+python3 -I <cards-scripts>/cards.py cleanup <run>
+```
+
+`--dry-run`、確認で「書き込まずに終える」を選んだとき、途中で止まったとき、`--out` を指定したとき（`cleanup` が拒否する）は消さずに残し、完了報告で `<run>` のパスを伝える。
 
 ## 完了報告
 
@@ -135,4 +147,4 @@ python3 -I <skill-dir>/scripts/synth.py check <out>/summary-<week>.md --cards <o
 - まとめページと合成テーマの URL（`--dry-run` のときはその旨）
 - 共有会で採否を決めること（合成テーマの `採否` を共有会で更新する）
 
-作業ファイル `<out>/.work/` はカードの全文を含むので、共有リポジトリにコミットしないよう伝える。
+作業ディレクトリを消したかを伝える。残したときはそのパスと、カードの全文を含むので共有リポジトリにコミットしないことを伝える。

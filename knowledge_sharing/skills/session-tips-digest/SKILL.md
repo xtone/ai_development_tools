@@ -21,23 +21,23 @@ description: Claude Code の過去のセッション記録（~/.claude の履歴
 |---|---|---|
 | `--since` | `30d` | 抽出期間。`7d` や `2026-09-01` も受ける |
 | `--projects` | 全部 | 対象プロジェクト名の部分一致（カンマ区切り） |
-| `--out` | `tips/` | 成果物ディレクトリ。作業ファイルは `<out>/.work/` |
+| `--out` | `tips/` | 成果物ディレクトリ。作業ファイルはここに置かず `~/.claude/knowledge-cards/tips/.work/` に置く |
 | `--artifact-url` | なし | 既存 Artifact を更新する。無ければ新規公開 |
 | `--notion` | なし | 指定した Notion ページの配下に本体を書き出す |
 | `--no-research` | なし | Phase 3（一次情報の調査）を省略する |
 
-以下、このスキルのディレクトリを `<skill-dir>`、`--out` を `<out>` と書く。スクリプトはすべて `python3 -I` で実行する。
+以下、このスキルのディレクトリを `<skill-dir>`、`--out` を `<out>`、作業ファイルのディレクトリ `~/.claude/knowledge-cards/tips/.work/` を `<work>` と書く。`<work>` には期間内のセッションの抽出結果が入るので、実行したディレクトリ（案件のリポジトリかもしれない）には作らない。スクリプトはすべて `python3 -I` で実行する。
 
 ## Phase 0: 準備
 
-1. `<out>` と `<out>/.work/` を作る
+1. `<out>` を作る。`<work>` は `mkdir -p -m 700 ~/.claude/knowledge-cards/tips/.work` で作る
 2. `<out>/claude-code-tips.md` が既にあれば差分更新モードにする。本文末尾の `最終更新: YYYY-MM-DD` を読み、`--since` が指定されていなければその日付を `--since` に使う。既存の Tips は消さず、新しい Tips を該当する章に追記し、既存の Tips を新しい事例や情報で更新する
 3. 作業の段取りをユーザーに 1 行で伝える（期間、対象、調査の有無）
 
 ## Phase 1: 抽出
 
 ```bash
-python3 -I <skill-dir>/scripts/extract_sessions.py --since <since> [--projects <list>] --out <out>/.work/sessions.json
+python3 -I <skill-dir>/scripts/extract_sessions.py --since <since> [--projects <list>] --out <work>/sessions.json
 ```
 
 出力 JSON には、期間内のプロンプト、ツール・スキル・エージェント・MCP・`gh` の利用回数、パターンに合う Bash コマンド例、memory の要点、ハーネス構成（名前だけ）、匿名化辞書（`vocabulary`）が入る。秘密情報は伏せ字済み。
@@ -57,10 +57,10 @@ python3 -I <skill-dir>/scripts/extract_sessions.py --since <since> [--projects <
 3. 機密スキャンを実行する
 
 ```bash
-python3 -I <skill-dir>/scripts/scan_sensitive.py <out>/claude-code-tips.md --vocab <out>/.work/sessions.json [--allow-file <out>/.work/allow.txt]
+python3 -I <skill-dir>/scripts/scan_sensitive.py <out>/claude-code-tips.md --vocab <work>/sessions.json [--allow-file <work>/allow.txt]
 ```
 
-終了コードが 1 なら、検出箇所を書き換えて再実行する。検出語が一般語（例: プロジェクト名がたまたま `onboarding`）で、伏せる必要が無いと判断できる場合だけ、`<out>/.work/allow.txt` に理由のコメント付きで追記する。秘密情報（トークン、メール、組織 ID、ホームパス）は許可リストに入れない。
+終了コードが 1 なら、検出箇所を書き換えて再実行する。検出語が一般語（例: プロジェクト名がたまたま `onboarding`）で、伏せる必要が無いと判断できる場合だけ、`<work>/allow.txt` に理由のコメント付きで追記する。秘密情報（トークン、メール、組織 ID、ホームパス）は許可リストに入れない。
 
 **スキャンが 0 件になるまで Phase 3 以降に進まない。**
 
@@ -82,7 +82,7 @@ python3 -I <skill-dir>/scripts/scan_sensitive.py <out>/claude-code-tips.md --voc
 
 ```bash
 python3 -I <skill-dir>/scripts/md_to_artifact.py <out>/claude-code-tips.md --out <out>/dist/index.html --meta "対象: <読者>" --meta "期間: <開始> 〜 <終了>" --meta "最終更新: <今日>"
-python3 -I <skill-dir>/scripts/scan_sensitive.py <out>/dist/index.html --vocab <out>/.work/sessions.json [--allow-file <out>/.work/allow.txt]
+python3 -I <skill-dir>/scripts/scan_sensitive.py <out>/dist/index.html --vocab <work>/sessions.json [--allow-file <work>/allow.txt]
 ```
 
 2. Artifact ツールで `<out>/dist/index.html` を公開する
@@ -101,4 +101,4 @@ python3 -I <skill-dir>/scripts/scan_sensitive.py <out>/dist/index.html --vocab <
 - 機密スキャンの結果（0 件）と、許可リストに入れた語とその理由
 - 一次情報で確認できず「実測」のまま残した項目
 
-作業ファイル `<out>/.work/` はユーザーのホームの記録を含むので、共有リポジトリにコミットしないよう伝える。`<out>` が git 管理下なら `.gitignore` に `.work/` を追加することを提案する。
+作業ファイルは `<work>`（`~/.claude/knowledge-cards/tips/.work/`）にあり、`<out>` には成果物だけが入ることを伝える。`<work>` の `sessions.json` はセッションの抜粋を含むので、不要なら消してよい（許可リスト `allow.txt` は次回も使う）。

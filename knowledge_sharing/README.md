@@ -9,6 +9,33 @@ Claude Code の利用記録から、チームで共有できる知見を抽出�
 /plugin install knowledge-sharing@xtone-ai-development-tools
 ```
 
+## 実行する場所
+
+案件のリポジトリではなく、このスキル専用の作業ディレクトリで、新しいセッションを始めて実行してください。
+
+```bash
+mkdir -p ~/knowledge-work
+cd ~/knowledge-work
+claude
+```
+
+続けて実行するときも、`/clear` でコンテキストを空にしてから始めます。理由は 3 つです。
+
+- 案件のリポジトリの `CLAUDE.md` や hook が読み込まれず、カードの下書きに案件の指示が混ざらない
+- 前の会話（案件の作業内容）が下書きに入り込まない
+- この実行自体が案件のプロジェクトの記録として残らない（次の週の抽出で、カード作りのセッションが案件の作業として数えられない）
+
+どこで実行しても、作業ファイルは実行したディレクトリに作りません。`~/.claude/knowledge-cards/` の下に置き、Notion への提出や書き込みが終わったら消します。
+
+| パス | 中身 | 消すとき |
+|---|---|---|
+| `~/.claude/knowledge-cards/runs/<週>/` | knowledge-cards のその回の作業ファイル（カード一覧、prompt の抜粋） | 提出が終わったとき |
+| `~/.claude/knowledge-cards/synthesis/<週>/` | knowledge-synthesis のその回の作業ファイル（まとめの下書き、カードの全文） | Notion への書き込みが終わったとき |
+| `~/.claude/knowledge-cards/state/` | 提出済みの記録、投稿者、機密スキャンの許可リスト | 消さない（再実行で二重に送らないため） |
+| `~/.claude/knowledge-cards/tips/.work/` | session-tips-digest の作業ファイル | 消さない（不要なら手で消す） |
+
+`--dry-run` のとき、途中で止めたとき、提出に失敗したときは消さずに残し、パスを伝えます。旧版（0.4.x）が実行ディレクトリに作った `cards/.work/` があれば、提出済みの記録などを `state/` に取り込んだうえで、消してよいことを伝えます（自動では消しません）。
+
 ## スキル一覧
 
 | スキル | 説明 |
@@ -46,7 +73,7 @@ Claude Code の利用記録から、チームで共有できる知見を抽出�
 | `--tz` | `local` | 日付を解釈するタイムゾーン（`+09:00` など） |
 | `--questions` | Notion の週の行の「今週の問い」、無ければ cadence | 答える問い |
 | `--projects` | 全部 | 対象プロジェクト名の部分一致（カンマ区切り） |
-| `--out` | `cards/` | 成果物ディレクトリ |
+| `--out` | `~/.claude/knowledge-cards/runs/<週>/` | その回の成果物ディレクトリ。指定すると提出後も消さない |
 | `--tier` | `internal` | 機密スキャンの区分。社外に転用するときは `public` |
 | `--dry-run` | なし | Notion に書かず、送る内容を表示する |
 | `--no-notion` | なし | カードの確認と機密スキャンまでで終える |
@@ -56,9 +83,10 @@ Claude Code の利用記録から、チームで共有できる知見を抽出�
 1. 対象週と問いを決める（問いカタログはプラグイン直下の `questions.json`）
 2. `~/.claude/` から prompt、commit・PR のタイトル、ツールの利用回数、memory を抽出する（秘密情報は伏せ字）
 3. 問いごとにカードを下書きし、形式と品質を検査する
-4. `cards/cards-<週>.md` を本人が確認し、直す・消す・足す
+4. `~/.claude/knowledge-cards/runs/<週>/cards-<週>.md` を本人が確認し、直す・消す・足す
 5. 機密スキャン（internal: プロジェクト名は残し、トークン・メール・ホスト名などを止める）が 0 件になるまで直す
 6. カードのプロジェクト名とタグのうち Notion の選択肢に無いものを足してから、「ナレッジカード」DB に提出し、「週次 Tips」の週の行に投稿者として載る
+7. その回の作業ディレクトリを消す
 
 ### 実名運用の約束
 
@@ -83,10 +111,9 @@ Claude Code の利用記録から、チームで共有できる知見を抽出�
 
 | パス | 内容 |
 |---|---|
-| `cards/cards-<週>.md` | 確認・修正用のカード一覧 |
-| `cards/.work/cards.jsonl` | カードの正本 |
-| `cards/.work/submitted.jsonl` | 提出済みのカード（再実行で二重に送らない） |
-| `cards/.work/` | 作業ファイル。個人の記録を含むのでコミットしない |
+| `~/.claude/knowledge-cards/runs/<週>/cards-<週>.md` | 確認・修正用のカード一覧。提出後に消す |
+| `~/.claude/knowledge-cards/runs/<週>/.work/` | カードの正本と作業ファイル。提出後に消す |
+| `~/.claude/knowledge-cards/state/submitted.jsonl` | 提出済みのカード（再実行で二重に送らない） |
 
 ### 必要環境
 
@@ -136,7 +163,7 @@ Claude Code の利用記録から、チームで共有できる知見を抽出�
 | `tips/claude-code-tips.md` | Tips 本体 |
 | `tips/claude-code-tips-references.md` | 一次情報との対応表 |
 | `tips/dist/index.html` | Artifact の元ファイル |
-| `tips/.work/` | 作業ファイル。個人の記録を含むのでコミットしない |
+| `~/.claude/knowledge-cards/tips/.work/` | 作業ファイル。`tips/` には置かない |
 
 ### 必要環境
 
@@ -164,7 +191,7 @@ Claude Code の利用記録から、チームで共有できる知見を抽出�
 | 引数 | 既定 | 意味 |
 |---|---|---|
 | `--week` | 前の ISO 週 | 合成する週 |
-| `--out` | `synthesis/` | 成果物ディレクトリ。作業ファイルは `<out>/.work/` |
+| `--out` | `~/.claude/knowledge-cards/synthesis/<週>/` | その回の成果物ディレクトリ。指定すると書き込み後も消さない |
 | `--dry-run` | なし | Notion に書かず、書き込む内容を表示する |
 
 ### 流れ
@@ -173,6 +200,7 @@ Claude Code の利用記録から、チームで共有できる知見を抽出�
 2. Claude が意見カードを問いをまたいで束ね、対立・合・次の問いを書く。根拠の強さはスクリプトが数える
 3. `synth.py` で検査し、まとめを作り、機密スキャンと話題判定をかける
 4. 下書きを確認してから、合成テーマ・まとめページを作り、週の行を「合成済み」にする。同じ週の合成テーマが既にあれば止まる
+5. その回の作業ディレクトリを消す
 
 機密スキャナと話題判定は、同じプラグインの knowledge-cards のスクリプトを使います。
 
