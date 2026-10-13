@@ -108,3 +108,9 @@ def test_allowing_one_review_word_does_not_clear_another():
 def test_review_words_lists_every_review_word():
     assert topics.review_words("ADR の昇格と退職者処理と IR の件", DEFAULT) == {"昇格", "退職", "IR"}
     assert topics.review_words("人事評価", DEFAULT) == set()
+
+
+def test_invisible_characters_cannot_split_a_word():
+    assert topics.classify("取\u200b締役会", DEFAULT)[1] == "strong"
+    assert topics.classify("経\ufeff営会議", DEFAULT)[1] == "strong"
+    assert topics.classify("人事\u2060評価", DEFAULT)[1] == "strong"

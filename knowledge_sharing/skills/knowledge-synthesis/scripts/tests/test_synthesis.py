@@ -195,23 +195,23 @@ def test_render_mentions_theme_pages_when_urls_are_known():
     assert '（テーマ: <mention-page url="https://app.notion.com/p/theme1"/>）' in md
 
 
-def test_check_ignores_mentions_and_allows_cleared_review_words():
+def test_check_ignores_card_mentions_and_passes_user_confirmed_review_words():
     data = loaded()
     md = synth.render(themes(), data, CATALOG)
-    assert synth.check(md, data, TOPICS) == []  # notion URLs in mentions, 昇格 cleared by the card's author
+    assert synth.check(md, data, TOPICS, allowed_terms=["昇格"]) == []  # card mentions removed, 昇格 confirmed
 
 
 def test_check_flags_new_confidential_text_and_secrets():
     data = loaded()
     md = synth.render(themes(), data, CATALOG) + "\n- 経営会議で共有する\n- 退職の件\n- token HnRXa1s7-80Y6Hrv8HhTcG_sqvqRy0nGUlqhG9pqeL8\n"
-    problems = synth.check(md, data, TOPICS)
+    problems = synth.check(md, data, TOPICS, allowed_terms=["昇格"])
     assert any("strong" in p and "経営" in p for p in problems)
     assert any("review" in p and "退職" in p for p in problems)
     assert any("token" in p for p in problems)
 
 
 def test_to_notion_properties():
-    pages = synth.to_notion(themes(), loaded(), CATALOG, "https://app.notion.com/week")
+    pages = synth.to_notion(themes(), loaded(), CATALOG, "https://app.notion.com/week", TOPICS, allowed_terms=["昇格"])
     p = pages[0]["properties"]
     assert p["週"] == ["https://app.notion.com/week"] and p["問い"] == "Q1" and p["採否"] == "検討中"
     assert p["カード"] == [u(2), u(3)]
@@ -229,8 +229,46 @@ def test_cli_validate_render_check(tmp_path):
     md = tmp_path / "summary.md"
     assert run("render", th, "--cards", cards, "--out", md).returncode == 0
     r = run("check", md, "--cards", cards)
+    assert r.returncode == 1 and "昇格" in r.stdout  # review word needs the user's confirmation
+    r = run("check", md, "--cards", cards, "--allow-term", "昇格")
     assert r.returncode == 0, r.stdout
     bad = copy.deepcopy(themes())
     bad["themes"][0]["conflict"] = ""
     th.write_text(json.dumps(bad, ensure_ascii=False), encoding="utf-8")
     assert run("validate", th, "--cards", cards).returncode == 1
+
+
+# ---- filter bypasses (security review) ----
+
+
+def test_check_only_strips_mentions_of_known_pages():
+    data = loaded()
+    md = synth.render(themes(), data, CATALOG) + '\n- 補足 <mention-page url="https://x/取締役会の資料"/>\n'
+    problems = synth.check(md, data, TOPICS)
+    assert any("取締役" in p for p in problems)
+    assert any("notion_url" in p or "取締役" in p for p in problems)
+
+
+def test_review_words_need_an_explicit_allow_term():
+    data = loaded()  # card7 carries the review word 昇格
+    md = synth.render(themes(), data, CATALOG) + "\n- 退職の件で相談する\n"
+    problems = synth.check(md, data, TOPICS)
+    assert any("退職" in p for p in problems)
+    assert any("昇格" in p for p in problems)  # no longer cleared just because a card had it
+    assert synth.check(md, data, TOPICS, allowed_terms=["昇格"]) != []  # 退職 still blocks
+    assert synth.check(md, data, TOPICS, allowed_terms=["昇格", "退職"]) == []
+
+
+def test_words_split_by_newlines_or_invisible_characters_are_caught():
+    data = loaded()
+    base = synth.render(themes(), data, CATALOG)
+    for extra in ("\n- 取締\n役会の資料\n", "\n- 取​締役会の資料\n", "\n- 経﻿営会議\n"):
+        assert any("strong" in p for p in synth.check(base + extra, data, TOPICS, allowed_terms=["昇格"])), extra
+
+
+def test_to_notion_refuses_confidential_theme_text():
+    t = themes()
+    t["themes"][1]["proposal"] = "取締役会で共有する"
+    import pytest
+    with pytest.raises(synth.InputError):
+        synth.to_notion(t, loaded(), CATALOG, "https://app.notion.com/week", TOPICS, allowed_terms=["昇格"])

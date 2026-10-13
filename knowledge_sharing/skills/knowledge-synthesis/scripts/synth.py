@@ -4,8 +4,8 @@
 Usage:
   synth.py validate THEMES.json --cards CARDS.json
   synth.py render THEMES.json --cards CARDS.json --out SUMMARY.md [--theme-urls URLS.json]
-  synth.py check SUMMARY.md --cards CARDS.json [--vocab sessions.json]
-  synth.py to-notion THEMES.json --cards CARDS.json --week-url URL
+  synth.py check SUMMARY.md --cards CARDS.json [--theme-urls URLS.json] [--allow-term WORD ...] [--vocab sessions.json]
+  synth.py to-notion THEMES.json --cards CARDS.json --week-url URL [--allow-term WORD ...]
 
 CARDS.json comes from load_cards.py. THEMES.json is written by Claude:
 
@@ -45,7 +45,7 @@ KINDS = ("両立案", "条件分け", "仕組み化")
 TITLE_MIN, TITLE_MAX = 10, 80
 VAGUE_ENDINGS = ("について", "に関して")
 PERSON_LABEL_RE = re.compile(r"(?<![A-Za-z0-9])p\d+(?![A-Za-z0-9])")
-MENTION_RE = re.compile(r'<mention-page url="[^"]*"\s*/>')
+MENTION_RE = re.compile(r'<mention-page url="([^"]*)"\s*/>')
 # Notion turns CLAUDE.md, SKILL.md and the like into links to a domain; keep them as code.
 FILENAME_RE = re.compile(r"(?<![`\w./-])([\w.-]+\.(?:md|json|jsonl|py|ts|tsx|js|yml|yaml|sh|toml))(?![`\w])")
 
@@ -236,28 +236,42 @@ def render(themes: dict, cards: dict, catalog: dict, theme_urls: dict[str, str] 
 # ---- check ------------------------------------------------------------------
 
 
-def check(summary: str, cards: dict, topics, vocab=()) -> list[str]:
+def check(summary: str, cards: dict, topics, vocab=(), allowed_terms=(), page_urls=()) -> list[str]:
     """Problems in the text the synthesis wrote: secrets, and confidential topics.
 
-    Mentions of card and theme pages are references inside the workspace and are
-    removed before scanning. Review words pass only if a submitted card already
-    carried them (its author cleared the word when submitting).
+    Only mentions of this week's cards and of the theme pages just created are removed
+    before scanning; any other mention stays and is scanned with its URL. Review words
+    pass only when the user confirmed them (allowed_terms), never because a card used
+    them. Each line and the whole text with line breaks removed are checked, so a word
+    split across lines (or by invisible characters, see topics.normalize) is still found.
     """
-    text = MENTION_RE.sub("[card]", summary)
+    known = {c["url"] for c in cards.get("opinions", []) + cards.get("facts", [])} | set(page_urls)
+    text = MENTION_RE.sub(lambda m: "[card]" if m.group(1) in known else m.group(0), summary)
     problems = [f"line {f['line']}: {f['kind']}: {f['match']}" for f in scan_text(text, vocab=vocab)]
-    cleared = {w for c in cards.get("opinions", []) + cards.get("facts", []) for w in c.get("review_words", [])}
-    for n, line in enumerate(text.splitlines(), 1):
-        hit = blocked(line, topics, allowed_terms=cleared)
+    lines = text.splitlines()
+    for n, line in enumerate(lines, 1):
+        hit = blocked(line, topics, allowed_terms=allowed_terms)
         if hit:
             problems.append(f"line {n}: confidential topic ({hit[1]}): {hit[2]}")
+    if not problems:
+        hit = blocked("".join(lines), topics, allowed_terms=allowed_terms)
+        if hit:
+            problems.append(f"across lines: confidential topic ({hit[1]}): {hit[2]}")
     return problems
 
 
 # ---- Notion -----------------------------------------------------------------
 
 
-def to_notion(themes: dict, cards: dict, catalog: dict, week_url: str) -> list[dict]:
+def to_notion(themes: dict, cards: dict, catalog: dict, week_url: str, topics=None, allowed_terms=()) -> list[dict]:
+    """Properties for the 合成テーマ data source. Refuses theme text that fails the same check as the summary."""
+    if topics is None:
+        topics = load_topics(default_files(), require=True)
     index = card_index(cards)
+    for t in themes.get("themes", []):
+        problems = check("\n".join(_texts(t)), cards, topics, allowed_terms=allowed_terms)
+        if problems:
+            raise InputError(f"theme '{t.get('title', '')}' cannot be written: {'; '.join(problems)}")
     pages = []
     for t in (enrich(t, index, catalog) for t in themes.get("themes", [])):
         synthesis = f"{'＋'.join(t['kinds'])}: {t['proposal']} 根拠: {strength(t)}。限界: {t['limits']}"
@@ -293,10 +307,15 @@ def main(argv: list[str] | None = None) -> int:
             p.add_argument("--theme-urls", help='JSON list of {"title", "url"} after the themes were created')
         if name == "to-notion":
             p.add_argument("--week-url", required=True)
+            p.add_argument("--allow-term", action="append", default=[],
+                           help="review word the user confirmed is not about personnel or management")
     p = sub.add_parser("check")
     p.add_argument("summary")
     p.add_argument("--cards", required=True)
     p.add_argument("--vocab", help="sessions.json from knowledge-cards (optional)")
+    p.add_argument("--theme-urls", help='JSON list of {"title", "url"} of the theme pages (their mentions are not scanned)')
+    p.add_argument("--allow-term", action="append", default=[],
+                   help="review word the user confirmed is not about personnel or management (never strong words)")
     p.add_argument("--topics", action="append", default=None, help="extra confidential_topics.json")
 
     args = parser.parse_args(argv)
@@ -310,7 +329,8 @@ def main(argv: list[str] | None = None) -> int:
                 summary = Path(args.summary).read_text(encoding="utf-8")
             except OSError as exc:
                 raise InputError(f"cannot read summary: {exc}") from None
-            problems = check(summary, cards, topics, vocab)
+            page_urls = [r["url"] for r in json.loads(Path(args.theme_urls).read_text(encoding="utf-8"))] if args.theme_urls else []
+            problems = check(summary, cards, topics, vocab, args.allow_term, page_urls)
             for p in problems:
                 print(f"error: {p}")
             print(f"{len(problems)} problem(s)" if problems else "clean")
@@ -334,7 +354,9 @@ def main(argv: list[str] | None = None) -> int:
             out.write_text(render(themes, cards, catalog, urls), encoding="utf-8")
             print(f"wrote {out}")
         elif args.cmd == "to-notion":
-            print(json.dumps(to_notion(themes, cards, catalog, args.week_url), ensure_ascii=False, indent=1))
+            topics = load_topics(default_files(), require=True)
+            pages = to_notion(themes, cards, catalog, args.week_url, topics, args.allow_term)
+            print(json.dumps(pages, ensure_ascii=False, indent=1))
     except (InputError, ValueError, KeyError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2

@@ -85,7 +85,12 @@ python3 -I <skill-dir>/scripts/synth.py render <out>/.work/themes-<week>.json --
 python3 -I <skill-dir>/scripts/synth.py check <out>/summary-<week>.md --cards <out>/.work/cards-<week>.json
 ```
 
-`check` は、カードへのメンションを除いた本文に、機密スキャナとカードにしない話題の判定をかける。要確認の語は、提出されたカードに既に含まれていたもの（投稿者が提出時に確認済み）だけ通す。問題が 1 件でもあれば `themes-<week>.json` を直して、render からやり直す。**0 件になるまで Phase 4 に進まない。**
+`check` は、今週のカードへのメンションだけを除いた本文に、機密スキャナとカードにしない話題の判定をかける。行ごとと、改行をつないだ全文の両方を見る（改行や見えない文字で分けた語も止まる）。
+
+- 強い語・秘密情報: `themes-<week>.json` の該当箇所を消して、render からやり直す
+- 要確認の語（昇格、退職など）: カードに含まれていても自動では通さない。当たった語と行をユーザーに示し、AskUserQuestion で「人事評価・処遇や経営の話ではない」と確認できた語だけ、`--allow-term <語>` を付けて check をやり直す。確認できなければ、その文を消す。通した語は以降の `to-notion` と再確認にも同じ `--allow-term` を付ける
+
+**問題が 0 件になるまで Phase 4 に進まない。**
 
 ## Phase 4: 確認
 
@@ -101,17 +106,19 @@ python3 -I <skill-dir>/scripts/synth.py check <out>/summary-<week>.md --cards <o
 2. 合成テーマを作る
 
 ```bash
-python3 -I <skill-dir>/scripts/synth.py to-notion <out>/.work/themes-<week>.json --cards <out>/.work/cards-<week>.json --week-url <週の行の URL> > <out>/.work/theme-pages.json
+python3 -I <skill-dir>/scripts/synth.py to-notion <out>/.work/themes-<week>.json --cards <out>/.work/cards-<week>.json --week-url <週の行の URL> [--allow-term <確認済みの語> ...] > <out>/.work/theme-pages.json
 ```
 
-各要素の `properties` と `content` を create-pages の `pages[]` に入れる（parent は合成テーマの data source、`allow_async: false`）。返ってきた URL を `title` と組にして `<out>/.work/theme-urls.json`（`[{"title": "...", "url": "..."}]`）に書く。
+`to-notion` は、テーマの文章が check と同じ判定を通らないと、出力せずにエラーで止まる。各要素の `properties` と `content` を create-pages の `pages[]` に入れる（parent は合成テーマの data source、`allow_async: false`）。返ってきた URL を `title` と組にして `<out>/.work/theme-urls.json`（`[{"title": "...", "url": "..."}]`）に書く。
 
 3. テーマへのメンション付きで、まとめを作り直して再確認する
 
 ```bash
 python3 -I <skill-dir>/scripts/synth.py render <out>/.work/themes-<week>.json --cards <out>/.work/cards-<week>.json --theme-urls <out>/.work/theme-urls.json --out <out>/summary-<week>.md
-python3 -I <skill-dir>/scripts/synth.py check <out>/summary-<week>.md --cards <out>/.work/cards-<week>.json
+python3 -I <skill-dir>/scripts/synth.py check <out>/summary-<week>.md --cards <out>/.work/cards-<week>.json --theme-urls <out>/.work/theme-urls.json [--allow-term <確認済みの語> ...]
 ```
+
+`--theme-urls` を渡すと、作ったテーマのページへのメンションも検査から除く。それ以外のメンションは URL ごと検査される。
 
 4. 週の行の配下に「まとめ」ページを create-pages で作る（parent は `{"type": "page_id", "page_id": "<週の行のページ ID>"}`、properties は `{"title": "まとめ（<week>）"}`、icon は 🧭、content は `<out>/summary-<week>.md` の中身）
 5. fetch でまとめページを読み返し、崩れ（ファイル名の自動リンクなど）が無いか確かめる。あれば update-page の `update_content` で直す

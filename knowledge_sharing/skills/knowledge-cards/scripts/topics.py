@@ -60,7 +60,8 @@ def load_topics(paths: list[Path] | None = None, require: bool = False) -> list[
 
 
 def normalize(text: str) -> str:
-    return unicodedata.normalize("NFKC", str(text))
+    """NFKC, with invisible format characters (zero-width space, BOM, ...) removed so they cannot split a word."""
+    return "".join(ch for ch in unicodedata.normalize("NFKC", str(text)) if unicodedata.category(ch) != "Cf")
 
 
 def classify(text: str, topics) -> tuple[str, str, str] | None:
