@@ -138,3 +138,12 @@ def test_add_author_keeps_existing_people():
         {"object": "user", "id": "u1"}, {"object": "user", "id": "u2"}]}}}
     client = FakeClient([{"properties": {"投稿者": {"people": [{"id": "u2"}]}}}])
     assert ns.add_author(client, pid, "u2") is False
+
+
+def test_resolve_user_stops_on_missing_or_repeating_cursor():
+    client = FakeClient([{"results": [], "has_more": True, "next_cursor": None}])
+    assert ns.resolve_user(client, "x@example.com") is None
+    assert len(client.calls) == 1
+    client = FakeClient([{"results": [], "has_more": True, "next_cursor": "c1"}] * 3)
+    assert ns.resolve_user(client, "x@example.com") is None
+    assert len(client.calls) == 2

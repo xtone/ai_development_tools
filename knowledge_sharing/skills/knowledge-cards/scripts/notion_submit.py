@@ -29,6 +29,7 @@ API = "https://api.notion.com/v1"
 NOTION_VERSION = "2025-09-03"
 DEFAULT_CONFIG = Path(__file__).resolve().parents[3] / "notion.json"
 TEXT_MAX = 2000
+MAX_USER_PAGES = 100
 PAGE_ID_RE = re.compile(r"([0-9a-f]{8}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{4}-?[0-9a-f]{12})(?:[?#].*)?$")
 
 SELECT = ("問い", "極性", "確度", "公開範囲")
@@ -156,14 +157,18 @@ def ensure_week(client: Client, config: dict, week_id: str, questions: list[str]
 
 def resolve_user(client: Client, email: str) -> str | None:
     cursor = None
-    while True:
+    seen: set[str] = set()
+    for _ in range(MAX_USER_PAGES):
         res = client.call("GET", "/users" + (f"?start_cursor={cursor}" if cursor else ""))
         for user in res.get("results", []):
             if user.get("type") == "person" and user.get("person", {}).get("email", "").lower() == email.lower():
                 return user["id"]
-        if not res.get("has_more"):
-            return None
         cursor = res.get("next_cursor")
+        # Stop on the last page, and on a malformed or repeating cursor instead of looping forever.
+        if not res.get("has_more") or not cursor or cursor in seen:
+            return None
+        seen.add(cursor)
+    return None
 
 
 def add_author(client: Client, week_page: str, user_id: str) -> bool:
