@@ -25,6 +25,9 @@ import sys
 import unicodedata
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from topics import blocked, default_files, load_topics  # noqa: E402
+
 DEFAULT_QUESTIONS = Path(__file__).resolve().parents[3] / "questions.json"
 
 POLARITIES = ("worked", "failed", "proposal", "question", "fact")
@@ -228,7 +231,28 @@ def _evidence_errors(evidence) -> list[str]:
     return errors
 
 
-def validate(cards: list[dict], catalog: dict) -> tuple[list[str], list[str]]:
+def _confidential_errors(card: dict, topics, allowed_terms=()) -> list[str]:
+    """Cards about personnel evaluation or company management must not be submitted.
+
+    Strong words always fail. Review words (昇格, 退職, ...) fail unless the user checked the
+    card and allowed that exact word with --allow-term.
+    """
+    texts = [card.get("claim", ""), card.get("context", ""), card.get("project", "")]
+    texts += [ev.get("excerpt", "") for ev in card.get("evidence") or [] if isinstance(ev, dict)]
+    labels = {t[0]: t[1] for t in topics}
+    for text in texts:
+        hit = blocked(str(text), topics, allowed_terms=allowed_terms)
+        if hit and hit[1] == "strong":
+            return [f"touches a confidential topic ({labels[hit[0]]}); drop this card instead of rewording it"]
+        if hit:
+            return [
+                f"touches a confidential topic ({labels[hit[0]]}) by the word '{hit[2]}'; drop the card, or ask the "
+                f"user and pass --allow-term '{hit[2]}' only if it is not about personnel or management"
+            ]
+    return []
+
+
+def validate(cards: list[dict], catalog: dict, topics=(), allowed_terms=()) -> tuple[list[str], list[str]]:
     by_id = questions_by_id(catalog)
     known_tags = set(catalog.get("tags", []))
     errors: list[str] = []
@@ -282,6 +306,8 @@ def validate(cards: list[dict], catalog: dict) -> tuple[list[str], list[str]]:
             if card_id in seen_ids:
                 problems.append(f"duplicate card_id {card_id}")
             seen_ids.add(card_id)
+        if card.get("status") != "dropped":
+            problems += _confidential_errors(card, topics, allowed_terms)
         errors += [f"{label}: {p}" for p in problems]
         if card.get("status") != "dropped":
             live += 1
@@ -619,6 +645,10 @@ def main(argv: list[str] | None = None) -> int:
     p = sub.add_parser("validate", help="check cards.jsonl")
     p.add_argument("cards")
     p.add_argument("--questions", default=str(DEFAULT_QUESTIONS))
+    p.add_argument("--topics", action="append", default=None,
+                   help="extra confidential_topics.json (the plugin's and the personal file are always read)")
+    p.add_argument("--allow-term", action="append", default=[],
+                   help="review word the user confirmed is not about personnel or management (never strong words)")
 
     p = sub.add_parser("render", help="cards.jsonl -> cards-<week>.md")
     p.add_argument("cards")
@@ -660,7 +690,11 @@ def main(argv: list[str] | None = None) -> int:
         elif args.cmd == "validate":
             catalog = load_questions(Path(args.questions))
             cards = read_cards(Path(args.cards))
-            errors, warnings = validate(cards, catalog)
+            try:
+                topics = load_topics(default_files() + [Path(t) for t in args.topics or []], require=True)
+            except ValueError as exc:
+                raise InputError(str(exc)) from None
+            errors, warnings = validate(cards, catalog, topics, args.allow_term)
             for w in warnings:
                 print(f"warning: {w}")
             for e in errors:

@@ -5,9 +5,13 @@ The output holds prompts (with session ids), tool usage counts, sample commands,
 commit and pull request titles, memory notes, harness structure (names only, never values) and a vocabulary of identifying
 names that scan_sensitive.py uses. Secrets in prompts and commands are redacted.
 
+Sessions that touch a confidential topic (personnel evaluation, company management;
+see confidential_topics.json) are dropped entirely: their prompts, commands, commit
+and PR titles and tool counts never reach the output, only how many were dropped.
+
 Usage:
   extract_sessions.py --out tips/.work/sessions.json [--since 30d|YYYY-MM-DD]
-                      [--until YYYY-MM-DD] [--tz local|+09:00]
+                      [--until YYYY-MM-DD] [--tz local|+09:00] [--topics FILE ...]
                       [--projects a,b] [--claude-dir ~/.claude] [--patterns p1,p2]
 """
 from __future__ import annotations
@@ -23,6 +27,7 @@ from typing import Iterator
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from scan_sensitive import redact  # noqa: E402
+from topics import blocked, classify, default_files, load_topics, match_topic, review_words  # noqa: E402
 
 DEFAULT_PATTERNS = [
     "gh stack",
@@ -242,7 +247,8 @@ def titles_in(command: str, start_re: re.Pattern[str], flag_re: re.Pattern[str])
     return out
 
 
-def collect_prompts(claude_dir, cutoff, filters, texts, names, known, until=None) -> list[dict]:
+def collect_prompts(claude_dir, cutoff, filters, names, known, until=None) -> list[dict]:
+    """Prompts in range, with the raw text kept in "_raw" for topic checks (removed before output)."""
     out = []
     for d in read_jsonl(claude_dir / "history.jsonl"):
         if isinstance(d.get("project"), str) and d["project"]:
@@ -253,8 +259,6 @@ def collect_prompts(claude_dir, cutoff, filters, texts, names, known, until=None
         proj = project_name(d.get("project", ""))
         if not wanted(proj, filters):
             continue
-        text = str(d.get("display", ""))
-        texts.append(text)
         names.add(proj)
         session = d.get("sessionId")
         out.append(
@@ -262,7 +266,7 @@ def collect_prompts(claude_dir, cutoff, filters, texts, names, known, until=None
                 "time": ts.isoformat(timespec="minutes"),
                 "project": proj,
                 "session_id": session if isinstance(session, str) and session else None,
-                "text": redact(text)[:PROMPT_MAX],
+                "_raw": str(d.get("display", "")),
             }
         )
     return out
@@ -272,12 +276,9 @@ def _top(counter: Counter) -> list[list]:
     return [[k, v] for k, v in counter.most_common()]
 
 
-def collect_usage(claude_dir, cutoff, filters, patterns, texts, names, known, cache, until=None):
-    tools, skills, agents, mcp, gh = Counter(), Counter(), Counter(), Counter(), Counter()
-    samples: list[dict] = []
-    outcomes: dict[str, list[dict]] = {"commits": [], "prs": []}
-    seen: set[tuple[str, str]] = set()
-    per_pattern: Counter = Counter()
+def collect_events(claude_dir, cutoff, filters, names, known, cache, until=None) -> list[dict]:
+    """Every tool call in range: session, project, time, tool name and input."""
+    events = []
     for f in sorted((claude_dir / "projects").glob("*/*.jsonl")):
         try:
             if dt.datetime.fromtimestamp(f.stat().st_mtime, dt.timezone.utc) < cutoff:
@@ -296,45 +297,64 @@ def collect_usage(claude_dir, cutoff, filters, patterns, texts, names, known, ca
             if not isinstance(content, list):
                 continue
             names.add(proj)
+            session = d.get("sessionId") if isinstance(d.get("sessionId"), str) else f.stem
             for c in content:
                 if not isinstance(c, dict) or c.get("type") != "tool_use":
                     continue
-                name = str(c.get("name", ""))
                 inp = c.get("input") if isinstance(c.get("input"), dict) else {}
-                tools[name] += 1
-                if name == "Skill":
-                    skills[str(inp.get("skill", ""))] += 1
-                elif name in ("Agent", "Task"):
-                    agents[str(inp.get("subagent_type") or "(default)")] += 1
-                elif name.startswith("mcp__"):
-                    parts = name.split("__")
-                    mcp[parts[1] if len(parts) > 1 else name] += 1
-                elif name == "Bash":
-                    cmd = str(inp.get("command", ""))
-                    texts.append(cmd)
-                    m = GH_RE.match(cmd)
-                    if m:
-                        gh[" ".join(m.group(1).split())] += 1
-                    session = d.get("sessionId") if isinstance(d.get("sessionId"), str) else None
-                    for key, start_re, flag_re in (
-                        ("commits", COMMIT_START_RE, COMMIT_MSG_FLAG_RE),
-                        ("prs", PR_START_RE, PR_TITLE_FLAG_RE),
-                    ):
-                        for title in titles_in(cmd, start_re, flag_re):
-                            outcomes[key].append(
-                                {
-                                    "time": ts.isoformat(timespec="minutes") if ts else None,
-                                    "project": proj,
-                                    "session_id": session,
-                                    "title": title,
-                                }
-                            )
-                    one = redact(" ".join(cmd.split()))[:SAMPLE_MAX]
-                    for pat in patterns:
-                        if pat in cmd and per_pattern[pat] < SAMPLES_PER_PATTERN and (pat, one) not in seen:
-                            seen.add((pat, one))
-                            per_pattern[pat] += 1
-                            samples.append({"pattern": pat.strip(), "project": proj, "command": one})
+                events.append({"session": session, "project": proj, "ts": ts, "name": str(c.get("name", "")), "input": inp})
+    return events
+
+
+def event_outcomes(event: dict) -> list[tuple[str, str]]:
+    """(commits|prs, title) pairs started by a Bash call."""
+    if event["name"] != "Bash":
+        return []
+    cmd = str(event["input"].get("command", ""))
+    return [
+        (key, title)
+        for key, start_re, flag_re in (("commits", COMMIT_START_RE, COMMIT_MSG_FLAG_RE), ("prs", PR_START_RE, PR_TITLE_FLAG_RE))
+        for title in titles_in(cmd, start_re, flag_re)
+    ]
+
+
+def aggregate_usage(events, patterns, texts):
+    tools, skills, agents, mcp, gh = Counter(), Counter(), Counter(), Counter(), Counter()
+    samples: list[dict] = []
+    outcomes: dict[str, list[dict]] = {"commits": [], "prs": []}
+    seen: set[tuple[str, str]] = set()
+    per_pattern: Counter = Counter()
+    for e in events:
+        name, inp, proj, ts = e["name"], e["input"], e["project"], e["ts"]
+        tools[name] += 1
+        if name == "Skill":
+            skills[str(inp.get("skill", ""))] += 1
+        elif name in ("Agent", "Task"):
+            agents[str(inp.get("subagent_type") or "(default)")] += 1
+        elif name.startswith("mcp__"):
+            parts = name.split("__")
+            mcp[parts[1] if len(parts) > 1 else name] += 1
+        elif name == "Bash":
+            cmd = str(inp.get("command", ""))
+            texts.append(cmd)
+            m = GH_RE.match(cmd)
+            if m:
+                gh[" ".join(m.group(1).split())] += 1
+            for key, title in event_outcomes(e):
+                outcomes[key].append(
+                    {
+                        "time": ts.isoformat(timespec="minutes") if ts else None,
+                        "project": proj,
+                        "session_id": e["session"],
+                        "title": title,
+                    }
+                )
+            one = redact(" ".join(cmd.split()))[:SAMPLE_MAX]
+            for pat in patterns:
+                if pat in cmd and per_pattern[pat] < SAMPLES_PER_PATTERN and (pat, one) not in seen:
+                    seen.add((pat, one))
+                    per_pattern[pat] += 1
+                    samples.append({"pattern": pat.strip(), "project": proj, "command": one})
     usage = {
         "tools": _top(tools),
         "skills": _top(skills),
@@ -345,6 +365,107 @@ def collect_usage(claude_dir, cutoff, filters, patterns, texts, names, known, ca
     for items in outcomes.values():
         items.sort(key=lambda o: o["time"] or "")
     return usage, samples, outcomes
+
+
+def _user_text(d: dict) -> str:
+    """Text the user typed in a session log line; empty for tool results and injected text."""
+    if d.get("type") != "user" or d.get("isMeta"):
+        return ""
+    message = d.get("message")
+    content = message.get("content") if isinstance(message, dict) else None
+    if isinstance(content, str):
+        parts = [content]
+    elif isinstance(content, list):
+        parts = [str(c.get("text", "")) for c in content if isinstance(c, dict) and c.get("type") == "text"]
+    else:
+        return ""
+    # Skill bodies, hook output and command wrappers arrive as user text starting with a tag.
+    return "\n".join(t for t in parts if not t.lstrip().startswith("<"))
+
+
+def _note(found: dict, session: str, text: str, topics) -> None:
+    """Record a session's hit: the strongest level seen, and every review word seen.
+
+    All review words are kept because the user decides on a session by the words shown;
+    a word they never saw must not be cleared along with the ones they did.
+    """
+    if not session or not text:
+        return
+    hit = classify(text, topics)
+    if not hit:
+        return
+    entry = found.setdefault(session, {"topic": hit[0], "level": hit[1], "words": set()})
+    if entry["level"] == "review" and hit[1] == "strong":
+        entry["topic"], entry["level"] = hit[0], "strong"
+    entry["words"] |= review_words(text, topics)
+
+
+def _merge(found: dict, session: str, other: dict) -> None:
+    entry = found.setdefault(session, {"topic": other["topic"], "level": other["level"], "words": set()})
+    if entry["level"] == "review" and other["level"] == "strong":
+        entry["topic"], entry["level"] = other["topic"], "strong"
+    entry["words"] |= other["words"]
+
+
+def scan_whole_sessions(claude_dir: Path, cutoff: dt.datetime, topics) -> dict[str, dict]:
+    """Session id -> {topic, level, words} from every prompt and commit/PR title, regardless of --since/--until.
+
+    A session that touched a confidential topic before the period (or whose prompts lack a
+    sessionId in history.jsonl) must still be dropped as a whole, so this pass reads all of
+    history.jsonl and every line of the session logs that could contribute to the period.
+    """
+    found: dict[str, dict] = {}
+    for d in read_jsonl(claude_dir / "history.jsonl"):
+        session = d.get("sessionId")
+        if isinstance(session, str):
+            _note(found, session, str(d.get("display", "")), topics)
+    for f in sorted((claude_dir / "projects").glob("*/*.jsonl")):
+        try:
+            if dt.datetime.fromtimestamp(f.stat().st_mtime, dt.timezone.utc) < cutoff:
+                continue
+        except OSError:
+            continue
+        for d in read_jsonl(f):
+            session = d.get("sessionId") if isinstance(d.get("sessionId"), str) else f.stem
+            if found.get(session, {}).get("level") == "strong":
+                continue
+            texts = [_user_text(d)]
+            message = d.get("message")
+            content = message.get("content") if isinstance(message, dict) else None
+            if isinstance(content, list):
+                for c in content:
+                    if isinstance(c, dict) and c.get("type") == "tool_use" and c.get("name") == "Bash":
+                        event = {"name": "Bash", "input": c.get("input") if isinstance(c.get("input"), dict) else {}}
+                        texts += [title for _, title in event_outcomes(event)]
+            for text in texts:
+                _note(found, session, text, topics)
+    return found
+
+
+def confidential_sessions(prompts, events, topics) -> dict[str, dict]:
+    """Session id -> {topic, level, words} for sessions whose prompts or commit/PR titles in the period hit.
+
+    Only what the user asked for and what they committed counts. File contents and other
+    tool inputs are not checked: code and client documents mention words such as 昇格 or
+    代表取締役 in unrelated senses, which would drop ordinary development sessions.
+    """
+    found: dict[str, dict] = {}
+    for p in prompts:
+        _note(found, p["session_id"], p["_raw"], topics)
+    for e in events:
+        for _, title in event_outcomes(e):
+            _note(found, e["session"], title, topics)
+    return found
+
+
+def read_session_list(paths) -> set[str]:
+    ids: set[str] = set()
+    for path in paths or []:
+        for line in Path(path).read_text(encoding="utf-8").splitlines():
+            line = line.split("#", 1)[0].strip()
+            if line:
+                ids.add(line)
+    return ids
 
 
 def parse_memory(path: Path) -> tuple[str, str, str, str]:
@@ -366,7 +487,7 @@ def parse_memory(path: Path) -> tuple[str, str, str, str]:
     return meta.get("name", path.stem), meta.get("description", ""), how, body
 
 
-def collect_memories(claude_dir, filters, cache, texts, known) -> list[dict]:
+def collect_memories(claude_dir, filters, cache, texts, known, topics=(), dropped=None, cleared=frozenset()) -> list[dict]:
     out = []
     for f in sorted((claude_dir / "projects").glob("*/memory/*.md")):
         if f.name == "MEMORY.md":
@@ -379,6 +500,15 @@ def collect_memories(claude_dir, filters, cache, texts, known) -> list[dict]:
             modified = dt.datetime.fromtimestamp(f.stat().st_mtime, dt.timezone.utc).date().isoformat()
         except OSError:
             continue
+        whole = "\n".join((name, desc, how, body))
+        hit = classify(whole, topics)
+        if hit:
+            words = review_words(whole, topics)
+            # The user may clear a memory held back by review words; strong words always drop it.
+            if not (hit[1] == "review" and f"memory:{proj}/{name}" in cleared and not blocked(whole, topics, words)):
+                if dropped is not None:
+                    dropped.append({"project": proj, "name": name, "level": hit[1], "words": sorted(words)})
+                continue
         texts.append(body)
         out.append(
             {
@@ -471,6 +601,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--claude-dir", default=str(Path.home() / ".claude"))
     parser.add_argument("--now", default=None, help="ISO datetime used as now (for tests)")
     parser.add_argument("--patterns", default=",".join(DEFAULT_PATTERNS), help="Bash sample patterns")
+    parser.add_argument("--include-sessions", action="append", default=None,
+                        help="file of session ids (one per line) the user checked are not about personnel or "
+                             "management; lets back only sessions excluded by review words, never strong ones")
+    parser.add_argument("--topics", action="append", default=None,
+                        help="extra confidential_topics.json (repeatable; the plugin's and the personal file are always read)")
     args = parser.parse_args(argv)
 
     claude_dir = Path(args.claude_dir).expanduser()
@@ -489,14 +624,71 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     filters = [f.strip().lower() for f in args.projects.split(",") if f.strip()]
     patterns = [p for p in args.patterns.split(",") if p.strip()]
+    try:
+        topics = load_topics(default_files() + [Path(t) for t in args.topics or []], require=True)
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
 
     texts: list[str] = []
     names: set[str] = set()
     cache: dict[Path, str] = {}
     known: dict[str, str] = {}
-    prompts = collect_prompts(claude_dir, cutoff, filters, texts, names, known, until)
-    usage, samples, outcomes = collect_usage(claude_dir, cutoff, filters, patterns, texts, names, known, cache, until)
-    memories = collect_memories(claude_dir, filters, cache, texts, known)
+    raw_prompts = collect_prompts(claude_dir, cutoff, filters, names, known, until)
+    events = collect_events(claude_dir, cutoff, filters, names, known, cache, until)
+    secret = confidential_sessions(raw_prompts, events, topics)
+    for session, entry in scan_whole_sessions(claude_dir, cutoff, topics).items():
+        _merge(secret, session, entry)
+    try:
+        cleared = read_session_list(args.include_sessions)
+    except OSError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    # Only sessions held back by review words can be let back in, and only by the user's list.
+    released = {s: secret.pop(s)["words"] for s in [s for s, e in secret.items() if e["level"] == "review" and s in cleared]}
+
+    prompts = []
+    dropped_prompts = 0
+    for p in raw_prompts:
+        raw = p.pop("_raw")
+        # A released session clears only the words the user was shown for it.
+        if p["session_id"] in secret or blocked(raw, topics, released.get(p["session_id"], ())):
+            dropped_prompts += 1
+            continue
+        texts.append(raw)
+        prompts.append({**p, "text": redact(raw)[:PROMPT_MAX]})
+    kept_events = [e for e in events if e["session"] not in secret]
+    dropped_outcomes = Counter(key for e in events if e["session"] in secret for key, _ in event_outcomes(e))
+    usage, samples, outcomes = aggregate_usage(kept_events, patterns, texts)
+    dropped_memories: list[dict] = []
+    memories = collect_memories(claude_dir, filters, cache, texts, known, topics, dropped_memories, cleared)
+    # Count only sessions that had material in the period; older ones never reached the output anyway.
+    touched = {p["session_id"] for p in raw_prompts if p["session_id"]} | {e["session"] for e in events}
+    secret_in_period = {s: e for s, e in secret.items() if s in touched}
+    first_seen: dict[str, tuple[str, str]] = {}
+    for p in raw_prompts:
+        first_seen.setdefault(p["session_id"], (p["time"], p["project"]))
+    for e in events:
+        if e["ts"] is not None:
+            first_seen.setdefault(e["session"], (e["ts"].isoformat(timespec="minutes"), e["project"]))
+    # Held back by review words: the user may check these (id, project, time, matched words only).
+    review = [
+        {"session_id": s, "project": first_seen.get(s, ("", ""))[1], "time": first_seen.get(s, ("", ""))[0],
+         "topic": e["topic"], "words": sorted(e["words"])}
+        for s, e in sorted(secret_in_period.items(), key=lambda kv: first_seen.get(kv[0], ("", ""))[0])
+        if e["level"] == "review"
+    ]
+    excluded = {
+        "sessions": len(secret_in_period),
+        "prompts": dropped_prompts,
+        "commits": dropped_outcomes["commits"],
+        "prs": dropped_outcomes["prs"],
+        "memories": len(dropped_memories),
+        "by_topic": dict(sorted(Counter(e["topic"] for e in secret_in_period.values()).items())),
+        "released": len(set(released) & touched),
+        "review": review,
+        "review_memories": [{k: m[k] for k in ("project", "name", "words")} for m in dropped_memories if m["level"] == "review"],
+    }
     report = {
         "generated_at": now.isoformat(timespec="seconds"),
         "since": cutoff.isoformat(timespec="seconds"),
@@ -509,6 +701,7 @@ def main(argv: list[str] | None = None) -> int:
             "prs": len(outcomes["prs"]),
             "memories": len(memories),
         },
+        "excluded": excluded,
         "prompts": prompts,
         "tool_usage": usage,
         "bash_samples": samples,
@@ -524,7 +717,8 @@ def main(argv: list[str] | None = None) -> int:
     calls = sum(count for _, count in usage["tools"])
     print(
         f"wrote {out}: {len(prompts)} prompts, {calls} tool calls, "
-        f"{len(outcomes['commits'])} commits, {len(outcomes['prs'])} PRs, {len(memories)} memories"
+        f"{len(outcomes['commits'])} commits, {len(outcomes['prs'])} PRs, {len(memories)} memories; "
+        f"excluded {excluded['sessions']} confidential session(s)"
     )
     return 0
 

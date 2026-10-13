@@ -391,3 +391,228 @@ def test_until_must_not_precede_since_and_must_be_a_date(tmp_path):
 def test_without_until_output_has_null_until(tmp_path):
     data, _ = extract(tmp_path)
     assert data["until"] is None
+
+
+def _history(claude, *rows):
+    with (claude / "history.jsonl").open("a", encoding="utf-8") as fh:
+        for ts, text, session in rows:
+            ms_ = int(dt.datetime.fromisoformat(ts).timestamp() * 1000)
+            fh.write(json.dumps({"display": text, "timestamp": ms_, "project": "/w/acme-shop", "sessionId": session}) + "\n")
+
+
+def test_confidential_sessions_are_dropped_with_counts_only(tmp_path):
+    claude = make_claude(tmp_path)
+    _history(
+        claude,
+        ("2026-10-05T03:00:00+00:00", "部下の人事評価コメントを下書きして", "secret-1"),
+        ("2026-10-05T03:05:00+00:00", "もう少し柔らかい表現にして", "secret-1"),
+        ("2026-10-05T04:00:00+00:00", "週の計算を直して", "open-1"),
+    )
+    _write_session(
+        claude,
+        "secret-1.jsonl",
+        _bash_line("2026-10-05T03:10:00Z", 'git commit -m "docs: 評価コメント案"', session="secret-1"),
+        _bash_line("2026-10-05T03:11:00Z", "gh stack link 1 2", session="secret-1"),
+    )
+    _write_session(
+        claude,
+        "open-2.jsonl",
+        _bash_line("2026-10-05T05:00:00Z", 'git commit -m "docs: 取締役会の資料を追加"', session="open-2"),
+        _bash_line("2026-10-05T05:01:00Z", 'git commit -m "fix: 週の計算を直す"', session="open-3"),
+    )
+    with (claude / "history.jsonl").open("a", encoding="utf-8") as fh:
+        ms_ = int(dt.datetime.fromisoformat("2026-10-05T05:02:00+00:00").timestamp() * 1000)
+        fh.write(json.dumps({"display": "資料の誤字を直して", "timestamp": ms_, "project": "/w/acme-shop", "sessionId": "open-2"}) + "\n")
+    (claude / "projects" / "-w-acme-shop" / "memory" / "board.md").write_text(
+        "---\nname: board-meeting\ndescription: 経営会議の資料の置き場\n---\n\n本文\n", encoding="utf-8"
+    )
+    out = tmp_path / "work" / "sessions.json"
+    r = run(claude, out, "--since", "2026-10-05", "--tz", "+00:00")
+    assert r.returncode == 0, r.stderr
+    raw = out.read_text(encoding="utf-8")
+    data = json.loads(raw)
+    for secret in ("人事評価", "柔らかい表現", "評価コメント案", "取締役会", "資料の誤字", "経営会議", "board-meeting"):
+        assert secret not in raw, secret
+    texts = [p["text"] for p in data["prompts"]]
+    assert "週の計算を直して" in texts
+    assert [c["title"] for c in data["commits"]] == ["fix: 週の計算を直す"]
+    assert dict(data["tool_usage"]["gh"]).get("gh stack link") == 1  # only the open session's call
+    assert data["excluded"] == {
+        "sessions": 2,
+        "prompts": 3,
+        "commits": 2,
+        "prs": 0,
+        "memories": 1,
+        "by_topic": {"evaluation": 1, "management": 1},
+        "released": 0,
+        "review": [],
+        "review_memories": [],
+    }
+
+
+def test_extra_topics_file_extends_exclusion(tmp_path):
+    claude = make_claude(tmp_path)
+    _history(claude, ("2026-10-05T03:00:00+00:00", "極秘プロジェクトX の見積もり", "s-x"))
+    extra = tmp_path / "extra.json"
+    extra.write_text(json.dumps({"topics": [{"id": "management", "patterns": ["極秘プロジェクトX"]}]}), encoding="utf-8")
+    out = tmp_path / "work" / "sessions.json"
+    r = run(claude, out, "--since", "2026-10-05", "--topics", extra)
+    assert r.returncode == 0, r.stderr
+    assert "極秘プロジェクトX" not in out.read_text(encoding="utf-8")
+
+
+def test_file_contents_do_not_mark_a_session_confidential(tmp_path):
+    claude = make_claude(tmp_path)
+    _history(claude, ("2026-10-05T03:00:00+00:00", "会社概要ページを更新して", "client-1"))
+    line = json.dumps(
+        {
+            "type": "assistant",
+            "timestamp": "2026-10-05T03:01:00Z",
+            "cwd": "/w/acme-shop",
+            "sessionId": "client-1",
+            "message": {"content": [
+                tool("Write", file_path="/w/acme-shop/about.html", content="代表取締役社長 山田 / 予実管理 / ADR を昇格"),
+                tool("Bash", command="sed -i 's/代表取締役 A/代表取締役 B/' about.html && git commit -m 'fix: 会社概要を更新'"),
+            ]},
+        }
+    )
+    _write_session(claude, "client-1.jsonl", line)
+    out = tmp_path / "work" / "sessions.json"
+    r = run(claude, out, "--since", "2026-10-05", "--tz", "+00:00")
+    assert r.returncode == 0, r.stderr
+    data = json.loads(out.read_text(encoding="utf-8"))
+    assert data["excluded"]["sessions"] == 0
+    assert "会社概要ページを更新して" in [p["text"] for p in data["prompts"]]
+
+
+def test_confidential_prompt_before_since_still_drops_the_session(tmp_path):
+    claude = make_claude(tmp_path)
+    _history(
+        claude,
+        ("2026-09-20T03:00:00+00:00", "部下の人事評価コメントを下書きして", "secret-old"),
+        ("2026-10-05T03:00:00+00:00", "もう少し柔らかい表現にして", "secret-old"),
+    )
+    _write_session(
+        claude, "secret-old.jsonl",
+        _bash_line("2026-10-05T03:10:00Z", 'git commit -m "docs: 文面を調整"', session="secret-old"),
+    )
+    out = tmp_path / "work" / "sessions.json"
+    r = run(claude, out, "--since", "2026-10-05", "--tz", "+00:00")
+    assert r.returncode == 0, r.stderr
+    raw = out.read_text(encoding="utf-8")
+    assert "柔らかい表現" not in raw and "文面を調整" not in raw
+    assert json.loads(raw)["excluded"]["sessions"] == 1
+
+
+def test_user_messages_in_session_logs_count_without_history(tmp_path):
+    claude = make_claude(tmp_path)
+    user = json.dumps({
+        "type": "user", "timestamp": "2026-09-01T03:00:00Z", "sessionId": "no-hist",
+        "message": {"role": "user", "content": [{"type": "text", "text": "取締役会の議事録を要約して"}]},
+    })
+    _write_session(
+        claude, "no-hist.jsonl", user,
+        _bash_line("2026-10-05T03:10:00Z", 'git commit -m "docs: 要約を追加"', session="no-hist"),
+    )
+    out = tmp_path / "work" / "sessions.json"
+    r = run(claude, out, "--since", "2026-10-05", "--tz", "+00:00")
+    assert r.returncode == 0, r.stderr
+    raw = out.read_text(encoding="utf-8")
+    assert "要約を追加" not in raw
+    assert json.loads(raw)["excluded"]["by_topic"] == {"management": 1}
+
+
+def test_out_of_range_commit_title_still_drops_the_session(tmp_path):
+    claude = make_claude(tmp_path)
+    _write_session(
+        claude, "late.jsonl",
+        _bash_line("2026-09-01T03:00:00Z", 'git commit -m "docs: 賞与の配分案"', session="late"),
+        _bash_line("2026-10-05T03:00:00Z", 'git commit -m "docs: 表を整形"', session="late"),
+    )
+    out = tmp_path / "work" / "sessions.json"
+    assert run(claude, out, "--since", "2026-10-05", "--tz", "+00:00").returncode == 0
+    assert "表を整形" not in out.read_text(encoding="utf-8")
+
+
+def test_empty_topics_fail_closed(tmp_path):
+    claude = make_claude(tmp_path)
+    empty = tmp_path / "empty.json"
+    empty.write_text(json.dumps({"topics": []}), encoding="utf-8")
+    r = subprocess.run(
+        [sys.executable, "-I", "-c",
+         "import sys; sys.path.insert(0, sys.argv[1]); import topics; topics.load_topics([sys.argv[2]], require=True)",
+         str(SCRIPTS), str(empty)],
+        capture_output=True, text=True,
+    )
+    assert r.returncode != 0 and "no confidential topics" in r.stderr
+
+
+def test_review_words_hold_sessions_until_the_user_includes_them(tmp_path):
+    claude = make_claude(tmp_path)
+    _history(
+        claude,
+        ("2026-10-05T03:00:00+00:00", "管理画面に退職者処理の機能を追加して", "feat-1"),
+        ("2026-10-05T03:05:00+00:00", "ボタンの文言を直して", "feat-1"),
+        ("2026-10-05T04:00:00+00:00", "退職の件で相談したい", "people-1"),
+        ("2026-10-05T05:00:00+00:00", "退職者処理の画面と取締役会の資料", "mixed-1"),
+    )
+    _write_session(
+        claude, "feat-1.jsonl",
+        _bash_line("2026-10-05T03:10:00Z", 'git commit -m "feat: 退職者処理を追加"', session="feat-1"),
+    )
+    out = tmp_path / "work" / "sessions.json"
+    assert run(claude, out, "--since", "2026-10-05", "--tz", "+00:00").returncode == 0
+    raw = out.read_text(encoding="utf-8")
+    data = json.loads(raw)
+    assert "退職" not in json.dumps(data["prompts"], ensure_ascii=False)  # held back by default
+    held = {r["session_id"]: r for r in data["excluded"]["review"]}
+    assert set(held) == {"feat-1", "people-1"}  # mixed-1 hit a strong word: not offered for review
+    assert held["feat-1"]["words"] == ["退職"] and held["feat-1"]["project"] == "acme-shop"
+    assert "管理画面" not in json.dumps(held, ensure_ascii=False)  # ids and words only, no prompt text
+
+    cleared = tmp_path / "include.txt"
+    cleared.write_text("# 退職者処理は顧客アプリの機能\nfeat-1\nmixed-1\n", encoding="utf-8")
+    assert run(claude, out, "--since", "2026-10-05", "--tz", "+00:00", "--include-sessions", cleared).returncode == 0
+    data = json.loads(out.read_text(encoding="utf-8"))
+    texts = [p["text"] for p in data["prompts"]]
+    assert "管理画面に退職者処理の機能を追加して" in texts and "ボタンの文言を直して" in texts
+    assert "feat: 退職者処理を追加" in [c["title"] for c in data["commits"]]
+    assert "退職の件で相談したい" not in texts  # not in the list
+    assert "退職者処理の画面と取締役会の資料" not in texts  # strong words cannot be released
+    assert data["excluded"]["released"] == 1
+
+
+def test_released_session_only_clears_the_words_the_user_saw(tmp_path):
+    claude = make_claude(tmp_path)
+    _history(
+        claude,
+        ("2026-10-05T03:00:00+00:00", "ADR を昇格させて", "mix-1"),
+        ("2026-10-05T03:05:00+00:00", "退職の件で相談したい", "mix-1"),
+    )
+    out = tmp_path / "work" / "sessions.json"
+    assert run(claude, out, "--since", "2026-10-05", "--tz", "+00:00").returncode == 0
+    held = {r["session_id"]: r for r in json.loads(out.read_text(encoding="utf-8"))["excluded"]["review"]}
+    assert held["mix-1"]["words"] == ["昇格", "退職"]  # every word is shown, not only the first
+
+    cleared = tmp_path / "include.txt"
+    cleared.write_text("mix-1\n", encoding="utf-8")
+    assert run(claude, out, "--since", "2026-10-05", "--tz", "+00:00", "--include-sessions", cleared).returncode == 0
+    texts = [p["text"] for p in json.loads(out.read_text(encoding="utf-8"))["prompts"]]
+    assert "ADR を昇格させて" in texts and "退職の件で相談したい" in texts  # both words were shown
+
+
+def test_review_memories_are_listed_and_can_be_released(tmp_path):
+    claude = make_claude(tmp_path)
+    mem = claude / "projects" / "-w-acme-shop" / "memory"
+    (mem / "promote.md").write_text("---\nname: adr-promote\ndescription: ADR の昇格手順\n---\n\n本文\n", encoding="utf-8")
+    (mem / "board.md").write_text("---\nname: board\ndescription: 取締役会の資料\n---\n\n本文\n", encoding="utf-8")
+    out = tmp_path / "work" / "sessions.json"
+    assert run(claude, out, "--since", "2026-10-05").returncode == 0
+    data = json.loads(out.read_text(encoding="utf-8"))
+    assert data["excluded"]["review_memories"] == [{"project": "acme-shop", "name": "adr-promote", "words": ["昇格"]}]
+    assert "board" not in json.dumps(data["excluded"], ensure_ascii=False)
+    cleared = tmp_path / "include.txt"
+    cleared.write_text("memory:acme-shop/adr-promote\nmemory:acme-shop/board\n", encoding="utf-8")
+    assert run(claude, out, "--since", "2026-10-05", "--include-sessions", cleared).returncode == 0
+    names = [m["name"] for m in json.loads(out.read_text(encoding="utf-8"))["memories"]]
+    assert "adr-promote" in names and "board" not in names
