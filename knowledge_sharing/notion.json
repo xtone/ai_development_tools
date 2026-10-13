@@ -1,0 +1,16 @@
+{
+  "page_id": "3f2ceb782fa380c3a2fbc74cdd435f47",
+  "catalog_page_id": "3f8ceb782fa381e792e9f9a98550e801",
+  "weeks": {
+    "database_id": "031c04a116d14f6c95e5edbedf3bafcd",
+    "data_source": "collection://dc4c6a28-be46-4cf5-95d7-f35c67e2f80a"
+  },
+  "cards": {
+    "database_id": "a764d458369c44f6959560a62a8d37f9",
+    "data_source": "collection://1a94fd0a-157f-40ee-b7f4-5d03e51c157c"
+  },
+  "themes": {
+    "database_id": "e643072d2f3641e9892a7a7009bd6736",
+    "data_source": "collection://d0925f00-0e5a-4a7d-affa-3825a042f4b1"
+  }
+}

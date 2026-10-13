@@ -1,0 +1,204 @@
+{
+  "version": 0,
+  "cadence": {
+    "weekly": [
+      "P1",
+      "Q1",
+      "Q2"
+    ],
+    "rotation": [
+      "Q3",
+      "Q4",
+      "Q5",
+      "Q7",
+      "Q9"
+    ],
+    "rotation_epoch": "2026-W43",
+    "monthly": [
+      "P2",
+      "Q6",
+      "Q8"
+    ]
+  },
+  "limits": {
+    "cards_per_person_per_week": 10,
+    "cards_per_question": 3,
+    "minutes_per_person": 15
+  },
+  "tags": [
+    "prompt",
+    "plan-mode",
+    "worktree",
+    "review",
+    "hooks",
+    "skill",
+    "mcp",
+    "testing",
+    "git",
+    "ci"
+  ],
+  "questions": [
+    {
+      "id": "P1",
+      "kind": "fact",
+      "goal": 4,
+      "text": "この週、どのプロジェクトで何を進めたか（機能領域・フェーズ・状態）",
+      "polarity": "fact",
+      "allowed_polarities": [],
+      "signals": [
+        "session_index",
+        "commits",
+        "prs",
+        "files_touched",
+        "branches"
+      ],
+      "draft_hint": "プロジェクトごとに 1 枚。「<プロジェクト>: <領域>を<フェーズ>。<状態>」の形。commit/PR タイトルを根拠にする"
+    },
+    {
+      "id": "P2",
+      "kind": "fact",
+      "goal": 4,
+      "text": "そのプロジェクトで使っている技術・外部サービス・AI ツール構成は何か",
+      "polarity": "fact",
+      "allowed_polarities": [],
+      "signals": [
+        "file_extensions",
+        "manifests",
+        "mcp_servers",
+        "cli_patterns",
+        "skills",
+        "claude_md"
+      ],
+      "draft_hint": "プロジェクトごとに 1 枚。言語・FW・インフラ・外部 API・MCP・スキルを箇条書き"
+    },
+    {
+      "id": "Q1",
+      "kind": "opinion",
+      "goal": 1,
+      "text": "一発で意図が通った依頼の書き方は何か",
+      "polarity": "worked",
+      "allowed_polarities": [],
+      "signals": [
+        "short_successful_sessions",
+        "reused_prompt_patterns"
+      ],
+      "draft_hint": "実際の prompt を伏せ字済みで引用し、何が効いたかを 1 文で書く"
+    },
+    {
+      "id": "Q2",
+      "kind": "opinion",
+      "goal": 1,
+      "text": "言い直し・中断が起きた場面で、最初の依頼に何が足りなかったか",
+      "polarity": "failed",
+      "allowed_polarities": [],
+      "signals": [
+        "interruptions",
+        "corrections",
+        "repeated_edits"
+      ],
+      "draft_hint": "「最初の依頼」「起きたこと」「足りなかった条件」の 3 点。人ではなく依頼の書き方の話として書く"
+    },
+    {
+      "id": "Q3",
+      "kind": "opinion",
+      "goal": 1,
+      "text": "定型化して他人に渡せる手順（コマンド・スキル・hook）は何か",
+      "polarity": "proposal",
+      "allowed_polarities": [],
+      "signals": [
+        "harness",
+        "skill_usage",
+        "prompt_prefixes"
+      ],
+      "draft_hint": "存在するものと、毎回手で書いていて定型化できそうなものの両方"
+    },
+    {
+      "id": "Q4",
+      "kind": "opinion",
+      "goal": 2,
+      "text": "手戻りが最も大きかった作業はどこで、順序を変えればどう防げたか",
+      "polarity": "failed",
+      "allowed_polarities": [
+        "proposal"
+      ],
+      "signals": [
+        "error_loops",
+        "test_fail_to_pass",
+        "late_plan_mode",
+        "compactions"
+      ],
+      "draft_hint": "手戻りの大きさ（ターン数・時間）を根拠に書き、「先にこうしていれば」を提案として別カード（polarity: proposal）にしてよい"
+    },
+    {
+      "id": "Q5",
+      "kind": "opinion",
+      "goal": 2,
+      "text": "人間が判断・介入した場面はどこか。必要な介入だったか、仕組みで減らせるか",
+      "polarity": "question",
+      "allowed_polarities": [],
+      "signals": [
+        "tool_rejections",
+        "manual_bash",
+        "permission_denials",
+        "plan_rejections"
+      ],
+      "draft_hint": "介入の種類と、必要だったかの自己判定。人間の判断ポイントとして残すべきものはそう書く"
+    },
+    {
+      "id": "Q6",
+      "kind": "opinion",
+      "goal": 3,
+      "text": "要件→設計→実装→レビューをどう回したか。AI をどこで使い／使わなかったか",
+      "polarity": "fact",
+      "allowed_polarities": [],
+      "signals": [
+        "skills_by_phase",
+        "gh_flow",
+        "pr_sessions"
+      ],
+      "draft_hint": "プロジェクトごとに 1 枚。フェーズごとに「使った / 使わなかった / 理由」"
+    },
+    {
+      "id": "Q7",
+      "kind": "opinion",
+      "goal": 3,
+      "text": "レビューや後工程で判明した問題のうち、前倒しで防げたものは何か",
+      "polarity": "failed",
+      "allowed_polarities": [
+        "proposal"
+      ],
+      "signals": [
+        "pr_review_comments",
+        "post_review_fix_sessions"
+      ],
+      "draft_hint": "指摘の種類と、どの工程に入れていれば防げたか"
+    },
+    {
+      "id": "Q8",
+      "kind": "opinion",
+      "goal": 3,
+      "text": "プロジェクト固有に書いたルール（CLAUDE.md / rules / memory）のうち全社共通にできるものは何か",
+      "polarity": "proposal",
+      "allowed_polarities": [],
+      "signals": [
+        "claude_md_edits",
+        "memories"
+      ],
+      "draft_hint": "ルールの原文（伏せ字済み）と、共通化できる理由"
+    },
+    {
+      "id": "Q9",
+      "kind": "opinion",
+      "goal": 4,
+      "text": "今プロジェクトで詰まっている・リスクと感じていることは何か",
+      "polarity": "question",
+      "allowed_polarities": [],
+      "signals": [
+        "unresolved_sessions",
+        "repeated_research",
+        "memories"
+      ],
+      "draft_hint": "詰まっていることと、誰に聞けば解けそうか"
+    }
+  ]
+}

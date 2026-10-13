@@ -1,0 +1,657 @@
+#!/usr/bin/env python3
+"""Knowledge cards: week math, question plan, validation, Markdown round trip and Notion payloads.
+
+Usage:
+  cards.py week [--week 2026-W43] [--today YYYY-MM-DD]
+  cards.py plan --week 2026-W43 [--ids P1,Q1] [--questions questions.json]
+  cards.py validate CARDS.jsonl [--questions questions.json]
+  cards.py render CARDS.jsonl --out cards-2026-W43.md [--questions questions.json]
+  cards.py parse CARDS.md --base CARDS.jsonl --out CARDS.jsonl
+  cards.py dedupe CARDS.jsonl --submitted submitted.jsonl
+  cards.py to-notion CARDS.jsonl --week-url URL --author USER_ID|me
+  cards.py mark-submitted CARDS.jsonl --submitted submitted.jsonl --results results.json
+
+Exit code: 0 on success, 1 when validation finds errors, 2 on input errors.
+The question catalog defaults to questions.json at the plugin root.
+"""
+from __future__ import annotations
+
+import argparse
+import datetime as dt
+import json
+import re
+import sys
+import unicodedata
+from pathlib import Path
+
+DEFAULT_QUESTIONS = Path(__file__).resolve().parents[3] / "questions.json"
+
+POLARITIES = ("worked", "failed", "proposal", "question", "fact")
+CONFIDENCES = ("observed", "inferred")
+SENSITIVITIES = ("internal", "public")
+STATUSES = ("draft", "approved", "dropped", "submitted")
+EVIDENCE_TYPES = ("prompt", "command", "commit", "pr", "memory", "harness", "session")
+REQUIRED = (
+    "question_id", "week", "project", "claim", "context",
+    "polarity", "confidence", "evidence", "sensitivity", "status",
+)
+FIELD_ORDER = (
+    "card_id", "question_id", "week", "week_range", "author_email", "project", "claim",
+    "context", "polarity", "confidence", "evidence", "tags", "sensitivity", "status", "notion_url",
+)
+CLAIM_MIN, CLAIM_MAX = 20, 80
+EXCERPT_MAX = 300
+NONE_PREFIX = "該当なし"
+VAGUE_ENDINGS = ("について", "に関して")
+SESSION_REF_RE = re.compile(r"^[\w-]+#[\w-]+$")
+WEEK_RE = re.compile(r"^(\d{4})-W(\d{2})$")
+
+# Markdown labels (cards-<week>.md) and the card keys they hold.
+META_KEYS = {
+    "id": "card_id",
+    "状態": "status",
+    "極性": "polarity",
+    "確度": "confidence",
+    "公開範囲": "sensitivity",
+    "プロジェクト": "project",
+    "タグ": "tags",
+}
+EVIDENCE_HEADING = "**根拠**"
+EVIDENCE_LINE_RE = re.compile(r"^- (\w+) `([^`]*)`: ?(.*)$")
+GUIDE = (
+    "<!-- 直したい箇所はそのまま書き換えてください。カードを出さないときは節ごと消すか、"
+    "状態を dropped にします。id の無い ### 節を足すと新しいカードになります。"
+    "根拠は「- 種類 `参照`: 抜粋」の形で、抜粋の 2 行目以降は 2 字下げます。 -->"
+)
+
+
+class InputError(Exception):
+    pass
+
+
+# ---- weeks -----------------------------------------------------------------
+
+
+def parse_week(value: str) -> tuple[int, int]:
+    m = WEEK_RE.match(value.strip())
+    if not m:
+        raise InputError(f"week must look like 2026-W43: {value}")
+    year, week = int(m.group(1)), int(m.group(2))
+    try:
+        dt.date.fromisocalendar(year, week, 1)
+    except ValueError:
+        raise InputError(f"no such ISO week: {value}") from None
+    return year, week
+
+
+def week_info(week_id: str) -> dict:
+    year, week = parse_week(week_id)
+    monday = dt.date.fromisocalendar(year, week, 1)
+    sunday = monday + dt.timedelta(days=6)
+    return {
+        "week": f"{year}-W{week:02d}",
+        "monday": monday.isoformat(),
+        "sunday": sunday.isoformat(),
+        "title": f"{year}-W{week:02d}（{monday:%m/%d}〜{sunday:%m/%d}）",
+    }
+
+
+def week_of(day: dt.date) -> str:
+    year, week, _ = day.isocalendar()
+    return f"{year}-W{week:02d}"
+
+
+def previous_week(today: dt.date) -> str:
+    return week_of(today - dt.timedelta(days=7))
+
+
+def next_week(week_id: str) -> str:
+    monday = dt.date.fromisoformat(week_info(week_id)["monday"])
+    return week_of(monday + dt.timedelta(days=7))
+
+
+# ---- questions -------------------------------------------------------------
+
+
+def load_questions(path: Path) -> dict:
+    try:
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise InputError(f"cannot read questions: {exc}") from None
+    if not isinstance(data, dict) or not isinstance(data.get("questions"), list):
+        raise InputError(f"questions file has no questions list: {path}")
+    return data
+
+
+def questions_by_id(catalog: dict) -> dict[str, dict]:
+    return {q["id"]: q for q in catalog["questions"]}
+
+
+def rotation_for(catalog: dict, week_id: str) -> str | None:
+    cadence = catalog.get("cadence", {})
+    rotation = cadence.get("rotation") or []
+    if not rotation:
+        return None
+    epoch = dt.date.fromisoformat(week_info(cadence.get("rotation_epoch", week_id))["monday"])
+    monday = dt.date.fromisoformat(week_info(week_id)["monday"])
+    return rotation[((monday - epoch).days // 7) % len(rotation)]
+
+
+def plan(catalog: dict, week_id: str, ids: list[str] | None = None) -> list[dict]:
+    by_id = questions_by_id(catalog)
+    if ids:
+        unknown = [i for i in ids if i not in by_id]
+        if unknown:
+            raise InputError(f"unknown question ids: {', '.join(unknown)}")
+        chosen = ids
+    else:
+        chosen = list(catalog.get("cadence", {}).get("weekly", []))
+        extra = rotation_for(catalog, week_id)
+        if extra and extra not in chosen:
+            chosen.append(extra)
+    return [by_id[i] for i in chosen]
+
+
+# ---- cards I/O -------------------------------------------------------------
+
+
+def read_cards(path: Path) -> list[dict]:
+    cards = []
+    try:
+        lines = Path(path).read_text(encoding="utf-8").splitlines()
+    except OSError as exc:
+        raise InputError(f"cannot read cards: {exc}") from None
+    for lineno, raw in enumerate(lines, 1):
+        if not raw.strip():
+            continue
+        try:
+            card = json.loads(raw)
+        except ValueError:
+            raise InputError(f"{path}:{lineno}: not valid JSON") from None
+        if not isinstance(card, dict):
+            raise InputError(f"{path}:{lineno}: a card must be a JSON object")
+        cards.append(card)
+    return cards
+
+
+def ordered(card: dict) -> dict:
+    out = {k: card[k] for k in FIELD_ORDER if k in card}
+    out.update({k: v for k, v in card.items() if k not in out})
+    return out
+
+
+def write_cards(path: Path, cards: list[dict]) -> None:
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    text = "".join(json.dumps(ordered(c), ensure_ascii=False) + "\n" for c in cards)
+    Path(path).write_text(text, encoding="utf-8")
+
+
+# ---- validation ------------------------------------------------------------
+
+
+def _claim_errors(claim) -> list[str]:
+    if not isinstance(claim, str) or not claim.strip():
+        return ["claim is empty"]
+    claim = claim.strip()
+    errors = []
+    if len(claim) > CLAIM_MAX:
+        errors.append(f"claim is {len(claim)} chars (max {CLAIM_MAX})")
+    if len(claim) < CLAIM_MIN and not claim.startswith(NONE_PREFIX):
+        errors.append(f"claim is {len(claim)} chars (min {CLAIM_MIN}); write the conclusion")
+    if claim.rstrip("。.").endswith(VAGUE_ENDINGS):
+        errors.append("claim ends with について/に関して; write the conclusion instead of the topic")
+    return errors
+
+
+def _evidence_errors(evidence) -> list[str]:
+    if not isinstance(evidence, list) or not evidence:
+        return ["evidence needs at least one item"]
+    errors = []
+    for i, ev in enumerate(evidence, 1):
+        if not isinstance(ev, dict):
+            errors.append(f"evidence[{i}] must be an object")
+            continue
+        kind = ev.get("type")
+        if kind not in EVIDENCE_TYPES:
+            errors.append(f"evidence[{i}].type must be one of {', '.join(EVIDENCE_TYPES)}")
+        ref = ev.get("ref")
+        if not isinstance(ref, str) or not ref.strip():
+            errors.append(f"evidence[{i}].ref is empty")
+        elif kind == "session" and not SESSION_REF_RE.match(ref):
+            errors.append(f"evidence[{i}].ref must look like <session_id>#<uuid> for type session")
+        excerpt = ev.get("excerpt", "")
+        if not isinstance(excerpt, str):
+            errors.append(f"evidence[{i}].excerpt must be a string")
+        elif len(excerpt) > EXCERPT_MAX:
+            errors.append(f"evidence[{i}].excerpt is {len(excerpt)} chars (max {EXCERPT_MAX})")
+    return errors
+
+
+def validate(cards: list[dict], catalog: dict) -> tuple[list[str], list[str]]:
+    by_id = questions_by_id(catalog)
+    known_tags = set(catalog.get("tags", []))
+    errors: list[str] = []
+    warnings: list[str] = []
+    seen_ids: set[str] = set()
+    per_question: dict[tuple[str, str], int] = {}
+    live = 0
+    for n, card in enumerate(cards, 1):
+        label = f"card {n} ({card.get('card_id') or 'no id'})"
+        problems = [f"missing {k}" for k in REQUIRED if k not in card]
+        qid = card.get("question_id")
+        question = by_id.get(qid)
+        if "question_id" in card and question is None:
+            problems.append(f"unknown question_id {qid}")
+        if "claim" in card:
+            problems += _claim_errors(card["claim"])
+        if "context" in card and not str(card["context"]).strip():
+            problems.append("context is empty")
+        if "evidence" in card:
+            problems += _evidence_errors(card["evidence"])
+        polarity = card.get("polarity")
+        if "polarity" in card:
+            if polarity not in POLARITIES:
+                problems.append(f"polarity must be one of {', '.join(POLARITIES)}")
+            elif question and polarity != question["polarity"] and polarity not in question.get(
+                "allowed_polarities", []
+            ):
+                allowed = [question["polarity"], *question.get("allowed_polarities", [])]
+                problems.append(f"polarity {polarity} is not allowed for {qid} ({', '.join(allowed)})")
+        for key, values in (("confidence", CONFIDENCES), ("sensitivity", SENSITIVITIES), ("status", STATUSES)):
+            if key in card and card[key] not in values:
+                problems.append(f"{key} must be one of {', '.join(values)}")
+        if "week" in card:
+            try:
+                parse_week(str(card["week"]))
+            except InputError as exc:
+                problems.append(str(exc))
+        tags = card.get("tags", [])
+        if not isinstance(tags, list):
+            problems.append("tags must be a list")
+        else:
+            unknown = [t for t in tags if t not in known_tags]
+            if unknown and known_tags:
+                warnings.append(f"{label}: new tag(s) {', '.join(map(str, unknown))} will be added to Notion")
+        card_id = card.get("card_id")
+        if card_id:
+            if card_id in seen_ids:
+                problems.append(f"duplicate card_id {card_id}")
+            seen_ids.add(card_id)
+        errors += [f"{label}: {p}" for p in problems]
+        if card.get("status") != "dropped":
+            live += 1
+            key = (str(card.get("author_email", "")), str(qid))
+            per_question[key] = per_question.get(key, 0) + 1
+
+    limits = catalog.get("limits", {})
+    per_q_limit = limits.get("cards_per_question")
+    if per_q_limit:
+        for (_, qid), count in sorted(per_question.items(), key=lambda kv: kv[0][1]):
+            if count > per_q_limit:
+                warnings.append(f"{qid}: {count} cards (aim for at most {per_q_limit} per question)")
+    total_limit = limits.get("cards_per_person_per_week")
+    if total_limit and live > total_limit:
+        warnings.append(f"{live} cards in total (aim for at most {total_limit} a week)")
+    return errors, warnings
+
+
+# ---- Markdown round trip ---------------------------------------------------
+
+
+def _question_order(catalog: dict, cards: list[dict]) -> list[str]:
+    order = [q["id"] for q in catalog["questions"]]
+    for card in cards:
+        if card.get("question_id") not in order:
+            order.append(card.get("question_id"))
+    return order
+
+
+def render(cards: list[dict], catalog: dict) -> str:
+    by_id = questions_by_id(catalog)
+    visible = [c for c in cards if c.get("status") != "dropped"]
+    title = week_info(visible[0]["week"])["title"] if visible else ""
+    out = [f"# ナレッジカード {title}".rstrip(), "", GUIDE, ""]
+    for qid in _question_order(catalog, visible):
+        group = [c for c in visible if c.get("question_id") == qid]
+        if not group:
+            continue
+        text = by_id.get(qid, {}).get("text", "")
+        out += [f"## {qid} {text}".rstrip(), ""]
+        for card in group:
+            tags = ", ".join(card.get("tags") or []) or "-"
+            out += [
+                f"### {card.get('claim', '')}",
+                "",
+                f"- id: {card.get('card_id', '')}",
+                f"- 状態: {card.get('status', 'draft')}",
+                f"- 極性: {card.get('polarity', '')} / 確度: {card.get('confidence', '')}"
+                f" / 公開範囲: {card.get('sensitivity', '')}",
+                f"- プロジェクト: {card.get('project', '')}",
+                f"- タグ: {tags}",
+                "",
+                str(card.get("context", "")).strip(),
+                "",
+                EVIDENCE_HEADING,
+                "",
+            ]
+            for ev in card.get("evidence") or []:
+                lines = str(ev.get("excerpt", "")).split("\n")
+                out.append(f"- {ev.get('type', '')} `{ev.get('ref', '')}`: {lines[0]}".rstrip())
+                out += [f"  {line}".rstrip() for line in lines[1:]]
+            out.append("")
+    return "\n".join(out).rstrip() + "\n"
+
+
+def _parse_meta(line: str) -> dict:
+    meta = {}
+    for part in line[2:].split(" / "):
+        if ": " in part or part.endswith(":"):
+            label, _, value = part.partition(":")
+            key = META_KEYS.get(label.strip())
+            if key:
+                meta[key] = value.strip()
+    return meta
+
+
+def _is_meta(line: str) -> bool:
+    """A meta line starts with a known label, so a bulleted context is not mistaken for one."""
+    return line.startswith("- ") and line[2:].split(":", 1)[0].strip() in META_KEYS
+
+
+def _parse_sections(text: str) -> list[dict]:
+    """Split cards-<week>.md into card sections with their question id."""
+    sections: list[dict] = []
+    qid = None
+    current = None
+    for line in text.splitlines():
+        if line.startswith("## "):
+            qid = line[3:].split()[0] if line[3:].split() else None
+            current = None
+        elif line.startswith("### "):
+            current = {"question_id": qid, "claim": line[4:].strip(), "lines": []}
+            sections.append(current)
+        elif current is not None:
+            current["lines"].append(line)
+    return sections
+
+
+def _section_to_fields(section: dict) -> dict:
+    fields: dict = {"question_id": section["question_id"], "claim": section["claim"]}
+    lines = section["lines"]
+    i = 0
+    while i < len(lines) and not lines[i].strip():
+        i += 1
+    while i < len(lines) and _is_meta(lines[i]):
+        fields.update(_parse_meta(lines[i]))
+        i += 1
+    context: list[str] = []
+    while i < len(lines) and lines[i].strip() != EVIDENCE_HEADING:
+        context.append(lines[i])
+        i += 1
+    fields["context"] = "\n".join(context).strip()
+    evidence: list[dict] = []
+    for line in lines[i + 1:]:
+        m = EVIDENCE_LINE_RE.match(line)
+        if m:
+            evidence.append({"type": m.group(1), "ref": m.group(2), "excerpt": m.group(3)})
+        elif line.startswith("  ") and evidence:
+            evidence[-1]["excerpt"] += "\n" + line[2:]
+    for ev in evidence:
+        ev["excerpt"] = ev["excerpt"].rstrip()
+    fields["evidence"] = evidence
+    if "tags" in fields:
+        fields["tags"] = [t.strip() for t in fields["tags"].split(",") if t.strip() and t.strip() != "-"]
+    if "card_id" in fields and not fields["card_id"]:
+        del fields["card_id"]
+    return fields
+
+
+def _author_slug(email: str) -> str:
+    return email.split("@", 1)[0] if email else "me"
+
+
+def _next_card_id(cards: list[dict], week: str, qid: str, author: str) -> str:
+    prefix = f"{week}/{qid}/{_author_slug(author)}/"
+    used = [int(c["card_id"][len(prefix):]) for c in cards
+            if str(c.get("card_id", "")).startswith(prefix) and c["card_id"][len(prefix):].isdigit()]
+    return f"{prefix}{max(used, default=0) + 1:03d}"
+
+
+def parse(text: str, base: list[dict]) -> list[dict]:
+    """Merge an edited cards-<week>.md back into the cards it was rendered from."""
+    by_id = {c.get("card_id"): c for c in base if c.get("card_id")}
+    template = base[0] if base else {}
+    result: list[dict] = []
+    for section in _parse_sections(text):
+        fields = _section_to_fields(section)
+        original = by_id.get(fields.get("card_id"))
+        if original is not None:
+            card = {**original, **fields}
+        else:
+            card = {
+                "question_id": fields["question_id"],
+                "week": template.get("week"),
+                "week_range": template.get("week_range"),
+                "author_email": template.get("author_email"),
+                "tags": [],
+                "sensitivity": "internal",
+                "confidence": "observed",
+                "status": "draft",
+                "notion_url": None,
+                **fields,
+            }
+            taken = {c.get("card_id") for c in base + result}
+            if not card.get("card_id") or card["card_id"] in taken:
+                card["card_id"] = _next_card_id(base + result, card["week"], card["question_id"],
+                                                card.get("author_email") or "")
+        result.append(ordered(card))
+    kept = {c["card_id"] for c in result}
+    for card in base:
+        if card.get("card_id") not in kept:
+            if card.get("status") != "submitted":
+                card = {**card, "status": "dropped"}
+            result.append(ordered(card))
+    return result
+
+
+# ---- dedupe, Notion payload, submission record ----------------------------
+
+
+def normalize(text: str) -> str:
+    return re.sub(r"[\W_]+", "", unicodedata.normalize("NFKC", text).lower())
+
+
+def card_key(card: dict) -> str:
+    return f"{card.get('question_id')}|{card.get('project')}|{normalize(str(card.get('claim', '')))}"
+
+
+def read_submitted(path: Path) -> list[dict]:
+    if not Path(path).exists():
+        return []
+    rows = []
+    for raw in Path(path).read_text(encoding="utf-8").splitlines():
+        try:
+            row = json.loads(raw)
+        except ValueError:
+            continue
+        if isinstance(row, dict):
+            rows.append(row)
+    return rows
+
+
+def dedupe(cards: list[dict], submitted: list[dict]) -> tuple[list[dict], int]:
+    done = {row.get("key"): row for row in submitted}
+    marked = 0
+    out = []
+    for card in cards:
+        row = done.get(card_key(card))
+        if row and card.get("status") in ("draft", "approved"):
+            card = {**card, "status": "submitted", "notion_url": row.get("notion_url")}
+            marked += 1
+        out.append(card)
+    return out, marked
+
+
+def _evidence_text(card: dict) -> tuple[str, str]:
+    evidence = card.get("evidence") or []
+    excerpts = "\n".join(str(e.get("excerpt", "")) for e in evidence if e.get("excerpt"))
+    refs = ", ".join(str(e.get("ref", "")) for e in evidence if e.get("ref"))
+    return excerpts[:EXCERPT_MAX], refs
+
+
+def to_notion(cards: list[dict], week_url: str, author: str) -> list[dict]:
+    pages = []
+    for card in cards:
+        if card.get("status") not in ("draft", "approved"):
+            continue
+        excerpts, refs = _evidence_text(card)
+        props = {
+            "カード": card["claim"],
+            "問い": card["question_id"],
+            "週": [week_url],
+            "プロジェクト": [card["project"]],
+            "極性": card["polarity"],
+            "確度": card["confidence"],
+            "公開範囲": card["sensitivity"],
+            "タグ": list(card.get("tags") or []),
+            "文脈": card["context"],
+            "根拠": excerpts,
+            "根拠参照": refs,
+        }
+        if author and author != "me":
+            props["投稿者"] = [author]
+        evidence_md = "\n".join(
+            f"- {e.get('type')}: {str(e.get('excerpt', '')).replace(chr(10), ' ')}" for e in card.get("evidence") or []
+        )
+        refs_md = "\n".join(f"- `{e.get('ref')}`" for e in card.get("evidence") or [])
+        content = f"## 文脈\n{card['context']}\n\n## 根拠\n{evidence_md}\n\n## 根拠参照\n{refs_md}\n"
+        pages.append({"card_id": card.get("card_id"), "properties": props, "content": content})
+    return pages
+
+
+def mark_submitted(cards: list[dict], results: list[dict], now: str) -> tuple[list[dict], list[dict]]:
+    urls = {r.get("card_id"): r.get("notion_url") for r in results if r.get("card_id")}
+    rows = []
+    out = []
+    for card in cards:
+        if card.get("card_id") in urls and card.get("status") in ("draft", "approved"):
+            card = {**card, "status": "submitted", "notion_url": urls[card["card_id"]]}
+            rows.append({"key": card_key(card), "card_id": card["card_id"],
+                         "notion_url": card["notion_url"], "submitted_at": now})
+        out.append(card)
+    return out, rows
+
+
+# ---- CLI -------------------------------------------------------------------
+
+
+def _print_json(data) -> None:
+    print(json.dumps(data, ensure_ascii=False, indent=1))
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Knowledge card helper.")
+    sub = parser.add_subparsers(dest="cmd", required=True)
+
+    p = sub.add_parser("week", help="ISO week id, Monday, Sunday and title")
+    p.add_argument("--week", help="2026-W43 (default: the week before --today)")
+    p.add_argument("--today", help="YYYY-MM-DD used as today (for tests)")
+
+    p = sub.add_parser("plan", help="questions to answer this week")
+    p.add_argument("--week", required=True)
+    p.add_argument("--ids", default="", help="comma-separated question ids that override the cadence")
+    p.add_argument("--questions", default=str(DEFAULT_QUESTIONS))
+
+    p = sub.add_parser("validate", help="check cards.jsonl")
+    p.add_argument("cards")
+    p.add_argument("--questions", default=str(DEFAULT_QUESTIONS))
+
+    p = sub.add_parser("render", help="cards.jsonl -> cards-<week>.md")
+    p.add_argument("cards")
+    p.add_argument("--out", required=True)
+    p.add_argument("--questions", default=str(DEFAULT_QUESTIONS))
+
+    p = sub.add_parser("parse", help="edited cards-<week>.md -> cards.jsonl")
+    p.add_argument("markdown")
+    p.add_argument("--base", required=True, help="cards.jsonl the Markdown was rendered from")
+    p.add_argument("--out", required=True)
+
+    p = sub.add_parser("dedupe", help="mark cards that were already submitted")
+    p.add_argument("cards")
+    p.add_argument("--submitted", required=True)
+
+    p = sub.add_parser("to-notion", help="properties for Notion create-pages")
+    p.add_argument("cards")
+    p.add_argument("--week-url", required=True)
+    p.add_argument("--author", default="me", help="Notion user id, or me")
+
+    p = sub.add_parser("mark-submitted", help="record cards created in Notion")
+    p.add_argument("cards")
+    p.add_argument("--submitted", required=True)
+    p.add_argument("--results", required=True, help='JSON list of {"card_id", "notion_url"}')
+
+    args = parser.parse_args(argv)
+    try:
+        if args.cmd == "week":
+            today = dt.date.fromisoformat(args.today) if args.today else dt.date.today()
+            _print_json(week_info(args.week or previous_week(today)))
+        elif args.cmd == "plan":
+            catalog = load_questions(Path(args.questions))
+            ids = [i.strip() for i in args.ids.split(",") if i.strip()]
+            _print_json(plan(catalog, week_info(args.week)["week"], ids))
+        elif args.cmd == "validate":
+            catalog = load_questions(Path(args.questions))
+            cards = read_cards(Path(args.cards))
+            errors, warnings = validate(cards, catalog)
+            for w in warnings:
+                print(f"warning: {w}")
+            for e in errors:
+                print(f"error: {e}")
+            live = sum(1 for c in cards if c.get("status") != "dropped")
+            print(f"{len(errors)} error(s), {len(warnings)} warning(s), {live} card(s)")
+            return 1 if errors else 0
+        elif args.cmd == "render":
+            catalog = load_questions(Path(args.questions))
+            out = Path(args.out)
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_text(render(read_cards(Path(args.cards)), catalog), encoding="utf-8")
+            print(f"wrote {out}")
+        elif args.cmd == "parse":
+            try:
+                text = Path(args.markdown).read_text(encoding="utf-8")
+            except OSError as exc:
+                raise InputError(f"cannot read markdown: {exc}") from None
+            cards = parse(text, read_cards(Path(args.base)))
+            write_cards(Path(args.out), cards)
+            live = sum(1 for c in cards if c.get("status") != "dropped")
+            print(f"wrote {args.out}: {live} card(s), {len(cards) - live} dropped")
+        elif args.cmd == "dedupe":
+            cards, marked = dedupe(read_cards(Path(args.cards)), read_submitted(Path(args.submitted)))
+            write_cards(Path(args.cards), cards)
+            print(f"{marked} card(s) were already submitted")
+        elif args.cmd == "to-notion":
+            _print_json(to_notion(read_cards(Path(args.cards)), args.week_url, args.author))
+        elif args.cmd == "mark-submitted":
+            try:
+                results = json.loads(Path(args.results).read_text(encoding="utf-8"))
+            except (OSError, ValueError) as exc:
+                raise InputError(f"cannot read results: {exc}") from None
+            if not isinstance(results, list):
+                raise InputError("results must be a JSON list")
+            now = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
+            cards, rows = mark_submitted(read_cards(Path(args.cards)), results, now)
+            write_cards(Path(args.cards), cards)
+            Path(args.submitted).parent.mkdir(parents=True, exist_ok=True)
+            with Path(args.submitted).open("a", encoding="utf-8") as fh:
+                for row in rows:
+                    fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+            print(f"recorded {len(rows)} submitted card(s)")
+    except (InputError, KeyError) as exc:
+        message = f"missing field {exc}" if isinstance(exc, KeyError) else str(exc)
+        print(f"error: {message}", file=sys.stderr)
+        return 2
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
