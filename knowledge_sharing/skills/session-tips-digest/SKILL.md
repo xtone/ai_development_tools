@@ -1,6 +1,6 @@
 ---
 name: session-tips-digest
-description: Claude Code の過去のセッション記録（~/.claude の履歴・セッションログ・memory）から、他のメンバーと共有できる運用 Tips を抽出し、公式ドキュメントや論文などの一次情報で裏付けを取って、Markdown・Artifact・Notion に公開する。「過去の会話から Tips をまとめて」「Claude Code の使い方をチームに共有したい」「今月の学びを Tips にして」などの依頼で使う。セッション 1 本の効率採点ではない（それは evaluate-session の領域）。
+description: Claude Code の過去のセッション記録（~/.claude の履歴・セッションログ・memory）から、他のメンバーと共有できる運用 Tips を抽出し、公式ドキュメントや論文などの一次情報で裏付けを取って、Markdown・Artifact・Notion に公開する。「過去の会話から Tips をまとめて」「Claude Code の使い方をチームに共有したい」「今月の学びを Tips にして」などの依頼で使う。セッション 1 本の効率採点ではない（それは evaluate-session の領域）。週次のナレッジカード提出は knowledge-cards で行い、このスキルはカードや記録から Tips 文書を作る下流工程にあたる。
 ---
 
 # Session Tips Digest
