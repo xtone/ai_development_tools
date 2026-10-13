@@ -62,7 +62,7 @@ description: Claude Code のセッション記録（~/.claude の履歴・セッ
 | `--tz` | `local` | 日付を解釈するタイムゾーン。`+09:00` のようにも書ける |
 | `--questions` | 週の行の `今週の問い`。無ければ cadence | 答える問い（カンマ区切り） |
 | `--projects` | 全部 | 対象プロジェクト名の部分一致（カンマ区切り） |
-| `--out` | `cards/` | 成果物ディレクトリ。作業ファイルは `<work>/` |
+| `--out` | `~/.claude/knowledge-cards/runs/<week>/` | その回の成果物ディレクトリ。指定したときは提出後も消さない |
 | `--tier` | `internal` | 機密スキャンの区分。社外に転用するときだけ `public` |
 | `--dry-run` | なし | Notion に書かない。送る内容を表示して終える |
 | `--no-notion` | なし | カードの確認と機密スキャンまでで終える |
