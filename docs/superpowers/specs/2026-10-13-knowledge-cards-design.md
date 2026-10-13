@@ -217,7 +217,8 @@ Claude Doc の YAML と同じ内容を JSON にする。トップレベルは `v
 
 ## scan_sensitive.py の tier
 
-- `VOCAB_KEYS` を `SECRET_VOCAB = ("hosts", "users")` と `IDENTIFIER_VOCAB = ("projects", "repos")` に分ける
+- `VOCAB_KEYS` を `SECRET_VOCAB = ("hosts",)` と `IDENTIFIER_VOCAB = ("projects", "repos", "users")` に分ける。`users` は OS のユーザー名で、カード id の著者部分（`y.toyota` など）と重なる。internal では著者を実名で残すため、public のときだけ検査する。ホームパスは固定パターン `home_path` で常に止まる
+- セッション ID（UUID）の中の 10 桁以上の数字列は `numeric_id` として扱わない（根拠参照に UUID が入るため）
 - `--tier internal`（既定）: `SECRET_VOCAB` だけを語彙として検査する
 - `--tier public`: 両方を検査する
 - 固定パターン（トークン、メール、ID、ホームパス、Notion URL）は tier に関係なく常に検査する。`redact()` は変えない
@@ -255,7 +256,7 @@ Claude Doc の YAML と同じ内容を JSON にする。トップレベルは `v
 - `render` → `parse`: 往復で同値（複数 evidence、日本語、`該当なし`）。節の削除で `dropped`、新しい節で新規採番
 - `to-notion`: プロパティの形、根拠の 300 字切り、`dropped` の除外、`--author me`
 - `dedupe`: 正規化で同一とみなすこと
-- `scan_sensitive --tier internal`: プロジェクト名を通し、トークン・メール・ホスト名を止める。`--tier public` はプロジェクト名を止める
+- `scan_sensitive --tier internal`: プロジェクト名・ユーザー名を通し、トークン・メール・ホスト名を止める。`--tier public` はプロジェクト名を止める。UUID の中の数字列は `numeric_id` にしない
 - `extract_sessions`: `commits[]` / `prs[]` / `prompts[].session_id`
 - `notion_submit`: `--dry-run` のペイロード（ネットワークに出ない）
 
