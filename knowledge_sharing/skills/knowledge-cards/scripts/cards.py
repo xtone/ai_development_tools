@@ -11,6 +11,8 @@ Usage:
   cards.py to-notion CARDS.jsonl --week-url URL --author USER_ID|me
   cards.py mark-submitted CARDS.jsonl --submitted submitted.jsonl --results results.json
   cards.py options CARDS.jsonl --schema FETCHED_SCHEMA
+  cards.py workdir --kind cards|synthesis|tips [--week 2026-W43] [--root DIR] [--out DIR]
+  cards.py cleanup RUN_DIR [--root DIR]
 
 Exit code: 0 on success, 1 when validation finds errors, 2 on input errors.
 The question catalog defaults to questions.json at the plugin root.
@@ -20,7 +22,9 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import os
 import re
+import shutil
 import sys
 import unicodedata
 from pathlib import Path
@@ -654,6 +658,89 @@ def missing_options(cards: list[dict], state: dict) -> dict:
 # ---- CLI -------------------------------------------------------------------
 
 
+DEFAULT_ROOT = Path.home() / ".claude" / "knowledge-cards"
+RUN_PARENTS = {"cards": "runs", "synthesis": "synthesis"}
+LEGACY_WORK = Path("cards") / ".work"
+
+
+def _private_dir(path: Path) -> Path:
+    """Create a directory only the user can read. An existing symlink is refused so that
+    work files never land where the link points (for example a client repository)."""
+    if path.is_symlink():
+        raise InputError(f"refusing to use a symlink as a work directory: {path}")
+    path.mkdir(exist_ok=True, mode=0o700)
+    if not path.is_dir():
+        raise InputError(f"not a directory: {path}")
+    path.chmod(0o700)
+    return path
+
+
+def _merge_legacy(legacy: Path, state: Path) -> list[str]:
+    """Carry over the submitted record kept by older versions in <cwd>/cards/.work/.
+
+    Only submitted.jsonl (used to skip cards already in Notion) is read. allow.txt and
+    notion-user.json are not: the current directory may be a client repository, and those
+    files would weaken the scanner or change the author for every later run.
+    """
+    src, dst = legacy / "submitted.jsonl", state / "submitted.jsonl"
+    if not src.is_file() or src.is_symlink():
+        return []
+    have = {json.dumps(r, sort_keys=True) for r in read_submitted(dst)}
+    new = [r for r in read_submitted(src) if json.dumps(r, sort_keys=True) not in have]
+    if not new:
+        return []
+    with dst.open("a", encoding="utf-8") as fh:
+        for row in new:
+            fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+    return [f"submitted.jsonl (+{len(new)})"]
+
+
+def workdir(kind: str, week: str | None, root: Path, cwd: Path, out: Path | None = None) -> dict:
+    """Create the work directories outside the current repository and return their paths.
+
+    cards:     <root>/runs/<week>/ (deleted after submitting) and <root>/state/ (kept)
+    synthesis: <root>/synthesis/<week>/ (deleted after writing to Notion)
+    tips:      <root>/tips/.work/ (deliverables stay in the tips output directory)
+    With out, the run directory is out/ instead (kept after submitting; cleanup refuses it).
+    """
+    root = root.expanduser()
+    root.parent.mkdir(parents=True, exist_ok=True)
+    root = _private_dir(root)
+    if kind == "tips":
+        return {"root": str(root), "work": str(_private_dir(_private_dir(root / "tips") / ".work"))}
+    if not week:
+        raise InputError(f"--week is required for {kind}")
+    week = week_info(week)["week"]
+    if out is not None:
+        run = out.expanduser()
+        run.mkdir(parents=True, exist_ok=True)
+    else:
+        run = _private_dir(_private_dir(root / RUN_PARENTS[kind]) / week)
+    paths = {"root": str(root), "run": str(run), "work": str(_private_dir(run / ".work"))}
+    if kind == "cards":
+        state = _private_dir(root / "state")
+        paths["state"] = str(state)
+        legacy = cwd / LEGACY_WORK
+        if legacy.is_dir() and not legacy.is_symlink() and not legacy.parent.is_symlink():
+            paths["legacy"] = str(legacy)
+            paths["migrated"] = _merge_legacy(legacy, state)
+    return paths
+
+
+def cleanup(run: Path, root: Path) -> Path:
+    """Delete one run directory. Only <root>/runs/<week> and <root>/synthesis/<week> are accepted."""
+    root = root.expanduser().resolve()
+    target = Path(os.path.abspath(run.expanduser()))
+    if target.is_symlink():
+        raise InputError(f"refusing to delete a symlink: {target}")
+    resolved = target.resolve()
+    if resolved.parent.parent != root or resolved.parent.name not in RUN_PARENTS.values() or not WEEK_RE.match(resolved.name):
+        raise InputError(f"refusing to delete {target}: not a run directory under {root}/runs or {root}/synthesis")
+    if resolved.exists():
+        shutil.rmtree(resolved)
+    return resolved
+
+
 def _print_json(data) -> None:
     print(json.dumps(data, ensure_ascii=False, indent=1))
 
@@ -707,6 +794,16 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("cards")
     p.add_argument("--schema", required=True, help="file with Notion fetch output of the cards data source")
 
+    p = sub.add_parser("workdir", help="create work directories outside the repository and print their paths")
+    p.add_argument("--kind", required=True, choices=("cards", "synthesis", "tips"))
+    p.add_argument("--week", help="2026-W43 (required for cards and synthesis)")
+    p.add_argument("--root", default=str(DEFAULT_ROOT))
+    p.add_argument("--out", help="run directory chosen by the user (not deleted after submitting)")
+
+    p = sub.add_parser("cleanup", help="delete a run directory created by workdir")
+    p.add_argument("run")
+    p.add_argument("--root", default=str(DEFAULT_ROOT))
+
     args = parser.parse_args(argv)
     try:
         if args.cmd == "week":
@@ -758,6 +855,10 @@ def main(argv: list[str] | None = None) -> int:
             except OSError as exc:
                 raise InputError(f"cannot read schema: {exc}") from None
             _print_json(missing_options(read_cards(Path(args.cards)), load_schema_state(text)))
+        elif args.cmd == "workdir":
+            _print_json(workdir(args.kind, args.week, Path(args.root), Path.cwd(), Path(args.out) if args.out else None))
+        elif args.cmd == "cleanup":
+            print(f"deleted {cleanup(Path(args.run), Path(args.root))}")
         elif args.cmd == "mark-submitted":
             try:
                 results = json.loads(Path(args.results).read_text(encoding="utf-8"))

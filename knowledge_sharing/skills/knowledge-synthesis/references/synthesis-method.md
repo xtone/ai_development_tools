@@ -88,8 +88,8 @@ query-data-sources（SQL）で、`週` に週の行のページ ID を含むカ�
 - `scan_sensitive.py --tier internal`（knowledge-cards のスキャナ）で 0 件。カードへのメンション（`<mention-page url="..."/>`）は同じワークスペース内の参照で意図したものなので、タグを除いた本文にかける
 
 ```bash
-sed -E 's#<mention-page url="[^"]*"/>#[card]#g' <まとめ.md> > <out>/.work/summary-scan.md
-python3 -I <knowledge-cards>/scripts/scan_sensitive.py <out>/.work/summary-scan.md --vocab <sessions.json> --tier internal
+sed -E 's#<mention-page url="[^"]*"/>#[card]#g' <まとめ.md> > <work>/summary-scan.md  # <work> は SKILL.md の作業ディレクトリ
+python3 -I <knowledge-cards>/scripts/scan_sensitive.py <work>/summary-scan.md --vocab <sessions.json> --tier internal
 ```
 
   合成する人の手元に sessions.json が無ければ `--vocab` を省く（固定パターンだけで検査する）
