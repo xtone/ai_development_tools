@@ -8,6 +8,7 @@ personal file at ~/.claude/knowledge-cards/confidential_topics.json.
 """
 from __future__ import annotations
 
+import html
 import json
 import re
 import unicodedata
@@ -64,23 +65,40 @@ _LINK = re.compile(r"\[([^\]]*)\]\([^)]*\)")
 _MARKUP = re.compile(r"<[^>]*>|\\|[*_~`]")
 
 
+# Invisible characters Unicode classifies as letters (Hangul fillers, Khmer inherent vowels).
+_INVISIBLE_LETTERS = {"\u115f", "\u1160", "\u3164", "\uffa0", "\u17b4", "\u17b5"}
+# Anything that is neither a letter nor a digit, between two Japanese characters.
+_JA = "\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff"
+_JA_GAP = re.compile(rf"(?<=[{_JA}])[^\w]+(?=[{_JA}])")
+
+
 def normalize(text: str) -> str:
-    """NFKC, without invisible format characters (zero-width space, BOM, ...) and combining
-    marks (variation selectors, ...), so neither can split a word."""
-    return "".join(ch for ch in unicodedata.normalize("NFKC", str(text)) if unicodedata.category(ch) not in ("Cf", "Mn"))
+    """NFKC, without invisible characters (format characters such as zero-width space and BOM,
+    combining marks such as variation selectors, and invisible letters such as the Hangul
+    filler), so none of them can split a word."""
+    return "".join(
+        ch for ch in unicodedata.normalize("NFKC", str(text))
+        if unicodedata.category(ch) not in ("Cf", "Mn") and ch not in _INVISIBLE_LETTERS
+    )
 
 
 def displayed(text: str) -> str:
     """Roughly what Notion shows for the text: links reduced to their label, tags, escapes and
     emphasis marks removed. `取**締**役` and `経<span>営</span>会議` read as the words they spell."""
-    return _MARKUP.sub("", _LINK.sub(r"\1", str(text)))
+    return _MARKUP.sub("", _LINK.sub(r"\1", html.unescape(str(text))))
 
 
 def variants(text: str) -> list[str]:
-    """The text as written and as displayed (both normalized); matching runs on each."""
-    written = normalize(text or "")
-    shown = normalize(displayed(text or ""))
-    return [written] if shown == written else [written, shown]
+    """Forms of the text that matching runs on: as written, as displayed, and as displayed with
+    every separator between Japanese characters removed. The last form closes the gap between
+    what a page shows and what a pattern sees, whatever symbol, space or markup splits a word
+    (取・締役, 人／事／評／価, 取 締役), instead of chasing each way of writing it."""
+    forms: list[str] = []
+    for form in (normalize(text or ""), normalize(displayed(text or ""))):
+        for candidate in (form, _JA_GAP.sub("", form)):
+            if candidate not in forms:
+                forms.append(candidate)
+    return forms
 
 
 def classify(text: str, topics) -> tuple[str, str, str] | None:
@@ -130,5 +148,10 @@ def blocked(text: str, topics, allowed_terms=()) -> tuple[str, str, str] | None:
                 break
             if hit[1] == "strong" or normalize(hit[2]).lower() not in allowed:
                 return hit
-            current = re.sub(re.escape(hit[2]), " ", current, flags=re.IGNORECASE)
+            blanked = re.sub(re.escape(hit[2]), " ", current, flags=re.IGNORECASE)
+            if blanked == current:
+                # The allowed word shows up only in another form of this text (displayed or
+                # with separators removed). That form is checked on its own in this loop.
+                break
+            current = blanked
     return None

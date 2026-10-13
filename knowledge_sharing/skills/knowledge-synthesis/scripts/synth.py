@@ -98,9 +98,54 @@ def _texts(theme: dict) -> list[str]:
     return [str(theme.get(k, "")) for k in ("title", "conflict", "proposal", "limits", "decision")]
 
 
+TEXT_FIELDS = ("title", "conflict", "proposal", "limits")
+OPTIONAL_TEXT_FIELDS = ("decision",)
+LIST_FIELDS = ("cards", "kinds")
+
+
+def _is_str_list(value) -> bool:
+    return isinstance(value, list) and all(isinstance(v, str) for v in value)
+
+
+def type_errors(themes) -> list[str]:
+    """Wrong types fail closed: a list where text is expected would otherwise skip the checks."""
+    if not isinstance(themes, dict):
+        return ["themes must be a JSON object"]
+    errors = []
+    if not isinstance(themes.get("week"), str):
+        errors.append("week must be a string")
+    items = themes.get("themes")
+    if not isinstance(items, list) or not all(isinstance(t, dict) for t in items):
+        return errors + ["themes must be a list of objects"]
+    for n, theme in enumerate(items, 1):
+        for key in TEXT_FIELDS:
+            if not isinstance(theme.get(key, ""), str):
+                errors.append(f"theme {n}: {key} must be a string")
+        for key in OPTIONAL_TEXT_FIELDS:
+            if key in theme and not isinstance(theme[key], str):
+                errors.append(f"theme {n}: {key} must be a string")
+        for key in LIST_FIELDS:
+            if not _is_str_list(theme.get(key, [])):
+                errors.append(f"theme {n}: {key} must be a list of strings")
+        unknown = set(theme) - set(TEXT_FIELDS) - set(OPTIONAL_TEXT_FIELDS) - set(LIST_FIELDS)
+        if unknown:
+            errors.append(f"theme {n}: unknown keys {', '.join(sorted(unknown))} (must be one of the documented keys)")
+    questions = themes.get("next_questions", [])
+    if not isinstance(questions, list) or not all(isinstance(q, dict) for q in questions):
+        errors.append("next_questions must be a list of objects")
+    else:
+        for n, q in enumerate(questions, 1):
+            for key in ("id", "text", "reason"):
+                if key in q and not isinstance(q[key], str):
+                    errors.append(f"next question {n}: {key} must be a string")
+    return errors
+
+
 def validate(themes: dict, cards: dict, catalog: dict) -> tuple[list[str], list[str]]:
-    errors: list[str] = []
+    errors: list[str] = type_errors(themes)
     warnings: list[str] = []
+    if errors:
+        return errors, warnings
     index = card_index(cards)
     facts = {c["url"] for c in cards.get("facts", [])}
     known_ids = {q["id"] for q in catalog["questions"]}
@@ -290,7 +335,10 @@ def to_notion(themes: dict, cards: dict, catalog: dict, week_url: str, topics=No
     # Check exactly what will be written: every text property and the page body. The card
     # relation holds only URLs of this week's cards, which validate() has already enforced.
     for page in pages:
-        values = [v for v in page["properties"].values() if isinstance(v, str)] + [page["content"]]
+        props = page["properties"]
+        if any(not isinstance(v, str) for k, v in props.items() if k not in ("週", "カード")):
+            raise InputError(f"theme '{page['title']}' cannot be written: a text property is not a string")
+        values = [props[k] for k in props if k not in ("週", "カード")] + [page["content"]]
         problems = check("\n".join(values), cards, topics, allowed_terms=allowed_terms)
         if problems:
             raise InputError(f"theme '{page['title']}' cannot be written: {'; '.join(problems)}")

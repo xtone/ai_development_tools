@@ -290,3 +290,34 @@ def test_check_catches_markup_split_words_in_the_summary():
     data = loaded()
     md = synth.render(themes(), data, CATALOG) + "\n- 取**締**役会で共有する\n"
     assert any("strong" in p for p in synth.check(md, data, TOPICS, allowed_terms=["昇格"]))
+
+
+import pytest
+
+
+@pytest.mark.parametrize(
+    "field, value",
+    [
+        ("title", ["取締役会の資料をまとめる方針の結論"]),
+        ("conflict", ["取締役会"]),
+        ("proposal", {"x": "取締役会"}),
+        ("limits", 3),
+        ("decision", ["経営会議"]),
+        ("cards", "https://app.notion.com/p/card2"),
+        ("kinds", "仕組み化"),
+        ("kinds", [["仕組み化"]]),
+    ],
+)
+def test_validate_rejects_wrong_types(field, value):
+    t = themes()
+    t["themes"][1][field] = value
+    errs = synth.validate(t, loaded(), CATALOG)[0]
+    assert any("must be" in e for e in errs), (field, errs)
+    with pytest.raises(synth.InputError):
+        synth.to_notion(t, loaded(), CATALOG, "https://app.notion.com/week", TOPICS, allowed_terms=["昇格"])
+
+
+def test_validate_rejects_wrong_top_level_types():
+    assert any("must be" in e for e in synth.validate({"week": "2026-W43", "themes": {"a": 1}}, loaded(), CATALOG)[0])
+    t = themes(next_questions=[["Q4"]])
+    assert any("must be" in e for e in synth.validate(t, loaded(), CATALOG)[0])
