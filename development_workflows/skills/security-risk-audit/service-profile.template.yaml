@@ -3,7 +3,7 @@
 # 監査エージェントはこのファイルを読み、宣言と検出結果を突き合わせる。
 # 判定に迷う項目は unknown にしておくと、エージェントが検出シグナルから推定して報告する。
 
-spec_version: "1.0"           # 参照している仕様のバージョン
+spec_version: "1.1"           # 参照している仕様のバージョン
 reviewed_at: YYYY-MM-DD       # この宣言を最後に見直した日
 reviewer: infra@example.com   # 記入者（連絡先）
 
@@ -26,6 +26,22 @@ characteristics:              # true / false / unknown
   FOUNDATION: false           # 他を守る基盤（IdP / CI/CD / 配信）
   SAFETY: false               # 人命・物理に関わる
   GAME: false                 # ゲーム・コミュニティ
+
+components:                   # 任意。IaC がこのリポジトリにない、または手動構築の部分を書く
+  # ミドルウェアやライブラリに脆弱性が見つかったとき、監査エージェントは
+  # どこで・どの権限で動いているかから被害と重大度を見積もる。IaC から読み取れない分をここで補う。
+  - name: api
+    runtime: ec2              # ec2 / ecs-on-ec2 / fargate / lambda / kubernetes / managed / onprem / unknown
+    network: public           # public（インターネットから直接） / behind-lb（LB・CDN 経由で公開） / private / unknown
+    identity: api-instance-role   # 付与している IAM ロールなど
+    privileges: 会員アップロード用 S3 の読み書き、本番 DB 接続用シークレットの読み取り
+    middleware: [nginx, puma, imagemagick]
+  - name: worker
+    runtime: fargate
+    network: private
+    identity: worker-task-role
+    privileges: バナー画像用 S3 の読み書きのみ
+    middleware: [sidekiq, redis-client]
 
 notes: |
   決済は Stripe Checkout を利用し、カード情報は自前で保持しない。
