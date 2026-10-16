@@ -1,0 +1,42 @@
+# .security/service-profile.yaml
+# サービス特性の宣言。インフラ担当者が記入し、リポジトリに置く。
+# 監査エージェントはこのファイルを読み、宣言と検出結果を突き合わせる。
+# 判定に迷う項目は unknown にしておくと、エージェントが検出シグナルから推定して報告する。
+
+spec_version: "1.0"           # 参照している仕様のバージョン
+reviewed_at: YYYY-MM-DD       # この宣言を最後に見直した日
+reviewer: infra@example.com   # 記入者（連絡先）
+
+service:
+  name: example-service
+  description: 会員向け EC サイト（商品販売・会員管理）
+  repositories:
+    - github.com/example/example-web
+    - github.com/example/example-infra
+  environments: [production, staging]
+  cloud: aws                  # aws / gcp / azure / onprem / mixed
+
+characteristics:              # true / false / unknown
+  PII: true                   # 個人情報を扱う
+  PII_SENSITIVE: false        # 要配慮個人情報・カード情報を自前で保持する
+  REVENUE: true               # 稼働が直接売上
+  TENANT: false               # 企業機密を扱う（マルチテナント・社内機密）
+  LEDGER: false               # 金融・資産移転（残高・ポイント・送金）
+  PUBLISH: false              # 情報発信・公式サイト
+  FOUNDATION: false           # 他を守る基盤（IdP / CI/CD / 配信）
+  SAFETY: false               # 人命・物理に関わる
+  GAME: false                 # ゲーム・コミュニティ
+
+notes: |
+  決済は Stripe Checkout を利用し、カード情報は自前で保持しない。
+  会員データは約 12 万件。
+
+incident_policy:
+  # 侵害時に何を優先し、何を犠牲にするか。平時に決めておく。
+  stop_criteria: 個人情報の漏えいが疑われた時点でサイト全体を停止する。売上より漏えい拡大防止を優先する
+  degraded_mode: 決済基盤の障害時は閲覧のみの読み取り専用モードへ切り替える
+  contacts:
+    - role: インシデント責任者
+      handle: "@oncall-lead"
+    - role: 法務・広報
+      handle: legal@example.com
