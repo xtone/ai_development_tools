@@ -1,0 +1,592 @@
+# サービス特性セキュリティ監査仕様 v1.0 (2026-10-16)
+# このファイルが仕様の正本。エージェントはこのファイルをカタログとして読む。
+spec_version: '1.0'
+spec_date: '2026-10-16'
+source: サービス特性セキュリティ監査仕様
+profile_flags:
+- id: PII
+  label: 個人情報を扱う
+- id: PII_SENSITIVE
+  label: 要配慮個人情報・カード情報を自前で保持する
+- id: REVENUE
+  label: 稼働が直接売上
+- id: TENANT
+  label: 企業機密を扱う
+- id: LEDGER
+  label: 金融・資産移転
+- id: PUBLISH
+  label: 情報発信・公式サイト
+- id: FOUNDATION
+  label: 他を守る基盤
+- id: SAFETY
+  label: 人命・物理に関わる
+- id: GAME
+  label: ゲーム・コミュニティ
+axes:
+- name: 不可逆性
+  meaning: 漏えいは取り消せない。改ざんは発見が遅れると取り消せなくなる。停止は回復できる
+  effect: 漏えい > 改ざん > 停止 の順に重く見る
+- name: 法的・契約上の義務
+  meaning: 個人情報保護法の報告・通知義務、PCI DSS、顧客との NDA・SLA
+  effect: 義務の有無が優先度の下限を決める
+- name: 被害の波及範囲
+  meaning: 自社内で収まるか、利用者やその先の顧客まで広がるか
+  effect: 波及範囲が広いほど上位
+- name: 損失の性質
+  meaning: 一時的な機会損失か、信用や事業継続そのものか
+  effect: 回復不能な損失ほど上位
+characteristics:
+- id: PII
+  label: 個人情報を扱う
+  examples: B2C 会員サービス、EC、医療・教育、問い合わせを受けるサイト
+  questions:
+  - 氏名・メールアドレス・電話番号・住所・生年月日など、個人を特定できる情報を保存している
+  - ユーザー登録・ログイン機能があり、パスワードやセッションを自前で管理している
+  - 要配慮個人情報（健康・信条・犯罪歴など）やカード情報を扱う（該当すれば PII_SENSITIVE も true）
+  signals:
+    code:
+    - users / members / customers / profiles テーブルと email, phone, address, birth, gender, name などのカラム（マイグレーション・スキーマ定義）
+    - 認証ライブラリ（Devise, NextAuth, Passport, Firebase Auth, Cognito, Auth0 SDK）
+    - 決済 SDK（Stripe, GMO, SBPS, PAY.JP）と card / token / cvv を扱うコード
+    - 問い合わせ・応募・アンケートなどのフォーム送信処理
+    - ユーザー属性をそのまま出力するログ呼び出し
+    - プライバシーポリシー・同意ダイアログ・Cookie バナー
+    infra:
+    - RDS / Cloud SQL / Firestore などユーザーデータを持つ DB と、その暗号化・公開設定
+    - ユーザーアップロードを保持する S3 / GCS バケット
+    - ログ基盤（CloudWatch Logs, Datadog 等）へのユーザー属性の流入
+    - 分析 SDK・MA ツールへのユーザー識別子の送信設定
+  priority:
+    C: 1
+    I: 2
+    A: 3
+    S: null
+  priority_note: 機密性 > 完全性 > 可用性
+  assets:
+  - 個人情報 DB
+  - 認証情報（パスワードハッシュ・セッション・トークン）
+  - バックアップとダンプ
+  - アクセスログ（漏えい範囲の特定に必要）
+  loss: 不可逆。報告・通知義務、集団訴訟、信用失墜。要配慮情報・カード情報はさらに一段上
+  incident_policy: 漏えい拡大を止めるため、売上を犠牲にしてでも即停止する判断を躊躇しない。漏えい範囲をログから特定し、個人情報保護委員会への報告期限（速報・確報）と本人通知の要否を確認する
+  checks:
+  - id: PII-01
+    title: 保存時の暗号化
+    look_at: DB・オブジェクトストレージ・バックアップ・スナップショットの暗号化設定（IaC の storage_encrypted、KMS キー指定）
+  - id: PII-02
+    title: 通信の暗号化
+    look_at: TLS 強制、HSTS、内部通信（DB・キャッシュ）の暗号化、平文 HTTP リスナーの残存
+  - id: PII-03
+    title: 公開設定の不備
+    look_at: S3 / GCS のパブリックアクセス、DB の public endpoint、セキュリティグループの 0.0.0.0/0、管理ポートの露出
+  - id: PII-04
+    title: 他人の個人情報への到達（IDOR）
+    look_at: /users/:id や /orders/:id などオブジェクト参照に所有者チェックがあるか。管理 API の認可、エクスポート機能の権限
+  - id: PII-05
+    title: 認証の強度
+    look_at: パスワードハッシュ（bcrypt / argon2）、ログイン試行のレート制限・ロックアウト、MFA の有無、パスワードリセットの安全性
+  - id: PII-06
+    title: セッション・トークン
+    look_at: 有効期限、失効手段、Cookie 属性（HttpOnly / Secure / SameSite）、トークンの保存場所
+  - id: PII-07
+    title: ログへの混入
+    look_at: 個人情報・トークン・パスワードがログ・エラートラッカー・分析イベントに出力されていないか。ログ保管先の権限
+  - id: PII-08
+    title: 第三者送信
+    look_at: 分析 SDK・外部 API・LLM API へ個人情報を送っていないか。送信前の匿名化・マスキング
+  - id: PII-09
+    title: データ最小化と保持
+    look_at: 不要な属性の保存、退会後の削除・匿名化、CSV ダンプやテスト環境への本番データコピー
+  - id: PII-10
+    title: 検知と証跡
+    look_at: 大量取得・異常アクセスのアラート、誰がどの個人情報にアクセスしたかの監査ログ
+  - id: PII-11
+    title: 要配慮情報・カード情報（PII_SENSITIVE）
+    look_at: カード番号を自前で保持していないか（トークナイゼーション）、PCI DSS 適用範囲、健康情報などの追加保護
+- id: REVENUE
+  label: 稼働が直接売上
+  examples: EC の決済導線、広告配信、予約、課金 SaaS、ライブ配信
+  questions:
+  - 停止した時間に比例して売上や機会損失が発生する
+  - SLA / SLO を顧客と約束している、または停止が契約違反になる
+  - セールやキャンペーンなど、負荷のピークが事業上重要な時間帯がある
+  signals:
+    code:
+    - 決済・チェックアウトのルート、cart / orders / subscriptions テーブル
+    - 広告配信・入札・インプレッション計測のコード
+    - 予約・在庫・価格を扱うテーブルと更新ロジック
+    - SLA / SLO の記述、ステータスページ連携、オンコール通知の設定
+    - 価格や数量をクライアントから受け取ってそのまま使う処理
+    infra:
+    - Autoscaling、マルチ AZ、マルチリージョン、CDN の設定有無（IaC）
+    - DB・キャッシュ・キューの冗長構成（Multi-AZ, replica, cluster mode）
+    - WAF / Shield / Cloud Armor などの前段防御
+    - バックアップ設定（保持期間、別アカウント・別リージョン）
+  priority:
+    C: 3
+    I: 2
+    A: 1
+    S: null
+  priority_note: 可用性 ≧ 完全性 > 機密性（決済があれば PII と複合）
+  assets:
+  - 決済フロー
+  - DNS / CDN
+  - 価格・在庫・注文データ
+  - セッション基盤
+  loss: 回復可能だが停止時間に比例。SLA 違約、機会損失。価格改ざん・二重計上は発見が遅れやすい
+  incident_policy: 侵害範囲を切り離して縮退運転（読み取り専用モード、機能フラグ）し、稼働を維持する。決済導線の完全性が疑われる場合は決済のみ停止する
+  checks:
+  - id: REV-01
+    title: 単一障害点
+    look_at: 単一 AZ / 単一インスタンス / 単一リージョンの DB・キャッシュ・キュー・NAT。IaC の count / replicas / multi_az
+  - id: REV-02
+    title: DDoS・ボット対策
+    look_at: CDN 前段、WAF、レート制限、ボット対策、オリジンの直接到達を防ぐ設定
+  - id: REV-03
+    title: 自動回復
+    look_at: Autoscaling、ヘルスチェック、リトライ・タイムアウト・サーキットブレーカ、外部 API ダウン時の挙動
+  - id: REV-04
+    title: バックアップと復旧
+    look_at: バックアップの存在・暗号化・別アカウント保管、復元手順と復元テストの記録、RTO / RPO の定義
+  - id: REV-05
+    title: DNS の保護
+    look_at: レジストラロック、DNSSEC、権威 DNS の冗長、ドメイン有効期限、TTL 設計
+  - id: REV-06
+    title: ランサムウェア耐性
+    look_at: イミュータブル（書き換え不可）バックアップ、本番資格情報と日常業務端末の分離、横展開を防ぐネットワーク分離
+  - id: REV-07
+    title: 取引の完全性
+    look_at: 価格・数量はサーバー側で決定しているか、二重課金防止（冪等キー）、注文ログの改ざん防止、在庫の競合制御
+  - id: REV-08
+    title: 縮退運転の手段
+    look_at: 機能フラグ、読み取り専用モード、決済だけ止める手段、静的なフォールバックページ
+  - id: REV-09
+    title: 監視と初動
+    look_at: SLO とアラート、ステータスページ、オンコール体制、インシデント手順書
+  - id: REV-10
+    title: 依存先の把握
+    look_at: 外部 SaaS / API / CDN / 決済代行の依存一覧と、それぞれの障害時の影響
+- id: TENANT
+  label: 企業機密を扱う
+  examples: B2B SaaS、ファイル共有、社内システム（人事・経理・案件情報）
+  questions:
+  - 複数の企業・組織のデータを 1 つのシステムで扱っている（マルチテナント）
+  - NDA や契約で守るべき顧客の情報（企画・売上・ソースコード・未公開情報）を預かっている
+  - 社内システムとして機密文書・人事・経理・顧客リストを扱う
+  signals:
+    code:
+    - tenant_id / organization_id / company_id / workspace_id などのスコープカラムとデフォルトスコープ
+    - RBAC（roles, permissions テーブル、policy / ability 定義、ミドルウェア）
+    - ファイル共有・ドキュメント機能、署名付き URL の発行処理
+    - API キーの発行・保存処理、Webhook の送出先管理
+    - SSO / SAML / SCIM 連携
+    - 管理者・サポート用の代理ログインや横断検索機能
+    infra:
+    - テナント共有の DB・検索基盤・キャッシュ・キュー・ログ
+    - 顧客データを扱う外部サービス（サブプロセッサ）への接続設定
+    - テナント別の暗号鍵やリソース分離の有無
+    - 運用者が本番データを閲覧できる経路（踏み台、管理コンソール、BI ツール）
+  priority:
+    C: 1
+    I: 2
+    A: 3
+    S: null
+  priority_note: 機密性（テナント分離） > 完全性 > 可用性
+  assets:
+  - テナント境界
+  - 認可ロジック
+  - 顧客データ
+  - API 鍵・連携トークン
+  loss: 契約違反・損害賠償・取引停止。被害が顧客の顧客まで波及する
+  incident_policy: 影響テナントをログから特定し、該当テナントへ契約に基づき通知する。認可不備が原因なら当該機能を止めてから修正する
+  checks:
+  - id: TEN-01
+    title: テナント分離の網羅性
+    look_at: すべてのクエリにテナントスコープがかかっているか（default scope / RLS / ミドルウェア）。生 SQL・集計・バッチ・検索インデックスの抜け
+  - id: TEN-02
+    title: オブジェクト参照の認可（IDOR）
+    look_at: /documents/:id、添付ファイル、署名付き URL に所有テナントの確認があるか。推測しやすい連番 ID
+  - id: TEN-03
+    title: RBAC の一貫性
+    look_at: 権限チェックの漏れ、管理者権限の付与経路、権限昇格、招待・ロール変更の認可
+  - id: TEN-04
+    title: API キーと連携トークン
+    look_at: スコープ・有効期限・ローテーション、ハッシュ化して保存しているか、ログやエラーへの露出
+  - id: TEN-05
+    title: 監査ログ
+    look_at: 誰が何を閲覧・変更・エクスポートしたかの記録、改ざん防止、保持期間、テナントへの提示可否
+  - id: TEN-06
+    title: 内部者アクセス
+    look_at: 運用者・サポートが本番データを見る経路とその承認・記録。代理ログインの監査
+  - id: TEN-07
+    title: 共有基盤での混在
+    look_at: キャッシュキー・検索インデックス・キュー・ログにテナント横断でデータが混ざらないか
+  - id: TEN-08
+    title: バックアップ・エクスポートの分離
+    look_at: バックアップやエクスポートがテナントを跨いで取得・復元されないか
+  - id: TEN-09
+    title: サブプロセッサ
+    look_at: 顧客データを送る外部サービスの一覧と契約上の許容範囲、送信データの最小化
+  - id: TEN-10
+    title: 暗号化とキー分離
+    look_at: 保存時暗号化、テナント別キーの要否、契約で求められる水準との整合
+- id: LEDGER
+  label: 金融・資産移転
+  examples: 送金、ポイント、取引所、ウォレット、プリペイド残高
+  questions:
+  - 残高・ポイント・資産の数値を自前で管理し、移転や換金ができる
+  - 送金・出金・決済の実行指示をシステムが外部へ発行する
+  - 不正な取引がそのまま金銭損失になる
+  signals:
+    code:
+    - balance / ledger / transactions / wallet / points テーブルと残高更新ロジック
+    - 送金・出金・付与の API と承認フロー（approve, review, threshold）
+    - 署名処理、秘密鍵・HSM / KMS 署名の呼び出し
+    - 金融機関 API・決済ネットワーク・ブロックチェーンとの連携
+    - 金額計算（浮動小数点、通貨丸め、負数処理）
+    infra:
+    - KMS / HSM / Secret Manager の鍵と IAM ポリシー
+    - 台帳 DB のトランザクション設定・レプリケーション・PITR
+    - 監査ログの保管先（書き換え不可設定、別アカウント）
+    - 出金処理を行うジョブ基盤とその権限
+  priority:
+    C: 2
+    I: 1
+    A: 2
+    S: null
+  priority_note: 完全性 > 機密性 ≒ 可用性
+  assets:
+  - 残高・取引台帳
+  - 承認フロー
+  - 署名鍵
+  - 改ざん不可の監査ログ
+  loss: 不可逆な金銭損失。実行された取引は取り消せない。否認防止が必須
+  incident_policy: 取引・出金を凍結し、台帳の整合性が確認できるまで再開しない。署名鍵の侵害が疑われる場合は鍵を即時失効する
+  checks:
+  - id: LED-01
+    title: 台帳の完全性
+    look_at: 追記のみ・複式記帳か、残高の直接 UPDATE がないか、トランザクション分離レベル、TOCTOU・二重出金の競合制御
+  - id: LED-02
+    title: 冪等性
+    look_at: 送金・付与 API の冪等キー、リトライや再送での二重実行防止、Webhook の重複処理
+  - id: LED-03
+    title: 承認の分離
+    look_at: 出金・送金の多者承認、金額しきい値、職務分離、承認者と実行者の分離
+  - id: LED-04
+    title: 署名鍵の管理
+    look_at: KMS / HSM で管理されているか、リポジトリ・環境変数・ログへの露出、ローテーション、利用権限
+  - id: LED-05
+    title: 否認防止と監査
+    look_at: 改ざん不可の監査ログ、取引ログの保持、操作者の記録
+  - id: LED-06
+    title: 異常検知
+    look_at: 金額・頻度・宛先の異常検知、自動凍結、アラートの通知先
+  - id: LED-07
+    title: 数値の扱い
+    look_at: 浮動小数点の使用、通貨の丸め、負数・オーバーフロー・単位誤り
+  - id: LED-08
+    title: 外部連携の検証
+    look_at: Webhook 署名検証、リプレイ対策、外部からの残高通知を信用していないか
+  - id: LED-09
+    title: 整合性を保つ復旧
+    look_at: 障害・ロールバック時に台帳と外部実行結果がずれないか、突合バッチ、PITR
+- id: PUBLISH
+  label: 情報発信・公式サイト
+  examples: コーポレートサイト、ニュース・メディア、LP、キャンペーンサイト
+  questions:
+  - 不特定多数が閲覧する公開サイトである
+  - CMS や静的サイトジェネレータで運用している
+  - 会員機能や個人情報の収集がない、または問い合わせフォーム程度に限られる
+  signals:
+    code:
+    - CMS（WordPress, microCMS, Contentful, Sanity, Strapi）や SSG（Next.js export, Astro, Hugo, Gatsby）
+    - 認証なしのルートが大半、管理画面だけが認証付き
+    - 問い合わせフォームの送信処理と送信先
+    - 外部スクリプト（タグマネージャ、計測、埋め込みウィジェット）の読み込み
+    infra:
+    - ホスティング（S3 + CloudFront, Vercel, Netlify, Cloudflare Pages）と CMS のホスト
+    - DNS・ドメイン・証明書の管理先
+    - デプロイパイプラインと公開先への書き込み権限
+    - 放置されたサブドメイン・テスト環境
+  priority:
+    C: 3
+    I: 1
+    A: 2
+    S: null
+  priority_note: 完全性 > 可用性 > 機密性
+  assets:
+  - コンテンツ（公開ページ・配布ファイル）
+  - CMS 管理画面
+  - DNS・証明書
+  - デプロイ経路
+  loss: 改ざんで訪問者が被害を受ける（フィッシング・マルウェアの踏み台）。ブランド毀損
+  incident_policy: 改ざんページを即座に差し替え（既知の正しい成果物から再デプロイ）、訪問者への注意喚起を優先する。CMS の管理アカウントを全て失効する
+  checks:
+  - id: PUB-01
+    title: CMS 管理画面の露出
+    look_at: インターネットから到達可能か、MFA、IP 制限、デフォルトの管理パス、不要なアカウント
+  - id: PUB-02
+    title: 改ざん検知
+    look_at: デプロイ成果物のハッシュ・署名、定期的な差分チェックや外部監視、改ざん時の再デプロイ手順
+  - id: PUB-03
+    title: 外部スクリプトの統制
+    look_at: CSP、Subresource Integrity、読み込む外部スクリプトの一覧と管理者
+  - id: PUB-04
+    title: DNS・証明書
+    look_at: レジストラロック、ドメイン有効期限、証明書の自動更新、CAA レコード
+  - id: PUB-05
+    title: デプロイ経路
+    look_at: 誰が公開先へ書き込めるか、ブランチ保護、レビュー必須、デプロイ用トークンの権限
+  - id: PUB-06
+    title: CMS・プラグインの更新
+    look_at: CMS 本体・テーマ・プラグインの既知脆弱性（CVE）と更新手順
+  - id: PUB-07
+    title: フォームの保護
+    look_at: スパム対策、インジェクション、送信先メール・Webhook の保護、保存する場合は PII 扱い
+  - id: PUB-08
+    title: 放置資産
+    look_at: 使われていないサブドメイン・テスト環境・旧 LP、サブドメインテイクオーバーの可能性
+- id: FOUNDATION
+  label: 他を守る基盤
+  examples: SSO / IdP、OAuth 認可サーバー、CI/CD、パッケージ・アップデート配信、シークレット管理
+  questions:
+  - 他のサービスのログイン（SSO / IdP / OAuth）を担っている
+  - 他のサービスのビルド・デプロイ・配布（CI/CD、レジストリ、アップデート配信）を担っている
+  - このシステムの鍵や権限が漏れると、複数のサービスに被害が及ぶ
+  signals:
+    code:
+    - OIDC / SAML プロバイダ実装、JWT の署名・検証、Keycloak / Auth0 / Cognito の設定
+    - CI 定義（.github/workflows, .gitlab-ci.yml, Jenkinsfile, cloudbuild.yaml）とデプロイ用の権限
+    - パッケージ公開（npm publish, docker push, maven deploy）、成果物の署名
+    - トークン発行・失効ロジック、refresh token の扱い
+    infra:
+    - 署名鍵・CA・シークレットの保管場所と IAM
+    - CI ランナー（self-hosted の有無）とそのネットワーク・権限
+    - レジストリ・成果物ストレージへの書き込み権限
+    - 本番デプロイロールの範囲と、開発環境との分離
+  priority:
+    C: 1
+    I: 1
+    A: 2
+    S: null
+  priority_note: 完全性 ≒ 機密性 > 可用性（すべて高）
+  assets:
+  - 署名鍵・CA
+  - クレデンシャルストア
+  - ビルドパイプラインと成果物
+  - トークン発行ロジック
+  loss: 波及範囲が最大。1 箇所の侵害で全利用者・全下流サービスに及ぶ
+  incident_policy: 鍵の即時失効とローテーション、発行済みトークン・成果物の無効化、下流サービスへの通知。復旧より封じ込めを優先する
+  checks:
+  - id: FND-01
+    title: 署名鍵の管理
+    look_at: KMS / HSM 管理か、アルゴリズム（alg=none / HS256 と RS256 の混在）、ローテーション、鍵のリポジトリ・ログへの露出
+  - id: FND-02
+    title: トークンの検証
+    look_at: 有効期限、失効手段、audience / issuer の検証、refresh token の保護とローテーション
+  - id: FND-03
+    title: CI/CD のシークレット
+    look_at: シークレットのスコープ、PR からの露出（pull_request_target、fork からの実行）、ログへのマスク
+  - id: FND-04
+    title: サードパーティ Action・依存
+    look_at: Action / プラグインのバージョン固定（SHA ピン留め）、依存のロックファイル、SBOM
+  - id: FND-05
+    title: 成果物の署名と来歴
+    look_at: 成果物の署名（Sigstore 等）、provenance、レジストリの書き込み権限、不変タグ
+  - id: FND-06
+    title: 権限の最小化
+    look_at: デプロイロールの最小権限、本番と開発の分離、break-glass 手順、長期キーの有無
+  - id: FND-07
+    title: 変更統制
+    look_at: ブランチ保護、レビュー必須、CI 定義自体の変更に対するレビュー、self-hosted runner の分離
+  - id: FND-08
+    title: 監査と異常検知
+    look_at: 鍵の使用・トークン発行・デプロイの監査ログ、異常な発行やデプロイの検知
+  - id: FND-09
+    title: 基盤停止時の影響
+    look_at: IdP / CI が停止した場合の下流への影響範囲、フェイルオープンになっていないか
+- id: SAFETY
+  label: 人命・物理に関わる
+  examples: 医療機器、設備制御、モビリティ、IoT デバイスの遠隔制御
+  questions:
+  - 誤動作が身体・設備・環境に物理的な被害を与えうる
+  - デバイスや機器を遠隔から制御、または設定変更する
+  - 通信断や異常値のときの挙動が安全性に影響する
+  signals:
+    code:
+    - ファームウェア、MQTT / CoAP / OPC-UA / Modbus などの制御プロトコル
+    - デバイスへのコマンド送信 API、設定配信、OTA 更新
+    - センサー値の取り込みとしきい値判定
+    infra:
+    - IoT Core / デバイス管理サービスとその認証方式
+    - 制御系ネットワークと IT 系ネットワークの分離
+    - ファームウェア配布経路と署名
+  priority:
+    C: 4
+    I: 3
+    A: 2
+    S: 1
+  priority_note: 安全性 > 可用性 > 完全性 > 機密性
+  assets:
+  - 制御コマンドの経路
+  - フェイルセーフ機構
+  - ファームウェアと更新経路
+  - 緊急停止の手段
+  loss: 物理被害。停止より誤動作のほうが危険
+  incident_policy: 安全側停止（fail-safe）を最優先し、制御経路を遮断する。復旧は安全性の確認後
+  checks:
+  - id: SAF-01
+    title: フェイルセーフ
+    look_at: 通信断・異常値・認証失敗のときに安全側のデフォルトへ落ちるか
+  - id: SAF-02
+    title: 制御コマンドの保護
+    look_at: コマンドの認証・署名、リプレイ防止、送信元の制限
+  - id: SAF-03
+    title: ファームウェア更新
+    look_at: 署名検証、セキュアブート、ロールバック、更新経路の保護
+  - id: SAF-04
+    title: ネットワーク分離
+    look_at: 制御系と IT 系の分離、インターネットからの直接到達の有無
+  - id: SAF-05
+    title: 入力検証
+    look_at: 設定値・制御値のレンジ検証、レート制限、物理的に危険な値の拒否
+  - id: SAF-06
+    title: 緊急停止
+    look_at: ソフトウェアに依存しない独立した停止経路の有無
+  - id: SAF-07
+    title: 専門規格との整合
+    look_at: IEC 62443 や医療機器規制など該当規格の適用有無（人間の判断に委ねる）
+- id: GAME
+  label: ゲーム・コミュニティ
+  examples: オンラインゲーム、UGC プラットフォーム、コミュニティサービス
+  questions:
+  - ゲーム内通貨・アイテム・ランキングなど、公平性が価値になる資産がある
+  - 投稿・チャット・UGC の機能がある
+  - 未成年の利用が想定される
+  signals:
+    code:
+    - inventory / items / currency / gacha / ranking テーブルと付与ロジック
+    - リアルタイム通信（WebSocket, UDP）、ゲームサーバー、マッチング
+    - 投稿・通報・モデレーション機能
+    - 年齢確認、課金上限、保護者同意の処理
+    - クライアントから結果（スコア・ドロップ）を受け取る API
+    infra:
+    - ゲームサーバーのスケール構成と DDoS 対策
+    - アイテム・通貨 DB のバックアップと PITR
+    - モデレーション用ツールとその権限
+  priority:
+    C: 3
+    I: 2
+    A: 1
+    S: null
+  priority_note: 可用性 > 完全性（ゲーム内経済） > 機密性
+  assets:
+  - アイテム・通貨台帳
+  - サーバー権威のゲーム状態
+  - チート・BOT 対策
+  - 未成年保護の仕組み
+  loss: 経済崩壊や不公平感による離脱。未成年関連は法的リスク
+  incident_policy: 不正に生成されたアイテム・通貨をロールバックし、経済を一時凍結する。不正アカウントを停止し、公平性回復を優先する
+  checks:
+  - id: GAM-01
+    title: サーバー権威
+    look_at: スコア・ドロップ・アイテム付与をクライアントが決めていないか、結果の再計算・検証
+  - id: GAM-02
+    title: 台帳の整合性
+    look_at: 通貨・アイテムの複製や二重付与の防止、冪等性、ロールバック手段
+  - id: GAM-03
+    title: 確率と抽選
+    look_at: ガチャ・抽選の確率が改ざんされにくいか、乱数の品質、監査ログ
+  - id: GAM-04
+    title: チート・BOT 対策
+    look_at: レート制限、異常検知、自動化クライアントの検出、通報の処理
+  - id: GAM-05
+    title: UGC の統制
+    look_at: モデレーション、通報、権利侵害・不適切コンテンツへの対応手段
+  - id: GAM-06
+    title: 未成年保護
+    look_at: 年齢確認、課金上限、保護者同意、未成年向け表示の制御
+  - id: GAM-07
+    title: 可用性
+    look_at: DDoS 対策、ピーク負荷、マッチング基盤の冗長化
+  - id: GAM-08
+    title: アカウント保護
+    look_at: 乗っ取り対策（MFA・デバイス認証）、RMT・アカウント売買の検知
+composition_rules:
+- 該当する特性ごとに C / I / A（SAFETY のみ S）の順位を持つ。順位 1 が最優先、同値は同順位。
+- 複数の特性に該当するサービスは、軸ごとに最も小さい順位（最優先）を採用する。
+- FOUNDATION に該当する場合、順位 2 の軸も順位 1 として扱う。
+- SAFETY に該当する場合、安全性を他の軸より上に置く。
+- PII_SENSITIVE（要配慮情報・カード情報）は PII の上位版として扱い、機密性の指摘を一段重く見る。
+cross_checks:
+- id: X-01
+  title: 認証情報・シークレット
+  look_at: リポジトリ履歴に含まれるシークレット、.env の扱い、Secret Manager の利用、ローテーション、CI ログへの露出
+- id: X-02
+  title: 管理者権限
+  look_at: 管理画面・クラウドコンソールの MFA、最小権限、root / Owner の日常利用、退職者・共有アカウント
+- id: X-03
+  title: バックアップ
+  look_at: 存在・暗号化・別アカウントや書き換え不可の保管・復元テストの記録
+- id: X-04
+  title: 監査ログと監視
+  look_at: CloudTrail / Audit Logs、アプリ監査ログ、集約と保持期間、改ざん防止、アラートの通知先
+- id: X-05
+  title: ネットワーク露出
+  look_at: 0.0.0.0/0 の許可、公開ポート、公開バケット、DB・管理ポートの露出、不要なパブリック IP
+- id: X-06
+  title: 依存関係
+  look_at: 既知脆弱性（CVE）、EOL のランタイム・OS・ベースイメージ、更新手順
+- id: X-07
+  title: IaC と設定管理
+  look_at: IaC 化の範囲、手動変更によるドリフト、デフォルト設定のまま運用している箇所
+- id: X-08
+  title: インシデント対応
+  look_at: 手順書、連絡先、止める判断の基準（service-profile.yaml の incident_policy）、連絡経路
+severity:
+  rule: 重大度は「影響する軸の合成順位」と「到達性」の組み合わせで決める。発見順や件数ではなく、この基準で並べて報告する。
+  reach:
+  - name: 外部
+    meaning: 未認証で、またはインターネットから到達可能。公開設定の不備を含む
+  - name: 内部
+    meaning: 認証後、社内ネットワーク、または権限者のみ到達可能
+  - name: 潜在
+    meaning: 設定不備や設計上の欠陥だが、到達経路を確認できていない
+  matrix:
+  - axis_rank: 順位 1 の軸
+    外部: Critical
+    内部: High
+    潜在: Medium
+  - axis_rank: 順位 2 の軸
+    外部: High
+    内部: Medium
+    潜在: Low
+  - axis_rank: 順位 3 以下の軸
+    外部: Medium
+    内部: Low
+    潜在: Low
+  overrides:
+  - 認証情報・署名鍵・API キーの露出（リポジトリ履歴・ログ・公開ストレージ）は、到達性によらず Critical
+  - バックアップの不在または復元未検証は、REVENUE / LEDGER に該当する場合 High、それ以外は Medium
+  - FOUNDATION に該当するサービスでは、順位 2 の軸も順位 1 として扱う
+  - 確認できなかった項目は重大度を付けず Info とし、人間への質問として報告する
+  result_values:
+  - OK
+  - 要対応
+  - 確認不能
+  - 対象外
+conduct:
+- rule: 読み取り専用
+  detail: コード・設定の変更、本番環境への書き込み、破壊的なコマンドを実行しない。クラウド CLI が使える場合も describe / list / get 系に限る
+- rule: 証拠主義
+  detail: 指摘ごとにファイルパス・行・設定キーを示す。推定は「推定」と明記し、根拠を書く。宣言（service-profile.yaml）と検出結果が食い違う場合は両方を報告する
+- rule: 秘密情報を出力しない
+  detail: 発見したシークレットは種類と場所のみを報告する。値・部分値・ハッシュをレポートや会話に出力しない
+- rule: 外部へ送らない
+  detail: コードや設定を外部サービスへ送信しない。レポートの保存先はリポジトリ内に限る
+- rule: 捏造しない
+  detail: 確認できないことは「確認不能」と書く。チェック項目を省略せず、OK と判断した根拠も残す
+- rule: 優先順位に従う
+  detail: 重大度順に報告する。サービス特性に無関係な一般論で埋めない。該当しない特性のチェックは実施しない
+- rule: 範囲を明示する
+  detail: 稼働中クラウドの実設定・ペネトレーションテスト・運用の実態は、与えられた情報の範囲でしか判断できないことをレポートに書く

@@ -16,7 +16,7 @@ Claude Code用の開発支援ツールとプラグインのコレクションで
 - **[knowledge-sharing](./knowledge_sharing/README.md)** - Claude Code の利用記録から、チームで共有できる知見を抽出・検証・公開するスキル群（週次のナレッジカード提出と合成、セッション記録からの Tips 抽出）
 - **[skill-usage-tracker](./skill_usage_tracker/README.md)** - スキル使用状況トラッキングと外部サービスへの分析データ送信
 - **[flutter-screen-spec-generator](./flutter_screen_spec_generator/README.md)** - Flutterプロジェクトの画面定義書を作成・管理するプラグイン
-- **[development-workflows](./development_workflows/)** - 開発ワークフロー向けスキル群（コードレビュー、認可チェックなど）
+- **[development-workflows](./development_workflows/)** - 開発ワークフロー向けスキル群（コードレビュー、認可チェック、セキュリティリスク監査など）
 
 ## プラグインのインストール方法
 
