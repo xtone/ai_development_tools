@@ -56,7 +56,7 @@ Notion の MCP（`https://mcp.notion.com/mcp`）は、1つの登録で1つのワ
 
 ## 使い方
 
-スキル名を言わなくても、Notion MCP の登録・接続先・ワークスペースに関する依頼で起動します。`/common-development:notion-connections`（パーソナルスキルとして入れた場合は `/notion-connections`）で明示的に呼び出すこともできます。
+スキル名を言わなくても、Notion MCP の登録・接続先・ワークスペースに関する依頼で起動します。`/notion-connections` で明示的に呼び出すこともでき、`/notion-connections list` のように続けて依頼を書けます。同じ名前のコマンドやスキルが他にある場合は、プラグイン名を付けた `/common-development:notion-connections` で呼び出してください。
 
 ### ワークスペースを追加する
 
