@@ -1,7 +1,7 @@
 {
     "name": "development-workflows",
     "description": "開発ワークフロー向けスキル群（コードレビュー、PRトリアージ、Figma仕様抽出、セキュリティリスク監査など）",
-    "version": "0.6.0",
+    "version": "0.6.1",
     "owner": {
         "name": "TOYOTA, Yoichi",
         "email": "y.toyota@xtone.co.jp"
@@ -31,7 +31,7 @@
             "name": "security-risk-audit",
             "source": "./skills/security-risk-audit",
             "description": "サービス特性（個人情報・売上直結・企業機密・金融・情報発信・基盤・人命・ゲーム）に応じた優先順位で、コードベースとインフラ構成（IaC・CI 定義）のセキュリティリスクを読み取り専用で監査し、重大度順のレポートにまとめます。ミドルウェア・ライブラリの脆弱性は、実行基盤・ネットワーク・実行権限から侵害時の被害を見積もって重大度を決めます。「セキュリティリスクを報告して」「セキュリティ監査」といった依頼時に使用されます。",
-            "version": "1.1.0",
+            "version": "1.1.1",
             "author": {
                 "name": "TOYOTA, Yoichi"
             },
