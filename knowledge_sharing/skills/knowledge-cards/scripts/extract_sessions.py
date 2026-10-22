@@ -42,6 +42,14 @@ DEFAULT_PATTERNS = [
 ]
 SAMPLES_PER_PATTERN = 5
 PROMPT_MAX = 1000
+# User-role text the harness writes into session logs; the user never typed it.
+INJECTED_PREFIXES = (
+    "Review this change for security vulnerabilities",
+    "You previously flagged these candidate vulnerabilities",
+    "This session is being continued from a previous conversation",
+    "Background (from the session that started this one)",
+    "[Request interrupted by user",
+)
 SAMPLE_MAX = 300
 TITLE_MAX = 200
 MEMORY_MAX = 400
@@ -248,8 +256,37 @@ def titles_in(command: str, start_re: re.Pattern[str], flag_re: re.Pattern[str])
 
 
 def collect_prompts(claude_dir, cutoff, filters, names, known, until=None) -> list[dict]:
-    """Prompts in range, with the raw text kept in "_raw" for topic checks (removed before output)."""
+    """Prompts in range, with the raw text kept in "_raw" for topic checks (removed before output).
+
+    Claude Desktop sessions never reach history.jsonl, so the session logs are read as well.
+    """
     out = []
+    seen: set[tuple[str, str]] = set()
+    logged: set[str] = set()
+    cache: dict[Path, str] = {}
+    for f in sorted((claude_dir / "projects").glob("*/*.jsonl")):
+        try:
+            if dt.datetime.fromtimestamp(f.stat().st_mtime, dt.timezone.utc) < cutoff:
+                continue
+        except OSError:
+            continue
+        for d in read_jsonl(f, '"user"'):
+            text = _user_text(d)
+            if not text.strip() or text.lstrip().startswith(INJECTED_PREFIXES):
+                continue
+            ts = parse_ts(d.get("timestamp"))
+            if ts is None or not in_range(ts, cutoff, until):
+                continue
+            proj = dir_project(f.parent, cache, known)
+            if not wanted(proj, filters):
+                continue
+            session = d.get("sessionId") if isinstance(d.get("sessionId"), str) else f.stem
+            logged.add(session)
+            if (session, text.strip()) in seen:
+                continue
+            seen.add((session, text.strip()))
+            names.add(proj)
+            out.append({"time": ts.isoformat(timespec="minutes"), "project": proj, "session_id": session, "_raw": text})
     for d in read_jsonl(claude_dir / "history.jsonl"):
         if isinstance(d.get("project"), str) and d["project"]:
             known.setdefault(encode_dir(d["project"]), project_name(d["project"]))
@@ -259,16 +296,14 @@ def collect_prompts(claude_dir, cutoff, filters, names, known, until=None) -> li
         proj = project_name(d.get("project", ""))
         if not wanted(proj, filters):
             continue
+        session = d.get("sessionId") if isinstance(d.get("sessionId"), str) and d["sessionId"] else None
+        text = str(d.get("display", ""))
+        # history shows pasted text as a placeholder; the session log already has it expanded.
+        if (session, text.strip()) in seen or (session in logged and d.get("pastedContents")):
+            continue
         names.add(proj)
-        session = d.get("sessionId")
-        out.append(
-            {
-                "time": ts.isoformat(timespec="minutes"),
-                "project": proj,
-                "session_id": session if isinstance(session, str) and session else None,
-                "_raw": str(d.get("display", "")),
-            }
-        )
+        out.append({"time": ts.isoformat(timespec="minutes"), "project": proj, "session_id": session, "_raw": text})
+    out.sort(key=lambda p: p["time"])
     return out
 
 
@@ -720,6 +755,8 @@ def main(argv: list[str] | None = None) -> int:
         f"{len(outcomes['commits'])} commits, {len(outcomes['prs'])} PRs, {len(memories)} memories; "
         f"excluded {excluded['sessions']} confidential session(s)"
     )
+    if calls and not prompts:
+        print("warning: tool calls were found but no prompts; the session logs may hold no user messages", file=sys.stderr)
     return 0
 
 
