@@ -616,3 +616,90 @@ def test_review_memories_are_listed_and_can_be_released(tmp_path):
     assert run(claude, out, "--since", "2026-10-05", "--include-sessions", cleared).returncode == 0
     names = [m["name"] for m in json.loads(out.read_text(encoding="utf-8"))["memories"]]
     assert "adr-promote" in names and "board" not in names
+
+
+def _user_line(ts, text, session):
+    return json.dumps(
+        {"type": "user", "timestamp": ts, "sessionId": session, "cwd": "/w/acme-shop",
+         "message": {"role": "user", "content": [{"type": "text", "text": text}]}}
+    )
+
+
+def _prompts(claude, tmp_path, *extra):
+    out = tmp_path / "work" / "sessions.json"
+    r = run(claude, out, "--since", "2026-10-05", "--tz", "+00:00", *extra)
+    assert r.returncode == 0, r.stderr
+    return json.loads(out.read_text(encoding="utf-8"))["prompts"], r
+
+
+def test_prompts_from_session_logs_without_history(tmp_path):
+    # Claude Desktop sessions write only the session log.
+    claude = make_claude(tmp_path)
+    _write_session(claude, "desk.jsonl", _user_line("2026-10-05T04:00:00Z", "PR を作って", "desk"))
+    prompts, _ = _prompts(claude, tmp_path)
+    assert [(p["session_id"], p["project"]) for p in prompts if p["text"] == "PR を作って"] == [("desk", "acme-shop")]
+
+
+def test_prompt_in_both_history_and_session_log_counts_once(tmp_path):
+    claude = make_claude(tmp_path)
+    _history(claude, ("2026-10-05T04:00:00+00:00", "テストを直して", "cli"))
+    _write_session(claude, "cli.jsonl", _user_line("2026-10-05T04:00:01Z", "テストを直して", "cli"))
+    prompts, _ = _prompts(claude, tmp_path)
+    assert [p["text"] for p in prompts].count("テストを直して") == 1
+
+
+def test_pasted_placeholder_in_history_yields_to_expanded_log_text(tmp_path):
+    claude = make_claude(tmp_path)
+    with (claude / "history.jsonl").open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps({
+            "display": "対応して\n[Pasted text #1 +3 lines]", "pastedContents": {"1": {"type": "text"}},
+            "timestamp": ms("2026-10-05"), "project": "/w/acme-shop", "sessionId": "cli",
+        }) + "\n")
+    _write_session(claude, "cli.jsonl", _user_line("2026-10-05T09:00:01Z", "対応して\nエラーの全文", "cli"))
+    texts = [p["text"] for p in _prompts(claude, tmp_path)[0] if p["session_id"] == "cli"]
+    assert texts == ["対応して\nエラーの全文"]
+
+
+def test_history_only_inputs_are_kept_for_logged_sessions(tmp_path):
+    # Slash commands and ! commands are tagged in the log, so only history has them as typed.
+    claude = make_claude(tmp_path)
+    _history(claude, ("2026-10-05T04:00:00+00:00", "/clear", "cli"), ("2026-10-05T04:01:00+00:00", "! git status", "cli"))
+    _write_session(claude, "cli.jsonl", _user_line("2026-10-05T04:02:00Z", "続けて", "cli"))
+    texts = [p["text"] for p in _prompts(claude, tmp_path)[0] if p["session_id"] == "cli"]
+    assert texts == ["/clear", "! git status", "続けて"]
+
+
+def test_injected_user_text_is_not_a_prompt(tmp_path):
+    claude = make_claude(tmp_path)
+    _write_session(
+        claude, "inj.jsonl",
+        _user_line("2026-10-05T04:00:00Z", "Review this change for security vulnerabilities.\nChanged files: a.py", "inj"),
+        _user_line("2026-10-05T04:01:00Z", "This session is being continued from a previous conversation. Summary: x", "inj"),
+        _user_line("2026-10-05T04:02:00Z", "[Request interrupted by user for tool use]", "inj"),
+        _user_line("2026-10-05T04:03:00Z", "日本語でお願いします", "inj"),
+    )
+    texts = [p["text"] for p in _prompts(claude, tmp_path)[0] if p["session_id"] == "inj"]
+    assert texts == ["日本語でお願いします"]
+
+
+def test_confidential_prompt_only_in_session_log_drops_the_session(tmp_path):
+    claude = make_claude(tmp_path)
+    _write_session(
+        claude, "desk.jsonl",
+        _user_line("2026-10-05T04:00:00Z", "取締役会の資料を作って", "desk"),
+        _user_line("2026-10-05T04:01:00Z", "表を足して", "desk"),
+    )
+    out = tmp_path / "work" / "sessions.json"
+    assert run(claude, out, "--since", "2026-10-05", "--tz", "+00:00").returncode == 0
+    raw = out.read_text(encoding="utf-8")
+    assert "取締役会" not in raw and "表を足して" not in raw
+    assert json.loads(raw)["excluded"]["sessions"] == 1
+
+
+def test_warns_when_tool_calls_have_no_prompts(tmp_path):
+    claude = make_claude(tmp_path)
+    (claude / "history.jsonl").unlink()
+    out = tmp_path / "work" / "sessions.json"
+    r = run(claude, out, "--since", "2026-10-05", "--tz", "+00:00")
+    assert r.returncode == 0, r.stderr
+    assert "warning: tool calls were found but no prompts" in r.stderr
