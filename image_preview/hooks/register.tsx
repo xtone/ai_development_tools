@@ -65,7 +65,11 @@ const toPng = async ($: EngineInterface, data: string, mediaType: string, name: 
   const b64 = `${dir}/${name}.b64`
   const raw = `${dir}/${name}.raw`
   await $.fs.write(b64, data)
-  await $.process.run(['/usr/bin/base64', '-D', '-i', b64, '-o', raw])
+  const decoded = await $.process.run(['/usr/bin/base64', '-D', '-i', b64, '-o', raw])
+  if (decoded.exitCode !== 0) {
+    await $.process.run(['/bin/rm', '-f', b64, raw])
+    throw new Error(decoded.stderr.trim() || 'base64 のデコードに失敗しました')
+  }
   try {
     return await pngFrom($, raw, `${dir}/${name}.png`, mediaType)
   } finally {
@@ -149,7 +153,12 @@ const readPasteboard = async (
   if (exitCode !== 0) {
     return { changeCount: -1, paths: [] }
   }
-  const parsed = JSON.parse(stdout) as { changeCount?: unknown; paths?: unknown }
+  let parsed: { changeCount?: unknown; paths?: unknown }
+  try {
+    parsed = JSON.parse(stdout) as { changeCount?: unknown; paths?: unknown }
+  } catch {
+    return { changeCount: -1, paths: [] }
+  }
 
   return {
     changeCount: typeof parsed.changeCount === 'number' ? parsed.changeCount : -1,
@@ -254,6 +263,31 @@ const syncDraft = async ($: EngineInterface, text: string, inputText: string) =>
   }
 }
 
+// syncDraft はモジュールの状態（seenNumbers・usedDrag・lastDraft）を読み書きするので、
+// ポーリング・edit・change のどこから呼ばれても 1 つずつ順に実行する。
+let syncChain: Promise<void> = Promise.resolve()
+let isSyncQueued = false
+
+const queueSync = ($: EngineInterface, text: string, inputText: string) => {
+  syncChain = syncChain.then(() => syncDraft($, text, inputText)).catch(() => undefined)
+
+  return syncChain
+}
+
+// ポーリングは、前の確認が終わっていなければ飛ばす（溜まらないように）。
+const pollDraft = async ($: EngineInterface) => {
+  if (isSyncQueued) {
+    return
+  }
+  isSyncQueued = true
+  try {
+    const box = await $.prompt.read()
+    await queueSync($, box.text, '')
+  } finally {
+    isSyncQueued = false
+  }
+}
+
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $.command.register({
@@ -263,7 +297,7 @@ export const register: Register = on => {
     usedDrag = (await readPasteboard($, 'drag')).changeCount
     // 添付した瞬間には edit も change も来ないことがあるので、入力欄を短い間隔で見る。
     $.clock.every(400, () => {
-      void $.prompt.read().then(box => syncDraft($, box.text, ''))
+      void pollDraft($)
     })
 
     return next(e)
@@ -286,14 +320,14 @@ export const register: Register = on => {
   // 入力欄への貼り付け・ドラッグ（edit）と、それ以外の書き換え（change）の両方を見る。
   on('prompt.edit', async ($, e, next) => {
     const box = await next(e)
-    void syncDraft($, box.text, e.inputText)
+    void queueSync($, box.text, e.inputText)
 
     return box
   })
 
   on('prompt.change', async ($, e, next) => {
     const changed = await next(e)
-    void syncDraft($, e.text, '')
+    void queueSync($, e.text, '')
 
     return changed
   })
