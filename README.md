@@ -17,8 +17,8 @@ Claude Code用の開発支援ツールとプラグインのコレクションで
 - **[skill-usage-tracker](./skill_usage_tracker/README.md)** - スキル使用状況トラッキングと外部サービスへの分析データ送信
 - **[flutter-screen-spec-generator](./flutter_screen_spec_generator/README.md)** - Flutterプロジェクトの画面定義書を作成・管理するプラグイン
 - **[development-workflows](./development_workflows/)** - 開発ワークフロー向けスキル群（コードレビュー、認可チェック、セキュリティリスク監査など）
-- **[image-preview](./image_preview/README.md)** - プロンプトに添付した画像を、送信前は入力欄の上に、送信後はペインにプレビューする mod（macOS）
-- **[mod-switcher](./mod_switcher/README.md)** - `/mods` で mod の一覧をプロンプトの上に出し、その場で on/off を切り替える mod
+- **[image-preview](./mods/image_preview/README.md)** - プロンプトに添付した画像を、送信前は入力欄の上に、送信後はペインにプレビューする mod（macOS）
+- **[mod-switcher](./mods/mod_switcher/README.md)** - `/mods` で mod の一覧をプロンプトの上に出し、その場で on/off を切り替える mod
 
 ## プラグインのインストール方法
 
