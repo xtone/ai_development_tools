@@ -95,7 +95,13 @@ const listInstalled = async ($: EngineInterface): Promise<ModEntry[]> => {
   if (exitCode !== 0) {
     return []
   }
-  const parsed: unknown = JSON.parse(stdout)
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(stdout)
+  } catch {
+    // 警告などが混ざって JSON として読めないときは、インストール済みの mod は無しとして扱う。
+    return []
+  }
   if (!Array.isArray(parsed)) {
     return []
   }
