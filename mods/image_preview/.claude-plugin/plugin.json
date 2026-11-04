@@ -1,0 +1,6 @@
+{
+  "name": "image-preview",
+  "version": "0.1.0",
+  "description": "プロンプトに添付した画像を、送信前は入力欄の上に、送信後はペインにプレビューする（macOS）",
+  "types": "./types/index.d.ts"
+}

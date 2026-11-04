@@ -1,0 +1,6 @@
+{
+  "name": "mod-switcher",
+  "version": "0.1.0",
+  "description": "/mods で mod の一覧をプロンプトの上に出し、その場で on/off を切り替える",
+  "types": "./types/index.d.ts"
+}
